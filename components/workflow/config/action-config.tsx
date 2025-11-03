@@ -48,6 +48,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </SelectGroup>
             <SelectGroup>
               <SelectLabel className="flex items-center gap-2">
+                <IntegrationIcon integration="ai-gateway" />
+                AI Gateway
+              </SelectLabel>
+              <SelectItem value="Generate Text">Generate Text</SelectItem>
+            </SelectGroup>
+            <SelectGroup>
+              <SelectLabel className="flex items-center gap-2">
                 <IntegrationIcon integration="resend" />
                 Resend
               </SelectLabel>
@@ -71,6 +78,79 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
           </SelectContent>
         </Select>
       </div>
+
+      {/* Generate Text fields */}
+      {config?.actionType === 'Generate Text' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="aiModel" className="text-xs">
+              Model
+            </Label>
+            <Select
+              value={(config?.aiModel as string) || 'gpt-3.5-turbo'}
+              onValueChange={(value) => onUpdateConfig('aiModel', value)}
+              disabled={disabled}
+            >
+              <SelectTrigger id="aiModel">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gpt-4">GPT-4</SelectItem>
+                <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+                <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
+                <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
+                <SelectItem value="llama-3-70b">Llama 3 70B</SelectItem>
+                <SelectItem value="mistral-large">Mistral Large</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="aiPrompt" className="text-xs">
+              Prompt
+            </Label>
+            <Textarea
+              id="aiPrompt"
+              value={(config?.aiPrompt as string) || ''}
+              onChange={(e) => onUpdateConfig('aiPrompt', e.target.value)}
+              placeholder="Enter your prompt. Use {{NodeName.field}} to insert data from previous nodes."
+              disabled={disabled}
+              rows={6}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="aiMaxTokens" className="text-xs">
+              Max Tokens (optional)
+            </Label>
+            <Input
+              id="aiMaxTokens"
+              type="number"
+              value={(config?.aiMaxTokens as string) || '1000'}
+              onChange={(e) => onUpdateConfig('aiMaxTokens', e.target.value)}
+              placeholder="1000"
+              disabled={disabled}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="aiTemperature" className="text-xs">
+              Temperature (optional)
+            </Label>
+            <Input
+              id="aiTemperature"
+              type="number"
+              step="0.1"
+              min="0"
+              max="2"
+              value={(config?.aiTemperature as string) || '0.7'}
+              onChange={(e) => onUpdateConfig('aiTemperature', e.target.value)}
+              placeholder="0.7"
+              disabled={disabled}
+            />
+          </div>
+        </>
+      )}
 
       {/* Send Email fields */}
       {config?.actionType === 'Send Email' && (

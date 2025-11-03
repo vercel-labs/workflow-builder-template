@@ -14,6 +14,8 @@ export const user = pgTable('user', {
   resendFromEmail: text('resend_from_email'),
   linearApiKey: text('linear_api_key'),
   slackApiKey: text('slack_api_key'),
+  aiGatewayApiKey: text('ai_gateway_api_key'),
+  aiGatewayAccountId: text('ai_gateway_account_id'),
 });
 
 export const session = pgTable('session', {

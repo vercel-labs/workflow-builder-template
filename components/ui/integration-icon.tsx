@@ -4,7 +4,7 @@ import { useTheme } from 'next-themes';
 import Image from 'next/image';
 
 interface IntegrationIconProps {
-  integration: 'linear' | 'resend' | 'slack';
+  integration: 'linear' | 'resend' | 'slack' | 'ai-gateway';
   className?: string;
 }
 
@@ -17,6 +17,7 @@ export function IntegrationIcon({ integration, className = 'h-3 w-3' }: Integrat
     resend:
       currentTheme === 'dark' ? '/integrations/resend-light.svg' : '/integrations/resend-dark.svg',
     slack: '/integrations/slack.svg',
+    'ai-gateway': '/integrations/cloudflare.svg',
   };
 
   return (

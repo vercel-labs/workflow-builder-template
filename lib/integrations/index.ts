@@ -12,6 +12,7 @@ export * from './linear';
 export * from './slack';
 export * from './database';
 export * from './api';
+export * from './ai-gateway';
 
 // Helper to get user data (placeholder - should integrate with your auth system)
 export async function getUser(userId: string) {

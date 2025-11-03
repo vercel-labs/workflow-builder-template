@@ -6,6 +6,7 @@ import { createTicket, findIssues } from './integrations/linear';
 import { sendSlackMessage } from './integrations/slack';
 import { queryData } from './integrations/database';
 import { callApi } from './integrations/api';
+import { generateText } from './integrations/ai-gateway';
 import { db } from './db';
 import { workflowExecutionLogs, user } from './db/schema';
 import { eq } from 'drizzle-orm';
@@ -28,6 +29,8 @@ interface UserIntegrations {
   resendFromEmail?: string | null;
   linearApiKey?: string | null;
   slackApiKey?: string | null;
+  aiGatewayApiKey?: string | null;
+  aiGatewayAccountId?: string | null;
 }
 
 class ServerWorkflowExecutor {
@@ -60,6 +63,8 @@ class ServerWorkflowExecutor {
           resendFromEmail: true,
           linearApiKey: true,
           slackApiKey: true,
+          aiGatewayApiKey: true,
+          aiGatewayAccountId: true,
         },
       });
 
@@ -69,6 +74,8 @@ class ServerWorkflowExecutor {
           resendFromEmail: userData.resendFromEmail,
           linearApiKey: userData.linearApiKey,
           slackApiKey: userData.slackApiKey,
+          aiGatewayApiKey: userData.aiGatewayApiKey,
+          aiGatewayAccountId: userData.aiGatewayAccountId,
         };
       }
     } catch (error) {
@@ -232,6 +239,38 @@ class ServerWorkflowExecutor {
           ) {
             const dbResult = await queryData('your_table', {});
             result = { success: dbResult.status === 'success', data: dbResult };
+          } else if (
+            actionType === 'Generate Text' ||
+            node.data.label.toLowerCase().includes('generate text')
+          ) {
+            if (
+              !this.userIntegrations.aiGatewayApiKey ||
+              !this.userIntegrations.aiGatewayAccountId
+            ) {
+              result = {
+                success: false,
+                error:
+                  'AI Gateway API key or Account ID not configured. Please configure in settings.',
+              };
+            } else {
+              const generateParams = {
+                prompt: (processedConfig?.aiPrompt as string) || '',
+                model: (processedConfig?.aiModel as string) || 'gpt-3.5-turbo',
+                maxTokens: processedConfig?.aiMaxTokens
+                  ? parseInt(processedConfig.aiMaxTokens as string)
+                  : 1000,
+                temperature: processedConfig?.aiTemperature
+                  ? parseFloat(processedConfig.aiTemperature as string)
+                  : 0.7,
+                apiKey: this.userIntegrations.aiGatewayApiKey,
+                accountId: this.userIntegrations.aiGatewayAccountId,
+              };
+              const generateResult = await generateText(generateParams);
+              result = { success: generateResult.status === 'success', data: generateResult };
+              if (generateResult.status === 'error') {
+                result.error = generateResult.error;
+              }
+            }
           } else if (actionType === 'HTTP Request' || endpoint) {
             const httpMethod = (processedConfig?.httpMethod as string) || 'POST';
             const httpHeaders = processedConfig?.httpHeaders
