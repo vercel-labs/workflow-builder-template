@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { workflowExecutions, workflowExecutionLogs } from '@/lib/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { asc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { workflowExecutionLogs, workflowExecutions } from "@/lib/db/schema";
 
 /**
  * Get detailed logs for a specific execution
@@ -15,7 +15,7 @@ export async function GET(
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { executionId } = await params;
@@ -26,11 +26,14 @@ export async function GET(
     });
 
     if (!execution) {
-      return NextResponse.json({ error: 'Execution not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Execution not found" },
+        { status: 404 }
+      );
     }
 
     if (execution.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Fetch execution logs
@@ -44,11 +47,11 @@ export async function GET(
       logs,
     });
   } catch (error) {
-    console.error('Failed to fetch execution logs:', error);
+    console.error("Failed to fetch execution logs:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch execution logs',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch execution logs",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { db } from '@/lib/db';
-import { workflows, user, vercelProjects } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { deployWorkflowToVercel } from '@/lib/vercel-deployment';
+import { and, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { user, vercelProjects, workflows } from "@/lib/db/schema";
+import { deployWorkflowToVercel } from "@/lib/vercel-deployment";
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
 
@@ -16,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get workflow
@@ -25,7 +28,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Workflow not found" },
+        { status: 404 }
+      );
     }
 
     // Get user's Vercel credentials
@@ -39,7 +45,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     if (!userData?.vercelApiToken) {
       return NextResponse.json(
-        { error: 'Vercel API token not configured. Please configure in settings.' },
+        {
+          error:
+            "Vercel API token not configured. Please configure in settings.",
+        },
         { status: 400 }
       );
     }
@@ -63,19 +72,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!vercelProject) {
       return NextResponse.json(
         {
-          error: 'Linked Vercel project not found. Please link this workflow to a valid project.',
+          error:
+            "Linked Vercel project not found. Please link this workflow to a valid project.",
         },
         { status: 400 }
       );
     }
 
     // Check if it's a local (fake) project
-    if (vercelProject.vercelProjectId.startsWith('local-')) {
+    if (vercelProject.vercelProjectId.startsWith("local-")) {
       return NextResponse.json(
         {
           error:
-            'This workflow is linked to a local project that does not exist on Vercel. ' +
-            'Please configure your Vercel API token in settings, then create a new Vercel project or link to an existing one.',
+            "This workflow is linked to a local project that does not exist on Vercel. " +
+            "Please configure your Vercel API token in settings, then create a new Vercel project or link to an existing one.",
         },
         { status: 400 }
       );
@@ -92,7 +102,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Update status to deploying for all workflows in the project
     await db
       .update(workflows)
-      .set({ deploymentStatus: 'deploying' })
+      .set({ deploymentStatus: "deploying" })
       .where(
         and(
           eq(workflows.vercelProjectId, workflow.vercelProjectId!),
@@ -117,7 +127,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     await db
       .update(workflows)
       .set({
-        deploymentStatus: result.success ? 'deployed' : 'failed',
+        deploymentStatus: result.success ? "deployed" : "failed",
         deploymentUrl: result.deploymentUrl,
         lastDeployedAt: new Date(),
       })
@@ -135,12 +145,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       logs: result.logs,
     });
   } catch (error) {
-    console.error('Deployment error:', error);
+    console.error("Deployment error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Deployment failed',
+        error: error instanceof Error ? error.message : "Deployment failed",
       },
       { status: 500 }
     );

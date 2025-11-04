@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAtom } from 'jotai';
-import { nodesAtom, edgesAtom, selectedNodeAtom } from '@/lib/workflow-store';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Copy } from 'lucide-react';
-import { toast } from 'sonner';
-import type { SchemaField } from './config/schema-builder';
+import { useAtom } from "jotai";
+import { ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { edgesAtom, nodesAtom, selectedNodeAtom } from "@/lib/workflow-store";
+import type { SchemaField } from "./config/schema-builder";
 
 interface AvailableOutputsProps {
   onInsertTemplate?: (template: string) => void;
@@ -27,25 +27,25 @@ const getNodeDisplayName = (node: {
   }
 
   // Otherwise, use type-specific defaults
-  if (node.data.type === 'action') {
+  if (node.data.type === "action") {
     const actionType = node.data.config?.actionType as string | undefined;
-    return actionType || 'HTTP Request';
+    return actionType || "HTTP Request";
   }
 
-  if (node.data.type === 'trigger') {
+  if (node.data.type === "trigger") {
     const triggerType = node.data.config?.triggerType as string | undefined;
-    return triggerType || 'Manual';
+    return triggerType || "Manual";
   }
 
-  if (node.data.type === 'condition') {
-    return 'Condition';
+  if (node.data.type === "condition") {
+    return "Condition";
   }
 
-  if (node.data.type === 'transform') {
-    return 'Transform';
+  if (node.data.type === "transform") {
+    return "Transform";
   }
 
-  return 'Node';
+  return "Node";
 };
 
 export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
@@ -97,7 +97,7 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
 
   const copyTemplate = (template: string) => {
     navigator.clipboard.writeText(template);
-    toast.success('Template copied to clipboard');
+    toast.success("Template copied to clipboard");
   };
 
   const insertTemplate = (template: string) => {
@@ -111,27 +111,35 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
   // Convert schema fields to field descriptions
   const schemaToFields = (
     schema: SchemaField[],
-    prefix = ''
+    prefix = ""
   ): Array<{ field: string; description: string }> => {
     const fields: Array<{ field: string; description: string }> = [];
 
     for (const schemaField of schema) {
-      const fieldPath = prefix ? `${prefix}.${schemaField.name}` : schemaField.name;
+      const fieldPath = prefix
+        ? `${prefix}.${schemaField.name}`
+        : schemaField.name;
       const typeLabel =
-        schemaField.type === 'array' ? `${schemaField.itemType}[]` : schemaField.type;
+        schemaField.type === "array"
+          ? `${schemaField.itemType}[]`
+          : schemaField.type;
       const description = schemaField.description || `${typeLabel}`;
 
       fields.push({ field: fieldPath, description });
 
       // Add nested fields for objects
-      if (schemaField.type === 'object' && schemaField.fields && schemaField.fields.length > 0) {
+      if (
+        schemaField.type === "object" &&
+        schemaField.fields &&
+        schemaField.fields.length > 0
+      ) {
         fields.push(...schemaToFields(schemaField.fields, fieldPath));
       }
 
       // Add nested fields for array items that are objects
       if (
-        schemaField.type === 'array' &&
-        schemaField.itemType === 'object' &&
+        schemaField.type === "array" &&
+        schemaField.itemType === "object" &&
         schemaField.fields &&
         schemaField.fields.length > 0
       ) {
@@ -144,36 +152,42 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
   };
 
   // Get common fields based on node action type
-  const getCommonFields = (node: { data: { type: string; config?: Record<string, unknown> } }) => {
+  const getCommonFields = (node: {
+    data: { type: string; config?: Record<string, unknown> };
+  }) => {
     const actionType = node.data.config?.actionType;
 
-    if (actionType === 'Find Issues') {
+    if (actionType === "Find Issues") {
       return [
-        { field: 'issues', description: 'Array of issues found' },
-        { field: 'count', description: 'Number of issues' },
+        { field: "issues", description: "Array of issues found" },
+        { field: "count", description: "Number of issues" },
       ];
-    } else if (actionType === 'Send Email') {
+    }
+    if (actionType === "Send Email") {
       return [
-        { field: 'id', description: 'Email ID' },
-        { field: 'status', description: 'Send status' },
+        { field: "id", description: "Email ID" },
+        { field: "status", description: "Send status" },
       ];
-    } else if (actionType === 'Create Ticket') {
+    }
+    if (actionType === "Create Ticket") {
       return [
-        { field: 'id', description: 'Ticket ID' },
-        { field: 'url', description: 'Ticket URL' },
-        { field: 'number', description: 'Ticket number' },
+        { field: "id", description: "Ticket ID" },
+        { field: "url", description: "Ticket URL" },
+        { field: "number", description: "Ticket number" },
       ];
-    } else if (actionType === 'HTTP Request') {
+    }
+    if (actionType === "HTTP Request") {
       return [
-        { field: 'data', description: 'Response data' },
-        { field: 'status', description: 'HTTP status code' },
+        { field: "data", description: "Response data" },
+        { field: "status", description: "HTTP status code" },
       ];
-    } else if (actionType === 'Generate Text') {
+    }
+    if (actionType === "Generate Text") {
       const aiFormat = node.data.config?.aiFormat as string | undefined;
       const aiSchema = node.data.config?.aiSchema as string | undefined;
 
       // If format is object and schema is defined, show schema fields
-      if (aiFormat === 'object' && aiSchema) {
+      if (aiFormat === "object" && aiSchema) {
         try {
           const schema = JSON.parse(aiSchema) as SchemaField[];
           if (schema.length > 0) {
@@ -186,86 +200,94 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
 
       // Default fields for text format or when no schema
       return [
-        { field: 'text', description: 'Generated text' },
-        { field: 'model', description: 'Model used' },
+        { field: "text", description: "Generated text" },
+        { field: "model", description: "Model used" },
       ];
-    } else if (actionType === 'Generate Image') {
+    }
+    if (actionType === "Generate Image") {
       return [
-        { field: 'base64', description: 'Base64 image data' },
-        { field: 'model', description: 'Model used' },
+        { field: "base64", description: "Base64 image data" },
+        { field: "model", description: "Model used" },
       ];
-    } else if (node.data.type === 'trigger') {
+    }
+    if (node.data.type === "trigger") {
       return [
-        { field: 'triggered', description: 'Trigger status' },
-        { field: 'timestamp', description: 'Trigger timestamp' },
-        { field: 'input', description: 'Input data' },
+        { field: "triggered", description: "Trigger status" },
+        { field: "timestamp", description: "Trigger timestamp" },
+        { field: "input", description: "Input data" },
       ];
     }
 
-    return [{ field: 'data', description: 'Output data' }];
+    return [{ field: "data", description: "Output data" }];
   };
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium">Available Outputs</div>
+      <div className="font-medium text-sm">Available Outputs</div>
       <div className="space-y-2">
         {upstreamNodes.map((node) => {
           const isExpanded = expandedNodes.has(node.id);
           const fields = getCommonFields(node);
 
           return (
-            <div key={node.id} className="border-muted rounded-lg border">
-              <div className="hover:bg-muted/50 flex w-full items-center justify-between rounded-lg p-2 transition-colors">
+            <div className="rounded-lg border border-muted" key={node.id}>
+              <div className="flex w-full items-center justify-between rounded-lg p-2 transition-colors hover:bg-muted/50">
                 <div
                   className="flex flex-1 cursor-pointer items-center gap-2"
                   onClick={() => toggleNode(node.id)}
-                  role="button"
-                  tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       toggleNode(node.id);
                     }
                   }}
+                  role="button"
+                  tabIndex={0}
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-3 w-3" />
                   ) : (
                     <ChevronRight className="h-3 w-3" />
                   )}
-                  <span className="text-sm font-medium">{getNodeDisplayName(node)}</span>
+                  <span className="font-medium text-sm">
+                    {getNodeDisplayName(node)}
+                  </span>
                 </div>
                 <Button
-                  variant="ghost"
-                  size="sm"
                   className="h-6 px-2"
                   onClick={(e) => {
                     e.stopPropagation();
                     insertTemplate(`{{$${node.id}}}`);
                   }}
+                  size="sm"
+                  variant="ghost"
                 >
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
 
               {isExpanded && (
-                <div className="border-muted space-y-1 border-t px-2 pt-1 pb-2">
+                <div className="space-y-1 border-muted border-t px-2 pt-1 pb-2">
                   {fields.map((field) => (
                     <div
+                      className="flex items-center justify-between rounded px-2 py-1.5 transition-colors hover:bg-muted/50"
                       key={field.field}
-                      className="hover:bg-muted/50 flex items-center justify-between rounded px-2 py-1.5 transition-colors"
                     >
                       <div className="flex-1">
-                        <div className="text-xs font-medium">{field.field}</div>
+                        <div className="font-medium text-xs">{field.field}</div>
                         {field.description && (
-                          <div className="text-muted-foreground text-xs">{field.description}</div>
+                          <div className="text-muted-foreground text-xs">
+                            {field.description}
+                          </div>
                         )}
                       </div>
                       <Button
-                        variant="ghost"
-                        size="sm"
                         className="ml-2 h-6 px-2"
-                        onClick={() => insertTemplate(`{{$${node.id}.${field.field}}}`)}
+                        onClick={() =>
+                          insertTemplate(`{{$${node.id}.${field.field}}}`)
+                        }
+                        size="sm"
+                        variant="ghost"
                       >
                         <Copy className="h-3 w-3" />
                       </Button>

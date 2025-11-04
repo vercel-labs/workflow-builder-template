@@ -1,4 +1,4 @@
-import 'server-only';
+import "server-only";
 
 export interface VercelProject {
   id: string;
@@ -20,15 +20,21 @@ export interface VercelDeployment {
   uid: string;
   name: string;
   url: string;
-  state: 'BUILDING' | 'ERROR' | 'INITIALIZING' | 'QUEUED' | 'READY' | 'CANCELED';
-  type: 'LAMBDAS';
+  state:
+    | "BUILDING"
+    | "ERROR"
+    | "INITIALIZING"
+    | "QUEUED"
+    | "READY"
+    | "CANCELED";
+  type: "LAMBDAS";
   created: number;
   creator: {
     uid: string;
     email?: string;
     username?: string;
   };
-  target: 'production' | 'staging' | null;
+  target: "production" | "staging" | null;
 }
 
 export interface ListProjectsParams {
@@ -37,7 +43,7 @@ export interface ListProjectsParams {
 }
 
 export interface ListProjectsResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   projects?: VercelProject[];
   error?: string;
 }
@@ -49,7 +55,7 @@ export interface GetProjectParams {
 }
 
 export interface GetProjectResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   project?: VercelProject;
   error?: string;
 }
@@ -62,7 +68,7 @@ export interface ListDeploymentsParams {
 }
 
 export interface ListDeploymentsResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   deployments?: VercelDeployment[];
   error?: string;
 }
@@ -71,11 +77,11 @@ export interface TriggerDeploymentParams {
   projectId: string;
   apiToken: string;
   teamId?: string;
-  target?: 'production' | 'staging';
+  target?: "production" | "staging";
 }
 
 export interface TriggerDeploymentResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   deployment?: VercelDeployment;
   error?: string;
 }
@@ -86,13 +92,13 @@ export interface CreateProjectParams {
   teamId?: string;
   framework?: string;
   gitRepository?: {
-    type: 'github' | 'gitlab' | 'bitbucket';
+    type: "github" | "gitlab" | "bitbucket";
     repo: string;
   };
 }
 
 export interface CreateProjectResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   project?: VercelProject;
   error?: string;
 }
@@ -100,7 +106,7 @@ export interface CreateProjectResult {
 /**
  * Base Vercel API URL
  */
-const VERCEL_API_BASE = 'https://api.vercel.com';
+const VERCEL_API_BASE = "https://api.vercel.com";
 
 /**
  * Helper function to make Vercel API requests
@@ -113,14 +119,14 @@ async function vercelRequest<T>(
 ): Promise<T> {
   const url = new URL(`${VERCEL_API_BASE}${path}`);
   if (teamId) {
-    url.searchParams.append('teamId', teamId);
+    url.searchParams.append("teamId", teamId);
   }
 
   const response = await fetch(url.toString(), {
     ...options,
     headers: {
       Authorization: `Bearer ${apiToken}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
@@ -128,7 +134,8 @@ async function vercelRequest<T>(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      errorData.error?.message || `Vercel API error: ${response.status} ${response.statusText}`
+      errorData.error?.message ||
+        `Vercel API error: ${response.status} ${response.statusText}`
     );
   }
 
@@ -138,30 +145,32 @@ async function vercelRequest<T>(
 /**
  * List all projects in a Vercel account or team
  */
-export async function listProjects(params: ListProjectsParams): Promise<ListProjectsResult> {
+export async function listProjects(
+  params: ListProjectsParams
+): Promise<ListProjectsResult> {
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
     const data = await vercelRequest<{ projects: VercelProject[] }>(
-      '/v9/projects',
+      "/v9/projects",
       params.apiToken,
       {},
       params.teamId
     );
 
     return {
-      status: 'success',
+      status: "success",
       projects: data.projects,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -169,12 +178,14 @@ export async function listProjects(params: ListProjectsParams): Promise<ListProj
 /**
  * Get a specific project by ID
  */
-export async function getProject(params: GetProjectParams): Promise<GetProjectResult> {
+export async function getProject(
+  params: GetProjectParams
+): Promise<GetProjectResult> {
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
@@ -186,13 +197,13 @@ export async function getProject(params: GetProjectParams): Promise<GetProjectRe
     );
 
     return {
-      status: 'success',
+      status: "success",
       project,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -206,12 +217,12 @@ export async function listDeployments(
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
-    const url = `/v6/deployments?projectId=${params.projectId}${params.limit ? `&limit=${params.limit}` : ''}`;
+    const url = `/v6/deployments?projectId=${params.projectId}${params.limit ? `&limit=${params.limit}` : ""}`;
     const data = await vercelRequest<{ deployments: VercelDeployment[] }>(
       url,
       params.apiToken,
@@ -220,13 +231,13 @@ export async function listDeployments(
     );
 
     return {
-      status: 'success',
+      status: "success",
       deployments: data.deployments,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -241,8 +252,8 @@ export async function triggerDeployment(
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
@@ -254,10 +265,13 @@ export async function triggerDeployment(
       limit: 1,
     });
 
-    if (deploymentsResult.status === 'error' || !deploymentsResult.deployments?.length) {
+    if (
+      deploymentsResult.status === "error" ||
+      !deploymentsResult.deployments?.length
+    ) {
       return {
-        status: 'error',
-        error: deploymentsResult.error || 'No deployments found to redeploy',
+        status: "error",
+        error: deploymentsResult.error || "No deployments found to redeploy",
       };
     }
 
@@ -265,27 +279,27 @@ export async function triggerDeployment(
 
     // Trigger a redeploy
     const deployment = await vercelRequest<VercelDeployment>(
-      `/v13/deployments`,
+      "/v13/deployments",
       params.apiToken,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({
           name: latestDeployment.name,
           deploymentId: latestDeployment.uid,
-          target: params.target || 'production',
+          target: params.target || "production",
         }),
       },
       params.teamId
     );
 
     return {
-      status: 'success',
+      status: "success",
       deployment,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -293,12 +307,14 @@ export async function triggerDeployment(
 /**
  * Create a new Vercel project
  */
-export async function createProject(params: CreateProjectParams): Promise<CreateProjectResult> {
+export async function createProject(
+  params: CreateProjectParams
+): Promise<CreateProjectResult> {
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
@@ -306,7 +322,7 @@ export async function createProject(params: CreateProjectParams): Promise<Create
       name: string;
       framework?: string;
       gitRepository?: {
-        type: 'github' | 'gitlab' | 'bitbucket';
+        type: "github" | "gitlab" | "bitbucket";
         repo: string;
       };
     } = {
@@ -322,23 +338,23 @@ export async function createProject(params: CreateProjectParams): Promise<Create
     }
 
     const project = await vercelRequest<VercelProject>(
-      '/v9/projects',
+      "/v9/projects",
       params.apiToken,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(projectData),
       },
       params.teamId
     );
 
     return {
-      status: 'success',
+      status: "success",
       project,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -346,22 +362,24 @@ export async function createProject(params: CreateProjectParams): Promise<Create
 /**
  * Get environment variables for a project
  */
-export async function getEnvironmentVariables(params: GetProjectParams): Promise<{
-  status: 'success' | 'error';
+export async function getEnvironmentVariables(
+  params: GetProjectParams
+): Promise<{
+  status: "success" | "error";
   envs?: Array<{
     id: string;
     key: string;
     value: string;
-    type: 'plain' | 'secret' | 'encrypted' | 'system';
-    target: Array<'production' | 'preview' | 'development'>;
+    type: "plain" | "secret" | "encrypted" | "system";
+    target: Array<"production" | "preview" | "development">;
   }>;
   error?: string;
 }> {
   try {
     if (!params.apiToken) {
       return {
-        status: 'error',
-        error: 'Vercel API token not configured',
+        status: "error",
+        error: "Vercel API token not configured",
       };
     }
 
@@ -370,19 +388,24 @@ export async function getEnvironmentVariables(params: GetProjectParams): Promise
         id: string;
         key: string;
         value: string;
-        type: 'plain' | 'secret' | 'encrypted' | 'system';
-        target: Array<'production' | 'preview' | 'development'>;
+        type: "plain" | "secret" | "encrypted" | "system";
+        target: Array<"production" | "preview" | "development">;
       }>;
-    }>(`/v9/projects/${params.projectId}/env`, params.apiToken, {}, params.teamId);
+    }>(
+      `/v9/projects/${params.projectId}/env`,
+      params.apiToken,
+      {},
+      params.teamId
+    );
 
     return {
-      status: 'success',
+      status: "success",
       envs: data.envs,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

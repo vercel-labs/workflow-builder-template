@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Webhook, Settings } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Settings, Webhook } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,8 +11,8 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { TimezoneSelect } from '@/components/ui/timezone-select';
+} from "@/components/ui/select";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 interface TriggerConfigProps {
   config: Record<string, unknown>;
@@ -20,17 +20,21 @@ interface TriggerConfigProps {
   disabled: boolean;
 }
 
-export function TriggerConfig({ config, onUpdateConfig, disabled }: TriggerConfigProps) {
+export function TriggerConfig({
+  config,
+  onUpdateConfig,
+  disabled,
+}: TriggerConfigProps) {
   return (
     <>
       <div className="space-y-2">
         <Label htmlFor="triggerType">Trigger Type</Label>
         <Select
-          value={(config?.triggerType as string) || 'Manual'}
-          onValueChange={(value) => onUpdateConfig('triggerType', value)}
           disabled={disabled}
+          onValueChange={(value) => onUpdateConfig("triggerType", value)}
+          value={(config?.triggerType as string) || "Manual"}
         >
-          <SelectTrigger id="triggerType" className="w-full">
+          <SelectTrigger className="w-full" id="triggerType">
             <SelectValue placeholder="Select trigger type" />
           </SelectTrigger>
           <SelectContent>
@@ -55,26 +59,26 @@ export function TriggerConfig({ config, onUpdateConfig, disabled }: TriggerConfi
       </div>
 
       {/* Webhook fields */}
-      {config?.triggerType === 'Webhook' && (
+      {config?.triggerType === "Webhook" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="webhookPath">Webhook Path</Label>
             <Input
-              id="webhookPath"
-              value={(config?.webhookPath as string) || ''}
-              onChange={(e) => onUpdateConfig('webhookPath', e.target.value)}
-              placeholder="/webhooks/my-workflow"
               disabled={disabled}
+              id="webhookPath"
+              onChange={(e) => onUpdateConfig("webhookPath", e.target.value)}
+              placeholder="/webhooks/my-workflow"
+              value={(config?.webhookPath as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="webhookMethod">HTTP Method</Label>
             <Select
-              value={(config?.webhookMethod as string) || 'POST'}
-              onValueChange={(value) => onUpdateConfig('webhookMethod', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("webhookMethod", value)}
+              value={(config?.webhookMethod as string) || "POST"}
             >
-              <SelectTrigger id="webhookMethod" className="w-full">
+              <SelectTrigger className="w-full" id="webhookMethod">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
@@ -88,51 +92,53 @@ export function TriggerConfig({ config, onUpdateConfig, disabled }: TriggerConfi
       )}
 
       {/* Schedule fields */}
-      {config?.triggerType === 'Schedule' && (
+      {config?.triggerType === "Schedule" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="scheduleCron">Cron Expression</Label>
             <Input
-              id="scheduleCron"
-              value={(config?.scheduleCron as string) || ''}
-              onChange={(e) => onUpdateConfig('scheduleCron', e.target.value)}
-              placeholder="0 9 * * * (every day at 9am)"
               disabled={disabled}
+              id="scheduleCron"
+              onChange={(e) => onUpdateConfig("scheduleCron", e.target.value)}
+              placeholder="0 9 * * * (every day at 9am)"
+              value={(config?.scheduleCron as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="scheduleTimezone">Timezone</Label>
             <TimezoneSelect
-              id="scheduleTimezone"
-              value={(config?.scheduleTimezone as string) || 'America/New_York'}
-              onValueChange={(value) => onUpdateConfig('scheduleTimezone', value)}
               disabled={disabled}
+              id="scheduleTimezone"
+              onValueChange={(value) =>
+                onUpdateConfig("scheduleTimezone", value)
+              }
+              value={(config?.scheduleTimezone as string) || "America/New_York"}
             />
           </div>
         </>
       )}
 
       {/* Database Event fields */}
-      {config?.triggerType === 'Database Event' && (
+      {config?.triggerType === "Database Event" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="dbEventTable">Table Name</Label>
             <Input
-              id="dbEventTable"
-              value={(config?.dbEventTable as string) || ''}
-              onChange={(e) => onUpdateConfig('dbEventTable', e.target.value)}
-              placeholder="users"
               disabled={disabled}
+              id="dbEventTable"
+              onChange={(e) => onUpdateConfig("dbEventTable", e.target.value)}
+              placeholder="users"
+              value={(config?.dbEventTable as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="dbEventType">Event Type</Label>
             <Select
-              value={(config?.dbEventType as string) || 'INSERT'}
-              onValueChange={(value) => onUpdateConfig('dbEventType', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("dbEventType", value)}
+              value={(config?.dbEventType as string) || "INSERT"}
             >
-              <SelectTrigger id="dbEventType" className="w-full">
+              <SelectTrigger className="w-full" id="dbEventType">
                 <SelectValue placeholder="Select event" />
               </SelectTrigger>
               <SelectContent>

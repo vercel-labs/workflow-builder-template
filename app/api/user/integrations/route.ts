@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { user } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { user } from "@/lib/db/schema";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userData = await db.query.user.findFirst({
@@ -25,14 +25,14 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userData) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Mask API keys for security (show only last 4 characters)
     const maskApiKey = (key: string | null) => {
       if (!key) return null;
       if (key.length <= 4) return key;
-      return '*'.repeat(key.length - 4) + key.slice(-4);
+      return "*".repeat(key.length - 4) + key.slice(-4);
     };
 
     return NextResponse.json({
@@ -48,11 +48,11 @@ export async function GET(request: NextRequest) {
       hasVercelToken: !!userData.vercelApiToken,
     });
   } catch (error) {
-    console.error('Failed to fetch integrations:', error);
+    console.error("Failed to fetch integrations:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch integrations',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch integrations",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest) {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -114,11 +114,11 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to update integrations:', error);
+    console.error("Failed to update integrations:", error);
     return NextResponse.json(
       {
-        error: 'Failed to update integrations',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to update integrations",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

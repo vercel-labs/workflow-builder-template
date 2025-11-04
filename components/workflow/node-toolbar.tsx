@@ -1,45 +1,48 @@
-'use client';
+"use client";
 
-import { useSetAtom, useAtom } from 'jotai';
-import { PlayCircle, Zap, GitBranch, Shuffle } from 'lucide-react';
-import { nanoid } from 'nanoid';
+import { useAtom, useSetAtom } from "jotai";
+import { GitBranch, PlayCircle, Shuffle, Zap } from "lucide-react";
+import { nanoid } from "nanoid";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   addNodeAtom,
   isGeneratingAtom,
   type WorkflowNode,
   type WorkflowNodeType,
-} from '@/lib/workflow-store';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+} from "@/lib/workflow-store";
 
 const nodeTemplates = [
   {
-    type: 'trigger' as WorkflowNodeType,
-    label: 'Trigger',
-    description: 'Start your workflow',
+    type: "trigger" as WorkflowNodeType,
+    label: "Trigger",
+    description: "Start your workflow",
     icon: PlayCircle,
-    defaultConfig: { triggerType: 'Manual' },
+    defaultConfig: { triggerType: "Manual" },
   },
   {
-    type: 'action' as WorkflowNodeType,
-    label: 'Action',
-    description: 'Perform an action',
+    type: "action" as WorkflowNodeType,
+    label: "Action",
+    description: "Perform an action",
     icon: Zap,
-    defaultConfig: { actionType: 'HTTP Request', endpoint: 'https://api.example.com' },
+    defaultConfig: {
+      actionType: "HTTP Request",
+      endpoint: "https://api.example.com",
+    },
   },
   {
-    type: 'condition' as WorkflowNodeType,
-    label: 'Condition',
-    description: 'Branch your workflow',
+    type: "condition" as WorkflowNodeType,
+    label: "Condition",
+    description: "Branch your workflow",
     icon: GitBranch,
-    defaultConfig: { condition: 'If true' },
+    defaultConfig: { condition: "If true" },
   },
   {
-    type: 'transform' as WorkflowNodeType,
-    label: 'Transform',
-    description: 'Transform data',
+    type: "transform" as WorkflowNodeType,
+    label: "Transform",
+    description: "Transform data",
     icon: Shuffle,
-    defaultConfig: { transformType: 'Map Data' },
+    defaultConfig: { transformType: "Map Data" },
   },
 ];
 
@@ -66,7 +69,7 @@ export function NodeToolbar() {
         description: template.description,
         type: template.type,
         config: template.defaultConfig,
-        status: 'idle',
+        status: "idle",
       },
     };
 
@@ -74,23 +77,26 @@ export function NodeToolbar() {
   };
 
   return (
-    <div className="bg-background absolute top-4 left-4 z-10 flex border shadow-lg">
+    <div className="absolute top-4 left-4 z-10 flex border bg-background shadow-lg">
       {nodeTemplates.map((template, index) => {
         const Icon = template.icon;
         return (
-          <div key={template.type} className="flex">
+          <div className="flex" key={template.type}>
             <Button
-              onClick={() => handleAddNode(template)}
-              variant="ghost"
-              size="icon"
               className="h-[26px] w-[26px] rounded-none p-0"
-              title={template.label}
               disabled={isGenerating}
+              onClick={() => handleAddNode(template)}
+              size="icon"
+              title={template.label}
+              variant="ghost"
             >
               <Icon className="h-4 w-4" />
             </Button>
             {index < nodeTemplates.length - 1 && (
-              <Separator orientation="vertical" className="bg-border h-[26px]" />
+              <Separator
+                className="h-[26px] bg-border"
+                orientation="vertical"
+              />
             )}
           </div>
         );

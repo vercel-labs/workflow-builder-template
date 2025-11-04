@@ -1,18 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { workflows, workflowExecutions, workflowExecutionLogs } from '@/lib/db/schema';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { desc, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import {
+  workflowExecutionLogs,
+  workflowExecutions,
+  workflows,
+} from "@/lib/db/schema";
 
 /**
  * Get execution history for a workflow
  */
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: workflowId } = await params;
@@ -23,11 +30,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Workflow not found" },
+        { status: 404 }
+      );
     }
 
     if (workflow.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Fetch executions
@@ -39,11 +49,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     return NextResponse.json(executions);
   } catch (error) {
-    console.error('Failed to fetch executions:', error);
+    console.error("Failed to fetch executions:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch executions',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch executions",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -61,7 +71,7 @@ export async function DELETE(
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: workflowId } = await params;
@@ -72,11 +82,14 @@ export async function DELETE(
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Workflow not found" },
+        { status: 404 }
+      );
     }
 
     if (workflow.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Get all execution IDs for this workflow
@@ -94,16 +107,21 @@ export async function DELETE(
         .where(inArray(workflowExecutionLogs.executionId, executionIds));
 
       // Then delete the executions
-      await db.delete(workflowExecutions).where(eq(workflowExecutions.workflowId, workflowId));
+      await db
+        .delete(workflowExecutions)
+        .where(eq(workflowExecutions.workflowId, workflowId));
     }
 
-    return NextResponse.json({ success: true, deletedCount: executionIds.length });
+    return NextResponse.json({
+      success: true,
+      deletedCount: executionIds.length,
+    });
   } catch (error) {
-    console.error('Failed to delete executions:', error);
+    console.error("Failed to delete executions:", error);
     return NextResponse.json(
       {
-        error: 'Failed to delete executions',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to delete executions",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

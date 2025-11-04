@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { dataSources } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { dataSources } from "@/lib/db/schema";
 
 export async function DELETE(
   request: NextRequest,
@@ -12,41 +12,50 @@ export async function DELETE(
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
 
     // Verify ownership before deleting
     const source = await db.query.dataSources.findFirst({
-      where: and(eq(dataSources.id, id), eq(dataSources.userId, session.user.id)),
+      where: and(
+        eq(dataSources.id, id),
+        eq(dataSources.userId, session.user.id)
+      ),
     });
 
     if (!source) {
-      return NextResponse.json({ error: 'Data source not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Data source not found" },
+        { status: 404 }
+      );
     }
 
     await db.delete(dataSources).where(eq(dataSources.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete data source:', error);
+    console.error("Failed to delete data source:", error);
     return NextResponse.json(
       {
-        error: 'Failed to delete data source',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to delete data source",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -54,11 +63,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Verify ownership
     const source = await db.query.dataSources.findFirst({
-      where: and(eq(dataSources.id, id), eq(dataSources.userId, session.user.id)),
+      where: and(
+        eq(dataSources.id, id),
+        eq(dataSources.userId, session.user.id)
+      ),
     });
 
     if (!source) {
-      return NextResponse.json({ error: 'Data source not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Data source not found" },
+        { status: 404 }
+      );
     }
 
     const updates: {
@@ -68,7 +83,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     } = {};
 
     if (body.name !== undefined) updates.name = body.name;
-    if (body.connectionString !== undefined) updates.connectionString = body.connectionString;
+    if (body.connectionString !== undefined)
+      updates.connectionString = body.connectionString;
     if (body.isDefault !== undefined) {
       updates.isDefault = body.isDefault;
 
@@ -89,11 +105,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     return NextResponse.json({ success: true, dataSource: updated });
   } catch (error) {
-    console.error('Failed to update data source:', error);
+    console.error("Failed to update data source:", error);
     return NextResponse.json(
       {
-        error: 'Failed to update data source',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to update data source",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

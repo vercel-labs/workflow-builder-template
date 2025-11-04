@@ -1,5 +1,5 @@
-import 'server-only';
-import { Resend } from 'resend';
+import "server-only";
+import { Resend } from "resend";
 
 export interface SendEmailParams {
   to: string | string[];
@@ -12,7 +12,7 @@ export interface SendEmailParams {
 }
 
 export interface SendEmailResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   id?: string;
   error?: string;
 }
@@ -20,19 +20,21 @@ export interface SendEmailResult {
 /**
  * Send an email using Resend
  */
-export async function sendEmail(params: SendEmailParams): Promise<SendEmailResult> {
+export async function sendEmail(
+  params: SendEmailParams
+): Promise<SendEmailResult> {
   try {
     if (!params.apiKey) {
       return {
-        status: 'error',
-        error: 'Resend API key not configured',
+        status: "error",
+        error: "Resend API key not configured",
       };
     }
 
     const resend = new Resend(params.apiKey);
 
     const { data, error } = await resend.emails.send({
-      from: params.from || params.fromEmail || 'onboarding@resend.dev',
+      from: params.from || params.fromEmail || "onboarding@resend.dev",
       to: Array.isArray(params.to) ? params.to : [params.to],
       subject: params.subject,
       text: params.body,
@@ -41,19 +43,19 @@ export async function sendEmail(params: SendEmailParams): Promise<SendEmailResul
 
     if (error) {
       return {
-        status: 'error',
+        status: "error",
         error: error.message,
       };
     }
 
     return {
-      status: 'success',
+      status: "success",
       id: data?.id,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -68,9 +70,9 @@ export async function generateEmail(params: {
 }): Promise<{ subject: string; body: string }> {
   // This could integrate with OpenAI or another LLM
   // For now, return a template-based approach
-  const { name, plan = 'Free', context = 'welcome' } = params;
+  const { name, plan = "Free", context = "welcome" } = params;
 
-  if (context === 'welcome') {
+  if (context === "welcome") {
     return {
       subject: `Welcome to our platform, ${name}!`,
       body: `Hi ${name},\n\nWelcome to our platform! We're excited to have you on the ${plan} plan.\n\nGet started by exploring our features and let us know if you need any help.\n\nBest regards,\nThe Team`,

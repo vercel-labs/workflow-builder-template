@@ -1,47 +1,51 @@
-'use client';
+"use client";
 
-import { useSetAtom } from 'jotai';
-import { PlayCircle, Zap, GitBranch, Shuffle } from 'lucide-react';
-import { nanoid } from 'nanoid';
-import { addNodeAtom, type WorkflowNode, type WorkflowNodeType } from '@/lib/workflow-store';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { useSetAtom } from "jotai";
+import { GitBranch, PlayCircle, Shuffle, Zap } from "lucide-react";
+import { nanoid } from "nanoid";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  addNodeAtom,
+  type WorkflowNode,
+  type WorkflowNodeType,
+} from "@/lib/workflow-store";
 
 const nodeTemplates = [
   {
-    type: 'trigger' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Trigger',
-    displayDescription: 'Start your workflow',
+    type: "trigger" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Trigger",
+    displayDescription: "Start your workflow",
     icon: PlayCircle,
-    defaultConfig: { triggerType: 'Manual' },
+    defaultConfig: { triggerType: "Manual" },
   },
   {
-    type: 'action' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Action',
-    displayDescription: 'Perform an action',
+    type: "action" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Action",
+    displayDescription: "Perform an action",
     icon: Zap,
-    defaultConfig: { actionType: 'HTTP Request' },
+    defaultConfig: { actionType: "HTTP Request" },
   },
   {
-    type: 'condition' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Condition',
-    displayDescription: 'Branch your workflow',
+    type: "condition" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Condition",
+    displayDescription: "Branch your workflow",
     icon: GitBranch,
-    defaultConfig: { condition: 'If true' },
+    defaultConfig: { condition: "If true" },
   },
   {
-    type: 'transform' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Transform',
-    displayDescription: 'Transform data',
+    type: "transform" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Transform",
+    displayDescription: "Transform data",
     icon: Shuffle,
-    defaultConfig: { transformType: 'Map Data' },
+    defaultConfig: { transformType: "Map Data" },
   },
 ];
 
@@ -67,7 +71,7 @@ export function NodeLibrary() {
         description: template.description,
         type: template.type,
         config: template.defaultConfig,
-        status: 'idle',
+        status: "idle",
       },
     };
 
@@ -84,15 +88,19 @@ export function NodeLibrary() {
           const Icon = template.icon;
           return (
             <button
+              className="w-full rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent hover:text-accent-foreground"
               key={template.type}
               onClick={() => handleAddNode(template)}
-              className="bg-card hover:bg-accent hover:text-accent-foreground w-full rounded-lg border p-3 text-left transition-colors"
             >
               <div className="flex items-start gap-3">
                 <Icon className="mt-0.5 h-5 w-5" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{template.displayLabel}</div>
-                  <div className="text-muted-foreground text-xs">{template.displayDescription}</div>
+                  <div className="font-medium text-sm">
+                    {template.displayLabel}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {template.displayDescription}
+                  </div>
                 </div>
               </div>
             </button>

@@ -1,5 +1,5 @@
-import 'server-only';
-import { LinearClient, Issue } from '@linear/sdk';
+import "server-only";
+import { type Issue, LinearClient } from "@linear/sdk";
 
 export interface CreateTicketParams {
   title: string;
@@ -12,7 +12,7 @@ export interface CreateTicketParams {
 }
 
 export interface CreateTicketResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   id?: string;
   url?: string;
   error?: string;
@@ -21,12 +21,14 @@ export interface CreateTicketResult {
 /**
  * Create a ticket in Linear
  */
-export async function createTicket(params: CreateTicketParams): Promise<CreateTicketResult> {
+export async function createTicket(
+  params: CreateTicketParams
+): Promise<CreateTicketResult> {
   try {
     if (!params.apiKey) {
       return {
-        status: 'error',
-        error: 'Linear API key not configured',
+        status: "error",
+        error: "Linear API key not configured",
       };
     }
 
@@ -38,7 +40,7 @@ export async function createTicket(params: CreateTicketParams): Promise<CreateTi
       const teams = await client.teams();
       const firstTeam = await teams.nodes[0];
       if (!firstTeam) {
-        throw new Error('No teams found in Linear workspace');
+        throw new Error("No teams found in Linear workspace");
       }
       teamId = firstTeam.id;
     }
@@ -72,18 +74,18 @@ export async function createTicket(params: CreateTicketParams): Promise<CreateTi
     const issue = await issuePayload.issue;
 
     if (!issue) {
-      throw new Error('Failed to create issue');
+      throw new Error("Failed to create issue");
     }
 
     return {
-      status: 'success',
+      status: "success",
       id: issue.id,
       url: issue.url,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -91,10 +93,13 @@ export async function createTicket(params: CreateTicketParams): Promise<CreateTi
 /**
  * Get a ticket from Linear
  */
-export async function getTicket(issueId: string, apiKey: string): Promise<Issue | null> {
+export async function getTicket(
+  issueId: string,
+  apiKey: string
+): Promise<Issue | null> {
   try {
     if (!apiKey) {
-      console.error('Linear API key not provided');
+      console.error("Linear API key not provided");
       return null;
     }
 
@@ -102,7 +107,7 @@ export async function getTicket(issueId: string, apiKey: string): Promise<Issue 
     const issue = await client.issue(issueId);
     return issue;
   } catch (error) {
-    console.error('Error fetching Linear ticket:', error);
+    console.error("Error fetching Linear ticket:", error);
     return null;
   }
 }
@@ -124,8 +129,8 @@ export async function updateTicket(
   try {
     if (!apiKey) {
       return {
-        status: 'error',
-        error: 'Linear API key not configured',
+        status: "error",
+        error: "Linear API key not configured",
       };
     }
 
@@ -133,20 +138,20 @@ export async function updateTicket(
     const issue = await client.issue(issueId);
 
     if (!issue) {
-      throw new Error('Issue not found');
+      throw new Error("Issue not found");
     }
 
     await issue.update(updates);
 
     return {
-      status: 'success',
+      status: "success",
       id: issueId,
       url: issue.url,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -160,7 +165,7 @@ export interface FindIssuesParams {
 }
 
 export interface FindIssuesResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   issues?: Array<{
     id: string;
     title: string;
@@ -175,12 +180,14 @@ export interface FindIssuesResult {
 /**
  * Find issues in Linear
  */
-export async function findIssues(params: FindIssuesParams): Promise<FindIssuesResult> {
+export async function findIssues(
+  params: FindIssuesParams
+): Promise<FindIssuesResult> {
   try {
     if (!params.apiKey) {
       return {
-        status: 'error',
-        error: 'Linear API key not configured',
+        status: "error",
+        error: "Linear API key not configured",
       };
     }
 
@@ -198,7 +205,7 @@ export async function findIssues(params: FindIssuesParams): Promise<FindIssuesRe
       filter.team = { id: { eq: params.teamId } };
     }
 
-    if (params.status && params.status !== 'any') {
+    if (params.status && params.status !== "any") {
       filter.state = { name: { eq: params.status } };
     }
 
@@ -214,20 +221,20 @@ export async function findIssues(params: FindIssuesParams): Promise<FindIssuesRe
           title: issue.title,
           identifier: issue.identifier,
           url: issue.url,
-          state: state?.name || 'Unknown',
+          state: state?.name || "Unknown",
         };
       })
     );
 
     return {
-      status: 'success',
+      status: "success",
       issues: formattedIssues,
       count: formattedIssues.length,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

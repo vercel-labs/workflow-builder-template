@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { workflows, workflowExecutions } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { executeWorkflowServer } from '@/lib/workflow-executor.server';
-import type { WorkflowNode, WorkflowEdge } from '@/lib/workflow-store';
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { workflowExecutions, workflows } from "@/lib/db/schema";
+import { executeWorkflowServer } from "@/lib/workflow-executor.server";
+import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id: workflowId } = await params;
@@ -24,12 +27,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Workflow not found" },
+        { status: 404 }
+      );
     }
 
     // Check if user owns this workflow
     if (workflow.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Create execution record
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .values({
         workflowId,
         userId: session.user.id,
-        status: 'running',
+        status: "running",
         input,
       })
       .returning();
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await db
         .update(workflowExecutions)
         .set({
-          status: lastResult?.success ? 'success' : 'error',
+          status: lastResult?.success ? "success" : "error",
           output: lastResult?.data,
           error: lastResult?.error,
           completedAt: new Date(),
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       return NextResponse.json({
         executionId: execution.id,
-        status: lastResult?.success ? 'success' : 'error',
+        status: lastResult?.success ? "success" : "error",
         output: lastResult?.data,
         error: lastResult?.error,
         duration,
@@ -87,8 +93,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await db
         .update(workflowExecutions)
         .set({
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          status: "error",
+          error: error instanceof Error ? error.message : "Unknown error",
           completedAt: new Date(),
         })
         .where(eq(workflowExecutions.id, execution.id));
@@ -96,11 +102,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       throw error;
     }
   } catch (error) {
-    console.error('Workflow execution error:', error);
+    console.error("Workflow execution error:", error);
     return NextResponse.json(
       {
-        error: 'Failed to execute workflow',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to execute workflow",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

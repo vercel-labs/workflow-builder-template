@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { dataSources } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { dataSources } from "@/lib/db/schema";
 
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const sources = await db.query.dataSources.findMany({
@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ dataSources: maskedSources });
   } catch (error) {
-    console.error('Failed to fetch data sources:', error);
+    console.error("Failed to fetch data sources:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch data sources',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch data sources",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -40,14 +40,17 @@ export async function POST(request: NextRequest) {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const { name, type, connectionString, isDefault } = body;
 
-    if (!name || !type || !connectionString) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!(name && type && connectionString)) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     // If this is set as default, unset other defaults
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
         name,
         type,
         connectionString,
-        isDefault: isDefault || false,
+        isDefault,
       })
       .returning();
 
@@ -74,11 +77,11 @@ export async function POST(request: NextRequest) {
       connectionString: maskConnectionString(newSource.connectionString),
     });
   } catch (error) {
-    console.error('Failed to create data source:', error);
+    console.error("Failed to create data source:", error);
     return NextResponse.json(
       {
-        error: 'Failed to create data source',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to create data source",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -90,12 +93,12 @@ function maskConnectionString(connStr: string): string {
   try {
     const url = new URL(connStr);
     if (url.password) {
-      url.password = '****';
+      url.password = "****";
     }
     return url.toString();
   } catch {
     // If not a valid URL, just mask the middle part
     if (connStr.length <= 10) return connStr;
-    return connStr.slice(0, 5) + '****' + connStr.slice(-5);
+    return connStr.slice(0, 5) + "****" + connStr.slice(-5);
   }
 }

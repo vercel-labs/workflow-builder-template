@@ -1,9 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, Clock, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Clock, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,14 +12,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { workflowApi, type SavedWorkflow } from '@/lib/workflow-api';
-import { WorkflowPrompt } from './workflow-prompt';
-import { AppHeader } from '@/components/app-header';
-import { getRelativeTime } from '@/lib/utils/time';
-import { useSession } from '@/lib/auth-client';
-import { toast } from 'sonner';
-import { Spinner } from '../ui/spinner';
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/auth-client";
+import { getRelativeTime } from "@/lib/utils/time";
+import { type SavedWorkflow, workflowApi } from "@/lib/workflow-api";
+import { Spinner } from "../ui/spinner";
 
 interface WorkflowsListProps {
   limit?: number;
@@ -53,10 +50,10 @@ export function WorkflowsList({
       setLoading(true);
       const data = await workflowApi.getAll();
       // Filter out the auto-save workflow
-      const filtered = data.filter((w) => w.name !== '__current__');
+      const filtered = data.filter((w) => w.name !== "__current__");
       setWorkflows(filtered);
     } catch (error) {
-      console.error('Failed to load workflows:', error);
+      console.error("Failed to load workflows:", error);
     } finally {
       setLoading(false);
     }
@@ -94,11 +91,13 @@ export function WorkflowsList({
     setShowDeleteDialog(false);
     setDeleting(true);
     try {
-      await Promise.all(Array.from(selectedIds).map((id) => workflowApi.delete(id)));
+      await Promise.all(
+        Array.from(selectedIds).map((id) => workflowApi.delete(id))
+      );
       setSelectedIds(new Set());
       await loadWorkflows();
     } catch (error) {
-      console.error('Failed to delete workflows:', error);
+      console.error("Failed to delete workflows:", error);
     } finally {
       setDeleting(false);
     }
@@ -110,39 +109,46 @@ export function WorkflowsList({
 
   return (
     <>
-      <div className={showPrompt ? 'p-8' : 'flex-1 p-8'}>
+      <div className={showPrompt ? "p-8" : "flex-1 p-8"}>
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h2 className="text-muted-foreground text-sm font-medium">
+              <h2 className="font-medium text-muted-foreground text-sm">
                 {loading
-                  ? 'Loading...'
+                  ? "Loading..."
                   : workflows.length === 0
-                    ? 'No Workflows'
+                    ? "No Workflows"
                     : limit
-                      ? 'Recent Workflows'
-                      : 'All Workflows'}
+                      ? "Recent Workflows"
+                      : "All Workflows"}
               </h2>
               {enableSelection && displayedWorkflows.length > 0 && !loading && (
-                <Button variant="ghost" size="sm" onClick={handleSelectAll}>
-                  {selectedIds.size === displayedWorkflows.length ? 'Deselect All' : 'Select All'}
+                <Button onClick={handleSelectAll} size="sm" variant="ghost">
+                  {selectedIds.size === displayedWorkflows.length
+                    ? "Deselect All"
+                    : "Select All"}
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
               {enableSelection && selectedIds.size > 0 && (
                 <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
                   disabled={deleting}
+                  onClick={() => setShowDeleteDialog(true)}
+                  size="sm"
+                  variant="destructive"
                 >
                   <Trash2 className="mr-2 h-3 w-3" />
-                  Delete {selectedIds.size} {selectedIds.size === 1 ? 'Workflow' : 'Workflows'}
+                  Delete {selectedIds.size}{" "}
+                  {selectedIds.size === 1 ? "Workflow" : "Workflows"}
                 </Button>
               )}
               {limit && workflows.length > limit && !loading && (
-                <Button variant="ghost" size="sm" onClick={() => router.push('/workflows')}>
+                <Button
+                  onClick={() => router.push("/workflows")}
+                  size="sm"
+                  variant="ghost"
+                >
                   View All
                 </Button>
               )}
@@ -153,25 +159,27 @@ export function WorkflowsList({
           <div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-muted-foreground text-sm">Loading workflows...</div>
+                <div className="text-muted-foreground text-sm">
+                  Loading workflows...
+                </div>
               </div>
             ) : displayedWorkflows.length > 0 ? (
               <div className="divide-y">
                 {/* User's workflows */}
                 {displayedWorkflows.map((workflow) => (
                   <div
+                    className="flex w-full items-center gap-3 px-4 py-4 transition-colors hover:bg-accent/50"
                     key={workflow.id}
-                    className="hover:bg-accent/50 flex w-full items-center gap-3 px-4 py-4 transition-colors"
                   >
                     {enableSelection && (
                       <input
-                        type="checkbox"
                         checked={selectedIds.has(workflow.id)}
+                        className="h-4 w-4 cursor-pointer rounded border-gray-300"
                         onChange={(e) => {
                           e.stopPropagation();
                           handleToggleSelect(workflow.id);
                         }}
-                        className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                        type="checkbox"
                       />
                     )}
                     <button
@@ -179,8 +187,10 @@ export function WorkflowsList({
                       onClick={() => handleOpenWorkflow(workflow.id)}
                     >
                       <div className="mb-1 flex items-center justify-between gap-4">
-                        <div className="min-w-0 truncate font-medium">{workflow.name}</div>
-                        <div className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs">
+                        <div className="min-w-0 truncate font-medium">
+                          {workflow.name}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
                           <Clock className="h-3 w-3" />
                           <span>{getRelativeTime(workflow.updatedAt)}</span>
                         </div>
@@ -194,20 +204,20 @@ export function WorkflowsList({
         </div>
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Workflows</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {selectedIds.size} workflow
-              {selectedIds.size > 1 ? 's' : ''}? This action cannot be undone.
+              {selectedIds.size > 1 ? "s" : ""}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleBulkDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleBulkDelete}
             >
               Delete
             </AlertDialogAction>

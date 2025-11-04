@@ -1,6 +1,6 @@
-import 'server-only';
-import { db } from '../db';
-import { sql } from 'drizzle-orm';
+import "server-only";
+import { sql } from "drizzle-orm";
+import { db } from "../db";
 
 export interface DatabaseQueryParams {
   query: string;
@@ -8,7 +8,7 @@ export interface DatabaseQueryParams {
 }
 
 export interface DatabaseQueryResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   data?: unknown;
   rowCount?: number;
   error?: string;
@@ -17,20 +17,22 @@ export interface DatabaseQueryResult {
 /**
  * Execute a raw SQL query
  */
-export async function executeQuery(params: DatabaseQueryParams): Promise<DatabaseQueryResult> {
+export async function executeQuery(
+  params: DatabaseQueryParams
+): Promise<DatabaseQueryResult> {
   try {
     // For safety, we should validate queries in production
     const result = await db.execute(sql.raw(params.query));
 
     return {
-      status: 'success',
+      status: "success",
       data: result,
       rowCount: Array.isArray(result) ? result.length : 0,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -45,21 +47,21 @@ export async function insertData(
   try {
     const columns = Object.keys(data);
     const values = Object.values(data);
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
 
-    const query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+    const query = `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${placeholders}) RETURNING *`;
 
     const result = await db.execute(sql.raw(query));
 
     return {
-      status: 'success',
+      status: "success",
       data: Array.isArray(result) && result.length > 0 ? result[0] : result,
       rowCount: 1,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -78,7 +80,7 @@ export async function queryData(
     if (where && Object.keys(where).length > 0) {
       const conditions = Object.keys(where)
         .map((key, i) => `${key} = $${i + 1}`)
-        .join(' AND ');
+        .join(" AND ");
       query += ` WHERE ${conditions}`;
     }
 
@@ -89,14 +91,14 @@ export async function queryData(
     const result = await db.execute(sql.raw(query));
 
     return {
-      status: 'success',
+      status: "success",
       data: result,
       rowCount: Array.isArray(result) ? result.length : 0,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -113,24 +115,26 @@ export async function updateData(
     const setColumns = Object.keys(data);
     const whereColumns = Object.keys(where);
 
-    const setClause = setColumns.map((col, i) => `${col} = $${i + 1}`).join(', ');
+    const setClause = setColumns
+      .map((col, i) => `${col} = $${i + 1}`)
+      .join(", ");
     const whereClause = whereColumns
       .map((col, i) => `${col} = $${setColumns.length + i + 1}`)
-      .join(' AND ');
+      .join(" AND ");
 
     const query = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause} RETURNING *`;
 
     const result = await db.execute(sql.raw(query));
 
     return {
-      status: 'success',
+      status: "success",
       data: result,
       rowCount: Array.isArray(result) ? result.length : 0,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }

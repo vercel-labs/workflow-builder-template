@@ -1,65 +1,28 @@
-'use client';
+"use client";
 
-import { useAtom, useSetAtom } from 'jotai';
-import { useState, useEffect } from 'react';
+import { useAtom, useSetAtom } from "jotai";
 import {
-  Play,
-  Save,
-  MoreVertical,
-  Trash2,
-  Pencil,
-  Loader2,
-  Undo2,
-  Redo2,
-  FolderOpen,
-  Rocket,
-  ExternalLink,
-  Code,
-  ChevronDown,
   Check,
+  ChevronDown,
+  Code,
+  ExternalLink,
   FlaskConical,
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import {
-  clearWorkflowAtom,
-  isExecutingAtom,
-  isGeneratingAtom,
-  nodesAtom,
-  edgesAtom,
-  updateNodeDataAtom,
-  currentWorkflowIdAtom,
-  currentWorkflowNameAtom,
-  currentVercelProjectNameAtom,
-  isEditingWorkflowNameAtom,
-  editingWorkflowNameAtom,
-  showClearDialogAtom,
-  showDeleteDialogAtom,
-  isSavingAtom,
-  undoAtom,
-  redoAtom,
-  canUndoAtom,
-  canRedoAtom,
-} from '@/lib/workflow-store';
-import { vercelProjectsAtom } from '@/lib/atoms/vercel-projects';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { workflowApi } from '@/lib/workflow-api';
+  FolderOpen,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Play,
+  Redo2,
+  Rocket,
+  Save,
+  Trash2,
+  Undo2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AppHeader } from "@/components/app-header";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -67,8 +30,45 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { AppHeader } from '@/components/app-header';
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { vercelProjectsAtom } from "@/lib/atoms/vercel-projects";
+import { workflowApi } from "@/lib/workflow-api";
+import {
+  canRedoAtom,
+  canUndoAtom,
+  clearWorkflowAtom,
+  currentVercelProjectNameAtom,
+  currentWorkflowIdAtom,
+  currentWorkflowNameAtom,
+  edgesAtom,
+  editingWorkflowNameAtom,
+  isEditingWorkflowNameAtom,
+  isExecutingAtom,
+  isGeneratingAtom,
+  isSavingAtom,
+  nodesAtom,
+  redoAtom,
+  showClearDialogAtom,
+  showDeleteDialogAtom,
+  undoAtom,
+  updateNodeDataAtom,
+} from "@/lib/workflow-store";
 
 export function WorkflowToolbar({}: { workflowId?: string }) {
   const [nodes] = useAtom(nodesAtom);
@@ -79,7 +79,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const [workflowName, setWorkflowName] = useAtom(currentWorkflowNameAtom);
-  const [vercelProjectName, setVercelProjectName] = useAtom(currentVercelProjectNameAtom);
+  const [vercelProjectName, setVercelProjectName] = useAtom(
+    currentVercelProjectNameAtom
+  );
   const router = useRouter();
   const [isEditing, setIsEditing] = useAtom(isEditingWorkflowNameAtom);
   const [editingName, setEditingName] = useAtom(editingWorkflowNameAtom);
@@ -94,56 +96,59 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
 
   // Component-local state for change project dialog (doesn't need to be shared)
   const [showChangeProjectDialog, setShowChangeProjectDialog] = useState(false);
-  const [selectedNewProjectId, setSelectedNewProjectId] = useState<string>('none');
+  const [selectedNewProjectId, setSelectedNewProjectId] =
+    useState<string>("none");
   const [isDeploying, setIsDeploying] = useState(false);
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState<string>('');
-  const [runMode, setRunMode] = useState<'test' | 'production'>('test');
+  const [generatedCode, setGeneratedCode] = useState<string>("");
+  const [runMode, setRunMode] = useState<"test" | "production">("test");
 
-  const handleExecute = async (mode: 'test' | 'production' = runMode) => {
+  const handleExecute = async (mode: "test" | "production" = runMode) => {
     if (!currentWorkflowId) {
-      toast.error('Please save the workflow before executing');
+      toast.error("Please save the workflow before executing");
       return;
     }
 
-    if (mode === 'production') {
+    if (mode === "production") {
       // Production run = call the deployed workflow's API
       if (!deploymentUrl) {
-        toast.error('No deployment found. Deploy the workflow first.');
+        toast.error("No deployment found. Deploy the workflow first.");
         return;
       }
 
       setIsExecuting(true);
       try {
-        toast.info('Triggering production workflow...');
+        toast.info("Triggering production workflow...");
 
         // Construct the workflow-specific API endpoint
         const workflowFileName = workflowName
           .toLowerCase()
-          .replace(/[^a-z0-9]/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
+          .replace(/[^a-z0-9]/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "");
         const workflowApiUrl = `${deploymentUrl}/api/workflows/${workflowFileName}`;
 
         // Call the deployed workflow's API endpoint
         const response = await fetch(workflowApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}), // Empty input for now
         });
 
         if (!response.ok) {
-          throw new Error('Failed to trigger production workflow');
+          throw new Error("Failed to trigger production workflow");
         }
 
         const result = await response.json();
-        toast.success('Production workflow triggered successfully');
-        console.log('Production workflow result:', result);
+        toast.success("Production workflow triggered successfully");
+        console.log("Production workflow result:", result);
       } catch (error) {
-        console.error('Failed to trigger production workflow:', error);
+        console.error("Failed to trigger production workflow:", error);
         toast.error(
-          error instanceof Error ? error.message : 'Failed to trigger production workflow'
+          error instanceof Error
+            ? error.message
+            : "Failed to trigger production workflow"
         );
       } finally {
         setIsExecuting(false);
@@ -156,28 +161,31 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
 
     // Set all nodes to idle first
     nodes.forEach((node) => {
-      updateNodeData({ id: node.id, data: { status: 'idle' } });
+      updateNodeData({ id: node.id, data: { status: "idle" } });
     });
 
     try {
       // Call the server API to execute the workflow
-      const response = await fetch(`/api/workflows/${currentWorkflowId}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: {} }),
-      });
+      const response = await fetch(
+        `/api/workflows/${currentWorkflowId}/execute`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: {} }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to execute workflow');
+        throw new Error(error.message || "Failed to execute workflow");
       }
 
       const result = await response.json();
 
-      if (result.status === 'error') {
-        toast.error(result.error || 'Workflow execution failed');
+      if (result.status === "error") {
+        toast.error(result.error || "Workflow execution failed");
       } else {
-        toast.success('Test run completed successfully');
+        toast.success("Test run completed successfully");
       }
 
       // Update all nodes to success (in production, we'd stream status updates)
@@ -185,16 +193,18 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       nodes.forEach((node) => {
         updateNodeData({
           id: node.id,
-          data: { status: result.status === 'error' ? 'error' : 'success' },
+          data: { status: result.status === "error" ? "error" : "success" },
         });
       });
     } catch (error) {
-      console.error('Failed to execute workflow:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to execute workflow');
+      console.error("Failed to execute workflow:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to execute workflow"
+      );
 
       // Mark all nodes as error
       nodes.forEach((node) => {
-        updateNodeData({ id: node.id, data: { status: 'error' } });
+        updateNodeData({ id: node.id, data: { status: "error" } });
       });
     } finally {
       setIsExecuting(false);
@@ -207,7 +217,7 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   };
 
   const handleSaveWorkflowName = async () => {
-    if (!editingName.trim() || !currentWorkflowId) {
+    if (!(editingName.trim() && currentWorkflowId)) {
       setIsEditing(false);
       return;
     }
@@ -217,7 +227,7 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       setWorkflowName(editingName.trim());
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to rename workflow:', error);
+      console.error("Failed to rename workflow:", error);
       setIsEditing(false);
     }
   };
@@ -228,9 +238,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSaveWorkflowName();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       handleCancelEdit();
     }
   };
@@ -241,10 +251,10 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     setIsSaving(true);
     try {
       await workflowApi.update(currentWorkflowId, { nodes, edges });
-      toast.success('Workflow saved successfully');
+      toast.success("Workflow saved successfully");
     } catch (error) {
-      console.error('Failed to save workflow:', error);
-      toast.error('Failed to save workflow. Please try again.');
+      console.error("Failed to save workflow:", error);
+      toast.error("Failed to save workflow. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -261,11 +271,11 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     try {
       await workflowApi.delete(currentWorkflowId);
       setShowDeleteDialog(false);
-      toast.success('Workflow deleted successfully');
-      router.push('/');
+      toast.success("Workflow deleted successfully");
+      router.push("/");
     } catch (error) {
-      console.error('Failed to delete workflow:', error);
-      toast.error('Failed to delete workflow. Please try again.');
+      console.error("Failed to delete workflow:", error);
+      toast.error("Failed to delete workflow. Please try again.");
     }
   };
 
@@ -273,7 +283,8 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     if (!currentWorkflowId) return;
 
     try {
-      const newProjectId = selectedNewProjectId === 'none' ? null : selectedNewProjectId;
+      const newProjectId =
+        selectedNewProjectId === "none" ? null : selectedNewProjectId;
 
       await workflowApi.update(currentWorkflowId, {
         vercelProjectId: newProjectId,
@@ -284,16 +295,16 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       setVercelProjectName(selectedProject?.name || null);
 
       setShowChangeProjectDialog(false);
-      toast.success('Project changed successfully');
+      toast.success("Project changed successfully");
     } catch (error) {
-      console.error('Failed to change project:', error);
-      toast.error('Failed to change project. Please try again.');
+      console.error("Failed to change project:", error);
+      toast.error("Failed to change project. Please try again.");
     }
   };
 
   const handleDeploy = async () => {
     if (!currentWorkflowId) {
-      toast.error('Please save the workflow before deploying');
+      toast.error("Please save the workflow before deploying");
       return;
     }
 
@@ -301,52 +312,57 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     try {
       await workflowApi.update(currentWorkflowId, { nodes, edges });
     } catch {
-      toast.error('Failed to save workflow before deployment');
+      toast.error("Failed to save workflow before deployment");
       return;
     }
 
     setIsDeploying(true);
-    toast.info('Starting deployment to Vercel...');
+    toast.info("Starting deployment to Vercel...");
 
     try {
-      const response = await fetch(`/api/workflows/${currentWorkflowId}/deploy`, {
-        method: 'POST',
-      });
+      const response = await fetch(
+        `/api/workflows/${currentWorkflowId}/deploy`,
+        {
+          method: "POST",
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to deploy workflow');
+        throw new Error(error.error || "Failed to deploy workflow");
       }
 
       const result = await response.json();
 
       if (result.success) {
         setDeploymentUrl(result.deploymentUrl);
-        toast.success('Workflow deployed successfully!');
+        toast.success("Workflow deployed successfully!");
 
         if (result.deploymentUrl) {
           toast.success(
             <div className="flex items-center gap-2">
               <span>Deployed to:</span>
               <a
-                href={result.deploymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="flex items-center gap-1 underline"
+                href={result.deploymentUrl}
+                rel="noopener noreferrer"
+                target="_blank"
               >
                 {result.deploymentUrl}
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>,
-            { duration: 10000 }
+            { duration: 10_000 }
           );
         }
       } else {
-        throw new Error(result.error || 'Deployment failed');
+        throw new Error(result.error || "Deployment failed");
       }
     } catch (error) {
-      console.error('Failed to deploy workflow:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to deploy workflow');
+      console.error("Failed to deploy workflow:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to deploy workflow"
+      );
     } finally {
       setIsDeploying(false);
     }
@@ -361,7 +377,7 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
           setDeploymentUrl(data.deploymentUrl || null);
         })
         .catch((error) => {
-          console.error('Failed to load deployment status:', error);
+          console.error("Failed to load deployment status:", error);
         });
     }
   }, [currentWorkflowId]);
@@ -372,48 +388,50 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     try {
       const response = await fetch(`/api/workflows/${currentWorkflowId}/code`);
       if (!response.ok) {
-        throw new Error('Failed to generate code');
+        throw new Error("Failed to generate code");
       }
 
       const data = await response.json();
       setGeneratedCode(data.code);
       setShowCodeDialog(true);
     } catch (error) {
-      console.error('Failed to generate code:', error);
-      toast.error('Failed to generate code');
+      console.error("Failed to generate code:", error);
+      toast.error("Failed to generate code");
     }
   };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(generatedCode);
-    toast.success('Code copied to clipboard');
+    toast.success("Code copied to clipboard");
   };
 
   const titleElement = isEditing ? (
     <Input
-      value={editingName}
-      onChange={(e) => setEditingName(e.target.value)}
-      onBlur={handleSaveWorkflowName}
-      onKeyDown={handleKeyDown}
-      className="h-8 w-64"
       autoFocus
+      className="h-8 w-64"
+      onBlur={handleSaveWorkflowName}
+      onChange={(e) => setEditingName(e.target.value)}
+      onKeyDown={handleKeyDown}
+      value={editingName}
     />
   ) : (
     <div className="group flex items-center gap-2">
       {vercelProjectName && (
         <>
-          <span className="text-muted-foreground text-xl font-semibold">{vercelProjectName}</span>
+          <span className="font-semibold text-muted-foreground text-xl">
+            {vercelProjectName}
+          </span>
           <span className="text-muted-foreground text-xl">/</span>
         </>
       )}
-      <span className="text-xl font-semibold">{workflowName}</span>
+      <span className="font-semibold text-xl">{workflowName}</span>
       {currentWorkflowId && (
         <Button
-          variant="ghost"
-          size="icon"
           className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={handleStartEdit}
+          size="icon"
           title="Rename workflow"
+          variant="ghost"
         >
           <Pencil className="h-3 w-3" />
         </Button>
@@ -424,39 +442,50 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   const actions = (
     <>
       <Button
-        onClick={() => undo()}
         disabled={!canUndo || isGenerating}
-        variant="ghost"
+        onClick={() => undo()}
         size="icon"
         title="Undo"
+        variant="ghost"
       >
         <Undo2 className="h-4 w-4" />
       </Button>
       <Button
-        onClick={() => redo()}
         disabled={!canRedo || isGenerating}
-        variant="ghost"
+        onClick={() => redo()}
         size="icon"
         title="Redo"
+        variant="ghost"
       >
         <Redo2 className="h-4 w-4" />
       </Button>
-      <Separator orientation="vertical" className="h-6" />
+      <Separator className="h-6" orientation="vertical" />
       <Button
-        onClick={handleSave}
-        variant="ghost"
-        size="icon"
         disabled={!currentWorkflowId || isGenerating || isSaving}
-        title={isSaving ? 'Saving...' : 'Save workflow'}
+        onClick={handleSave}
+        size="icon"
+        title={isSaving ? "Saving..." : "Save workflow"}
+        variant="ghost"
       >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        {isSaving ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="h-4 w-4" />
+        )}
       </Button>
       <Button
+        disabled={
+          isDeploying ||
+          nodes.length === 0 ||
+          isGenerating ||
+          !currentWorkflowId
+        }
         onClick={handleDeploy}
-        disabled={isDeploying || nodes.length === 0 || isGenerating || !currentWorkflowId}
-        variant="ghost"
         size="icon"
-        title={isDeploying ? 'Deploying to production...' : 'Deploy to production'}
+        title={
+          isDeploying ? "Deploying to production..." : "Deploy to production"
+        }
+        variant="ghost"
       >
         {isDeploying ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -466,75 +495,86 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       </Button>
       {deploymentUrl && (
         <Button
-          variant="ghost"
+          onClick={() => window.open(deploymentUrl, "_blank")}
           size="icon"
           title="Open deployment"
-          onClick={() => window.open(deploymentUrl, '_blank')}
+          variant="ghost"
         >
           <ExternalLink className="h-4 w-4" />
         </Button>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" title="More options" disabled={isGenerating}>
+          <Button
+            disabled={isGenerating}
+            size="icon"
+            title="More options"
+            variant="ghost"
+          >
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleViewCode} disabled={!currentWorkflowId}>
+          <DropdownMenuItem
+            disabled={!currentWorkflowId}
+            onClick={handleViewCode}
+          >
             <Code className="mr-2 h-4 w-4" />
             <span>View Generated Code</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => setShowChangeProjectDialog(true)}
             disabled={!currentWorkflowId}
+            onClick={() => setShowChangeProjectDialog(true)}
           >
             <FolderOpen className="mr-2 h-4 w-4" />
             <span>Change Project</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowClearDialog(true)} disabled={nodes.length === 0}>
+          <DropdownMenuItem
+            disabled={nodes.length === 0}
+            onClick={() => setShowClearDialog(true)}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             <span>Clear Workflow</span>
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={!currentWorkflowId}
             className="text-destructive focus:text-destructive"
+            disabled={!currentWorkflowId}
+            onClick={() => setShowDeleteDialog(true)}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             <span>Delete Workflow</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Separator orientation="vertical" className="h-6" />
+      <Separator className="h-6" orientation="vertical" />
       <div className="flex items-center">
         <Button
-          onClick={() => handleExecute()}
-          disabled={isExecuting || nodes.length === 0 || isGenerating}
-          variant="ghost"
-          size="icon"
           className="relative rounded-r-none"
+          disabled={isExecuting || nodes.length === 0 || isGenerating}
+          onClick={() => handleExecute()}
+          size="icon"
           title={
-            runMode === 'test'
+            runMode === "test"
               ? isExecuting
-                ? 'Running test...'
-                : 'Test workflow locally'
+                ? "Running test..."
+                : "Test workflow locally"
               : isExecuting
-                ? 'Running on production...'
-                : 'Run on production'
+                ? "Running on production..."
+                : "Run on production"
           }
+          variant="ghost"
         >
           {isExecuting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Play className="h-4 w-4" />
           )}
-          {runMode === 'test' && !isExecuting && (
+          {runMode === "test" && !isExecuting && (
             <div className="absolute right-0.5 bottom-0.5">
               <FlaskConical
                 className="text-muted-foreground"
                 strokeWidth={2.5}
-                style={{ width: '12px', height: '12px' }}
+                style={{ width: "12px", height: "12px" }}
               />
             </div>
           )}
@@ -542,25 +582,30 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost"
-              size="icon"
-              disabled={isExecuting || nodes.length === 0 || isGenerating}
               className="h-9 w-6 rounded-l-none border-l px-1"
+              disabled={isExecuting || nodes.length === 0 || isGenerating}
+              size="icon"
               title="Select run mode"
+              variant="ghost"
             >
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="bottom" sideOffset={5}>
-            <DropdownMenuItem onClick={() => setRunMode('test')}>
+            <DropdownMenuItem onClick={() => setRunMode("test")}>
               <Play className="mr-2 h-4 w-4" />
               <span>Test Run (Local)</span>
-              {runMode === 'test' && <Check className="ml-auto h-4 w-4" />}
+              {runMode === "test" && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setRunMode('production')} disabled={!deploymentUrl}>
+            <DropdownMenuItem
+              disabled={!deploymentUrl}
+              onClick={() => setRunMode("production")}
+            >
               <Play className="mr-2 h-4 w-4" />
               <span>Production Run</span>
-              {runMode === 'production' && <Check className="ml-auto h-4 w-4" />}
+              {runMode === "production" && (
+                <Check className="ml-auto h-4 w-4" />
+              )}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -571,28 +616,28 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   return (
     <>
       <AppHeader
-        title={titleElement}
-        showBackButton
         actions={actions}
         disableTitleLink
+        showBackButton
+        title={titleElement}
         useMobileTwoLineLayout
       />
 
       {/* Clear Workflow Dialog */}
-      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+      <Dialog onOpenChange={setShowClearDialog} open={showClearDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Clear Workflow</DialogTitle>
             <DialogDescription>
-              Are you sure you want to clear all nodes and connections? This action cannot be
-              undone.
+              Are you sure you want to clear all nodes and connections? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClearDialog(false)}>
+            <Button onClick={() => setShowClearDialog(false)} variant="outline">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleClearWorkflow}>
+            <Button onClick={handleClearWorkflow} variant="destructive">
               Clear Workflow
             </Button>
           </DialogFooter>
@@ -600,20 +645,23 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       </Dialog>
 
       {/* Delete Workflow Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Workflow</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &ldquo;{workflowName}&rdquo;? This will permanently
-              delete the workflow and cannot be undone.
+              Are you sure you want to delete &ldquo;{workflowName}&rdquo;? This
+              will permanently delete the workflow and cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button
+              onClick={() => setShowDeleteDialog(false)}
+              variant="outline"
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteWorkflow}>
+            <Button onClick={handleDeleteWorkflow} variant="destructive">
               Delete Workflow
             </Button>
           </DialogFooter>
@@ -621,24 +669,24 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       </Dialog>
 
       {/* View Generated Code Dialog */}
-      <Dialog open={showCodeDialog} onOpenChange={setShowCodeDialog}>
+      <Dialog onOpenChange={setShowCodeDialog} open={showCodeDialog}>
         <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Generated Workflow Code</DialogTitle>
             <DialogDescription>
-              This is the generated code for your workflow using the Vercel Workflow SDK. Copy this
-              code and deploy it to a Next.js project.
+              This is the generated code for your workflow using the Vercel
+              Workflow SDK. Copy this code and deploy it to a Next.js project.
             </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-auto">
-            <pre className="bg-muted overflow-auto rounded-lg p-4 text-sm">
+            <pre className="overflow-auto rounded-lg bg-muted p-4 text-sm">
               <code>{generatedCode}</code>
             </pre>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCodeDialog(false)}>
+            <Button onClick={() => setShowCodeDialog(false)} variant="outline">
               Close
             </Button>
             <Button onClick={handleCopyCode}>Copy to Clipboard</Button>
@@ -647,20 +695,26 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       </Dialog>
 
       {/* Change Project Dialog */}
-      <Dialog open={showChangeProjectDialog} onOpenChange={setShowChangeProjectDialog}>
+      <Dialog
+        onOpenChange={setShowChangeProjectDialog}
+        open={showChangeProjectDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Project</DialogTitle>
             <DialogDescription>
-              Move this workflow to a different Vercel project or remove it from its current
-              project.
+              Move this workflow to a different Vercel project or remove it from
+              its current project.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="projectSelect">Select Project</Label>
-              <Select value={selectedNewProjectId} onValueChange={setSelectedNewProjectId}>
+              <Select
+                onValueChange={setSelectedNewProjectId}
+                value={selectedNewProjectId}
+              >
                 <SelectTrigger id="projectSelect">
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
@@ -674,13 +728,16 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
                 </SelectContent>
               </Select>
               <p className="text-muted-foreground text-xs">
-                Current project: {vercelProjectName || 'None'}
+                Current project: {vercelProjectName || "None"}
               </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowChangeProjectDialog(false)}>
+            <Button
+              onClick={() => setShowChangeProjectDialog(false)}
+              variant="outline"
+            >
               Cancel
             </Button>
             <Button onClick={handleChangeProject}>Change Project</Button>

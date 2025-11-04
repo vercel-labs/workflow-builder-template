@@ -1,20 +1,20 @@
-import 'server-only';
+import "server-only";
 
-import type { WorkflowNode, WorkflowEdge } from './workflow-store';
-import { sendEmail } from './integrations/resend';
-import { createTicket, findIssues } from './integrations/linear';
-import { sendSlackMessage } from './integrations/slack';
-import { queryData } from './integrations/database';
-import { callApi } from './integrations/api';
-import { db } from './db';
-import { workflowExecutionLogs, user } from './db/schema';
-import { eq } from 'drizzle-orm';
-import { processConfigTemplates, type NodeOutputs } from './utils/template';
-import { generateText, generateObject } from 'ai';
-import { z } from 'zod';
-import type { SchemaField } from '../components/workflow/config/schema-builder';
-import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from "@google/genai";
+import { generateObject, generateText } from "ai";
+import { eq } from "drizzle-orm";
+import OpenAI from "openai";
+import { z } from "zod";
+import type { SchemaField } from "../components/workflow/config/schema-builder";
+import { db } from "./db";
+import { user, workflowExecutionLogs } from "./db/schema";
+import { callApi } from "./integrations/api";
+import { queryData } from "./integrations/database";
+import { createTicket, findIssues } from "./integrations/linear";
+import { sendEmail } from "./integrations/resend";
+import { sendSlackMessage } from "./integrations/slack";
+import { type NodeOutputs, processConfigTemplates } from "./utils/template";
+import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 interface NodeExecutionLog {
   logId?: string;
@@ -43,7 +43,9 @@ interface UserIntegrations {
 /**
  * Convert SchemaField[] to Zod schema
  */
-function schemaFieldsToZod(fields: SchemaField[]): z.ZodObject<Record<string, z.ZodTypeAny>> {
+function schemaFieldsToZod(
+  fields: SchemaField[]
+): z.ZodObject<Record<string, z.ZodTypeAny>> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const shape: Record<string, any> = {};
 
@@ -51,32 +53,32 @@ function schemaFieldsToZod(fields: SchemaField[]): z.ZodObject<Record<string, z.
     let zodType: z.ZodTypeAny;
 
     switch (field.type) {
-      case 'string':
+      case "string":
         zodType = z.string();
         if (field.description) {
           zodType = zodType.describe(field.description);
         }
         break;
-      case 'number':
+      case "number":
         zodType = z.number();
         if (field.description) {
           zodType = zodType.describe(field.description);
         }
         break;
-      case 'boolean':
+      case "boolean":
         zodType = z.boolean();
         if (field.description) {
           zodType = zodType.describe(field.description);
         }
         break;
-      case 'array':
-        if (field.itemType === 'string') {
+      case "array":
+        if (field.itemType === "string") {
           zodType = z.array(z.string());
-        } else if (field.itemType === 'number') {
+        } else if (field.itemType === "number") {
           zodType = z.array(z.number());
-        } else if (field.itemType === 'boolean') {
+        } else if (field.itemType === "boolean") {
           zodType = z.array(z.boolean());
-        } else if (field.itemType === 'object' && field.fields) {
+        } else if (field.itemType === "object" && field.fields) {
           zodType = z.array(schemaFieldsToZod(field.fields));
         } else {
           zodType = z.array(z.any());
@@ -85,7 +87,7 @@ function schemaFieldsToZod(fields: SchemaField[]): z.ZodObject<Record<string, z.
           zodType = zodType.describe(field.description);
         }
         break;
-      case 'object':
+      case "object":
         if (field.fields && field.fields.length > 0) {
           zodType = schemaFieldsToZod(field.fields);
         } else {
@@ -148,24 +150,32 @@ class ServerWorkflowExecutor {
         };
       }
     } catch (error) {
-      console.error('Failed to load user integrations:', error);
+      console.error("Failed to load user integrations:", error);
     }
   }
 
   private getNextNodes(nodeId: string): string[] {
-    return this.edges.filter((edge) => edge.source === nodeId).map((edge) => edge.target);
+    return this.edges
+      .filter((edge) => edge.source === nodeId)
+      .map((edge) => edge.target);
   }
 
   private getTriggerNodes(): WorkflowNode[] {
     const nodesWithIncoming = new Set(this.edges.map((e) => e.target));
     return Array.from(this.nodes.values()).filter(
-      (node) => node.data.type === 'trigger' && !nodesWithIncoming.has(node.id)
+      (node) => node.data.type === "trigger" && !nodesWithIncoming.has(node.id)
     );
   }
 
-  private async startNodeExecution(node: WorkflowNode, input?: unknown): Promise<void> {
+  private async startNodeExecution(
+    node: WorkflowNode,
+    input?: unknown
+  ): Promise<void> {
     if (!this.context.executionId) {
-      console.warn('[Executor] No executionId, skipping log for node:', node.id);
+      console.warn(
+        "[Executor] No executionId, skipping log for node:",
+        node.id
+      );
       return;
     }
 
@@ -179,37 +189,40 @@ class ServerWorkflowExecutor {
           nodeId: node.id,
           nodeName: node.data.label || node.data.type,
           nodeType: node.data.type,
-          status: 'running',
+          status: "running",
           input,
           startedAt: new Date(),
         })
         .returning();
 
-      console.log(`[Executor] Created log entry:`, log.id);
+      console.log("[Executor] Created log entry:", log.id);
 
       this.executionLogs.set(node.id, {
         logId: log.id,
         startTime: Date.now(),
       });
     } catch (err) {
-      console.error('Failed to start node execution log:', err);
+      console.error("Failed to start node execution log:", err);
     }
   }
 
   private async completeNodeExecution(
     node: WorkflowNode,
-    status: 'success' | 'error',
+    status: "success" | "error",
     output?: unknown,
     error?: string
   ): Promise<void> {
     if (!this.context.executionId) {
-      console.warn('[Executor] No executionId, skipping completion for node:', node.id);
+      console.warn(
+        "[Executor] No executionId, skipping completion for node:",
+        node.id
+      );
       return;
     }
 
     const logInfo = this.executionLogs.get(node.id);
     if (!logInfo?.logId) {
-      console.warn('[Executor] No log entry found for node:', node.id);
+      console.warn("[Executor] No log entry found for node:", node.id);
       return;
     }
 
@@ -233,7 +246,7 @@ class ServerWorkflowExecutor {
 
       console.log(`[Executor] Updated log entry ${logInfo.logId}`);
     } catch (err) {
-      console.error('Failed to complete node execution log:', err);
+      console.error("Failed to complete node execution log:", err);
     }
   }
 
@@ -243,9 +256,12 @@ class ServerWorkflowExecutor {
       const nodeConfig = node.data.config || {};
 
       console.log(`[Executor] ===== EXECUTING NODE ${node.id} =====`);
-      console.log('[Executor] Node type:', node.data.type);
-      console.log('[Executor] Node label:', node.data.label);
-      console.log('[Executor] Original node.data.config:', JSON.stringify(nodeConfig, null, 2));
+      console.log("[Executor] Node type:", node.data.type);
+      console.log("[Executor] Node label:", node.data.label);
+      console.log(
+        "[Executor] Original node.data.config:",
+        JSON.stringify(nodeConfig, null, 2)
+      );
 
       await this.startNodeExecution(node, nodeConfig);
 
@@ -254,7 +270,7 @@ class ServerWorkflowExecutor {
       // Get actionType from original config (not processed) to avoid template corruption
       const actionType = nodeConfig.actionType as string;
 
-      console.log('[Executor] actionType:', actionType);
+      console.log("[Executor] actionType:", actionType);
 
       // Process templates in node configuration using outputs from previous nodes
       // But exclude actionType, aiModel, and imageModel from processing
@@ -264,7 +280,7 @@ class ServerWorkflowExecutor {
       delete configToProcess.imageModel;
 
       console.log(
-        '[Executor] Config to process (excluding model fields):',
+        "[Executor] Config to process (excluding model fields):",
         JSON.stringify(configToProcess, null, 2)
       );
 
@@ -277,17 +293,20 @@ class ServerWorkflowExecutor {
       processedConfig.actionType = actionType;
       if (nodeConfig.aiModel) {
         processedConfig.aiModel = nodeConfig.aiModel;
-        console.log('[Executor] Added back aiModel:', nodeConfig.aiModel);
+        console.log("[Executor] Added back aiModel:", nodeConfig.aiModel);
       }
       if (nodeConfig.imageModel) {
         processedConfig.imageModel = nodeConfig.imageModel;
-        console.log('[Executor] Added back imageModel:', nodeConfig.imageModel);
+        console.log("[Executor] Added back imageModel:", nodeConfig.imageModel);
       }
 
-      console.log('[Executor] Final processedConfig:', JSON.stringify(processedConfig, null, 2));
+      console.log(
+        "[Executor] Final processedConfig:",
+        JSON.stringify(processedConfig, null, 2)
+      );
 
       switch (node.data.type) {
-        case 'trigger':
+        case "trigger":
           result = {
             success: true,
             data: {
@@ -298,144 +317,172 @@ class ServerWorkflowExecutor {
           };
           break;
 
-        case 'action':
+        case "action": {
           const endpoint = processedConfig?.endpoint as string;
 
           // Determine the type of action and execute accordingly
-          if (actionType === 'Send Email' || node.data.label.toLowerCase().includes('email')) {
-            if (!this.userIntegrations.resendApiKey) {
-              result = {
-                success: false,
-                error: 'Resend API key not configured. Please configure in settings.',
-              };
-            } else {
+          if (
+            actionType === "Send Email" ||
+            node.data.label.toLowerCase().includes("email")
+          ) {
+            if (this.userIntegrations.resendApiKey) {
               const emailParams = {
-                to: (processedConfig?.emailTo as string) || 'user@example.com',
-                subject: (processedConfig?.emailSubject as string) || 'Notification',
-                body: (processedConfig?.emailBody as string) || 'No content',
+                to: (processedConfig?.emailTo as string) || "user@example.com",
+                subject:
+                  (processedConfig?.emailSubject as string) || "Notification",
+                body: (processedConfig?.emailBody as string) || "No content",
                 apiKey: this.userIntegrations.resendApiKey,
                 fromEmail: this.userIntegrations.resendFromEmail || undefined,
               };
               const emailResult = await sendEmail(emailParams);
-              result = { success: emailResult.status === 'success', data: emailResult };
-              if (emailResult.status === 'error') {
+              result = {
+                success: emailResult.status === "success",
+                data: emailResult,
+              };
+              if (emailResult.status === "error") {
                 result.error = emailResult.error;
               }
-            }
-          } else if (
-            actionType === 'Send Slack Message' ||
-            node.data.label.toLowerCase().includes('slack')
-          ) {
-            if (!this.userIntegrations.slackApiKey) {
+            } else {
               result = {
                 success: false,
-                error: 'Slack API key not configured. Please configure in settings.',
+                error:
+                  "Resend API key not configured. Please configure in settings.",
               };
-            } else {
+            }
+          } else if (
+            actionType === "Send Slack Message" ||
+            node.data.label.toLowerCase().includes("slack")
+          ) {
+            if (this.userIntegrations.slackApiKey) {
               const slackParams = {
-                channel: (processedConfig?.slackChannel as string) || '#general',
-                text: (processedConfig?.slackMessage as string) || 'No message',
+                channel:
+                  (processedConfig?.slackChannel as string) || "#general",
+                text: (processedConfig?.slackMessage as string) || "No message",
                 apiKey: this.userIntegrations.slackApiKey,
               };
               const slackResult = await sendSlackMessage(slackParams);
-              result = { success: slackResult.status === 'success', data: slackResult };
-              if (slackResult.status === 'error') {
+              result = {
+                success: slackResult.status === "success",
+                data: slackResult,
+              };
+              if (slackResult.status === "error") {
                 result.error = slackResult.error;
               }
-            }
-          } else if (
-            actionType === 'Create Ticket' ||
-            node.data.label.toLowerCase().includes('ticket')
-          ) {
-            if (!this.userIntegrations.linearApiKey) {
+            } else {
               result = {
                 success: false,
-                error: 'Linear API key not configured. Please configure in settings.',
+                error:
+                  "Slack API key not configured. Please configure in settings.",
               };
-            } else {
+            }
+          } else if (
+            actionType === "Create Ticket" ||
+            node.data.label.toLowerCase().includes("ticket")
+          ) {
+            if (this.userIntegrations.linearApiKey) {
               const ticketParams = {
-                title: (processedConfig?.ticketTitle as string) || 'New Ticket',
-                description: (processedConfig?.ticketDescription as string) || '',
+                title: (processedConfig?.ticketTitle as string) || "New Ticket",
+                description:
+                  (processedConfig?.ticketDescription as string) || "",
                 priority: processedConfig?.ticketPriority
-                  ? parseInt(processedConfig.ticketPriority as string)
+                  ? Number.parseInt(processedConfig.ticketPriority as string)
                   : undefined,
                 apiKey: this.userIntegrations.linearApiKey,
               };
               const ticketResult = await createTicket(ticketParams);
-              result = { success: ticketResult.status === 'success', data: ticketResult };
-              if (ticketResult.status === 'error') {
+              result = {
+                success: ticketResult.status === "success",
+                data: ticketResult,
+              };
+              if (ticketResult.status === "error") {
                 result.error = ticketResult.error;
               }
-            }
-          } else if (actionType === 'Find Issues') {
-            if (!this.userIntegrations.linearApiKey) {
+            } else {
               result = {
                 success: false,
-                error: 'Linear API key not configured. Please configure in settings.',
+                error:
+                  "Linear API key not configured. Please configure in settings.",
               };
-            } else {
+            }
+          } else if (actionType === "Find Issues") {
+            if (this.userIntegrations.linearApiKey) {
               const findParams = {
-                assigneeId: processedConfig?.linearAssigneeId as string | undefined,
+                assigneeId: processedConfig?.linearAssigneeId as
+                  | string
+                  | undefined,
                 teamId: processedConfig?.linearTeamId as string | undefined,
                 status: processedConfig?.linearStatus as string | undefined,
                 label: processedConfig?.linearLabel as string | undefined,
                 apiKey: this.userIntegrations.linearApiKey,
               };
               const findResult = await findIssues(findParams);
-              result = { success: findResult.status === 'success', data: findResult };
-              if (findResult.status === 'error') {
+              result = {
+                success: findResult.status === "success",
+                data: findResult,
+              };
+              if (findResult.status === "error") {
                 result.error = findResult.error;
               }
+            } else {
+              result = {
+                success: false,
+                error:
+                  "Linear API key not configured. Please configure in settings.",
+              };
             }
           } else if (
-            actionType === 'Database Query' ||
-            node.data.label.toLowerCase().includes('database')
+            actionType === "Database Query" ||
+            node.data.label.toLowerCase().includes("database")
           ) {
-            const dbResult = await queryData('your_table', {});
-            result = { success: dbResult.status === 'success', data: dbResult };
-          } else if (actionType === 'Generate Text') {
-            console.log('[Executor] ===== GENERATE TEXT ACTION =====');
-            console.log('[Executor] processedConfig.aiModel:', processedConfig?.aiModel);
+            const dbResult = await queryData("your_table", {});
+            result = { success: dbResult.status === "success", data: dbResult };
+          } else if (actionType === "Generate Text") {
+            console.log("[Executor] ===== GENERATE TEXT ACTION =====");
             console.log(
-              '[Executor] typeof processedConfig.aiModel:',
+              "[Executor] processedConfig.aiModel:",
+              processedConfig?.aiModel
+            );
+            console.log(
+              "[Executor] typeof processedConfig.aiModel:",
               typeof processedConfig?.aiModel
             );
 
             try {
-              const modelId = (processedConfig?.aiModel as string) || 'gpt-4o-mini';
-              const prompt = (processedConfig?.aiPrompt as string) || '';
-              const aiFormat = (processedConfig?.aiFormat as string) || 'text';
+              const modelId =
+                (processedConfig?.aiModel as string) || "gpt-4o-mini";
+              const prompt = (processedConfig?.aiPrompt as string) || "";
+              const aiFormat = (processedConfig?.aiFormat as string) || "text";
               const aiSchema = processedConfig?.aiSchema as string | undefined;
 
-              console.log('[Executor] Using model ID:', modelId);
-              console.log('[Executor] Using prompt:', prompt);
-              console.log('[Executor] Format:', aiFormat);
+              console.log("[Executor] Using model ID:", modelId);
+              console.log("[Executor] Using prompt:", prompt);
+              console.log("[Executor] Format:", aiFormat);
 
-              if (!prompt) {
-                result = {
-                  success: false,
-                  error: 'Prompt is required for Generate Text action',
-                };
-              } else {
+              if (prompt) {
                 // Convert model ID to provider/model format
                 let modelString: string;
-                if (modelId.startsWith('gpt-') || modelId.startsWith('o1-')) {
+                if (modelId.startsWith("gpt-") || modelId.startsWith("o1-")) {
                   modelString = `openai/${modelId}`;
-                } else if (modelId.startsWith('claude-')) {
+                } else if (modelId.startsWith("claude-")) {
                   modelString = `anthropic/${modelId}`;
                 } else {
                   modelString = modelId;
                 }
 
-                console.log('[Executor] Converted to model string:', modelString);
+                console.log(
+                  "[Executor] Converted to model string:",
+                  modelString
+                );
 
-                if (aiFormat === 'object' && aiSchema) {
+                if (aiFormat === "object" && aiSchema) {
                   // Use generateObject with schema
                   try {
                     const schemaFields = JSON.parse(aiSchema) as SchemaField[];
                     const zodSchema = schemaFieldsToZod(schemaFields);
 
-                    console.log('[Executor] Calling generateObject with schema');
+                    console.log(
+                      "[Executor] Calling generateObject with schema"
+                    );
 
                     const { object } = await generateObject({
                       model: modelString,
@@ -443,22 +490,28 @@ class ServerWorkflowExecutor {
                       prompt,
                     });
 
-                    console.log('[Executor] Object generated successfully:', object);
+                    console.log(
+                      "[Executor] Object generated successfully:",
+                      object
+                    );
 
                     result = {
                       success: true,
                       data: object,
                     };
                   } catch (schemaError) {
-                    console.error('[Executor] Schema parsing error:', schemaError);
+                    console.error(
+                      "[Executor] Schema parsing error:",
+                      schemaError
+                    );
                     result = {
                       success: false,
-                      error: `Schema error: ${schemaError instanceof Error ? schemaError.message : 'Invalid schema'}`,
+                      error: `Schema error: ${schemaError instanceof Error ? schemaError.message : "Invalid schema"}`,
                     };
                   }
                 } else {
                   // Use generateText for text format
-                  console.log('[Executor] Calling generateText with:', {
+                  console.log("[Executor] Calling generateText with:", {
                     model: modelString,
                     promptLength: prompt.length,
                   });
@@ -468,7 +521,10 @@ class ServerWorkflowExecutor {
                     prompt,
                   });
 
-                  console.log('[Executor] Text generated successfully, length:', text?.length);
+                  console.log(
+                    "[Executor] Text generated successfully, length:",
+                    text?.length
+                  );
 
                   result = {
                     success: true,
@@ -478,77 +534,86 @@ class ServerWorkflowExecutor {
                     },
                   };
                 }
+              } else {
+                result = {
+                  success: false,
+                  error: "Prompt is required for Generate Text action",
+                };
               }
             } catch (error) {
-              console.error('[Executor] Generate Text error:', error);
-              console.error('[Executor] Error details:', {
-                message: error instanceof Error ? error.message : 'Unknown',
+              console.error("[Executor] Generate Text error:", error);
+              console.error("[Executor] Error details:", {
+                message: error instanceof Error ? error.message : "Unknown",
                 stack: error instanceof Error ? error.stack : undefined,
               });
               result = {
                 success: false,
-                error: error instanceof Error ? error.message : 'Failed to generate text',
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to generate text",
               };
             }
-          } else if (actionType === 'Generate Image') {
-            console.log('[Executor] ===== GENERATE IMAGE ACTION =====');
-            console.log('[Executor] processedConfig.imageModel:', processedConfig?.imageModel);
+          } else if (actionType === "Generate Image") {
+            console.log("[Executor] ===== GENERATE IMAGE ACTION =====");
             console.log(
-              '[Executor] typeof processedConfig.imageModel:',
+              "[Executor] processedConfig.imageModel:",
+              processedConfig?.imageModel
+            );
+            console.log(
+              "[Executor] typeof processedConfig.imageModel:",
               typeof processedConfig?.imageModel
             );
 
             try {
-              const modelId = (processedConfig?.imageModel as string) || 'openai/dall-e-3';
-              const prompt = (processedConfig?.imagePrompt as string) || '';
+              const modelId =
+                (processedConfig?.imageModel as string) || "openai/dall-e-3";
+              const prompt = (processedConfig?.imagePrompt as string) || "";
 
-              console.log('[Executor] Using model ID:', modelId);
-              console.log('[Executor] Using prompt:', prompt);
+              console.log("[Executor] Using model ID:", modelId);
+              console.log("[Executor] Using prompt:", prompt);
 
-              if (!prompt) {
-                result = {
-                  success: false,
-                  error: 'Prompt is required for Generate Image action',
-                };
-              } else {
+              if (prompt) {
                 // Parse provider and model from modelId (e.g., "openai/dall-e-3" or "google/gemini-2.5-flash-image")
-                const [provider, modelName] = modelId.split('/');
+                const [provider, modelName] = modelId.split("/");
 
-                console.log('[Executor] Parsed provider:', provider);
-                console.log('[Executor] Parsed model name:', modelName);
+                console.log("[Executor] Parsed provider:", provider);
+                console.log("[Executor] Parsed model name:", modelName);
 
                 let base64Image: string;
 
-                if (provider === 'openai') {
+                if (provider === "openai") {
                   const openai = new OpenAI({
                     apiKey: process.env.OPENAI_API_KEY,
                     baseURL: process.env.AI_GATEWAY_URL,
                   });
 
-                  console.log('[Executor] Calling OpenAI image generation...');
+                  console.log("[Executor] Calling OpenAI image generation...");
 
                   const response = await openai.images.generate({
                     model: modelName,
                     prompt,
                     n: 1,
-                    response_format: 'b64_json',
+                    response_format: "b64_json",
                   });
 
                   if (!response.data?.[0]?.b64_json) {
-                    throw new Error('No image data in OpenAI response');
+                    throw new Error("No image data in OpenAI response");
                   }
 
                   base64Image = response.data[0].b64_json;
                   console.log(
-                    '[Executor] OpenAI image generated, base64 length:',
+                    "[Executor] OpenAI image generated, base64 length:",
                     base64Image.length
                   );
-                } else if (provider === 'google') {
+                } else if (provider === "google") {
                   const genai = new GoogleGenAI({
                     apiKey: process.env.GOOGLE_API_KEY,
                   });
 
-                  console.log('[Executor] Calling Google Gemini image generation...');
+                  console.log(
+                    "[Executor] Calling Google Gemini image generation..."
+                  );
 
                   const response = await genai.models.generateContent({
                     model: modelName,
@@ -556,18 +621,19 @@ class ServerWorkflowExecutor {
                   });
 
                   // Extract image data from response
-                  const imagePart = response.candidates?.[0]?.content?.parts?.find(
-                    (part) => part.inlineData
-                  );
+                  const imagePart =
+                    response.candidates?.[0]?.content?.parts?.find(
+                      (part) => part.inlineData
+                    );
 
                   if (imagePart?.inlineData?.data) {
                     base64Image = imagePart.inlineData.data;
                     console.log(
-                      '[Executor] Google image generated, base64 length:',
+                      "[Executor] Google image generated, base64 length:",
                       base64Image.length
                     );
                   } else {
-                    throw new Error('No image data in Google response');
+                    throw new Error("No image data in Google response");
                   }
                 } else {
                   result = {
@@ -584,54 +650,71 @@ class ServerWorkflowExecutor {
                     model: modelId,
                   },
                 };
+              } else {
+                result = {
+                  success: false,
+                  error: "Prompt is required for Generate Image action",
+                };
               }
             } catch (error) {
-              console.error('[Executor] Generate Image error:', error);
-              console.error('[Executor] Error details:', {
-                message: error instanceof Error ? error.message : 'Unknown',
+              console.error("[Executor] Generate Image error:", error);
+              console.error("[Executor] Error details:", {
+                message: error instanceof Error ? error.message : "Unknown",
                 stack: error instanceof Error ? error.stack : undefined,
               });
               result = {
                 success: false,
-                error: error instanceof Error ? error.message : 'Failed to generate image',
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to generate image",
               };
             }
-          } else if (actionType === 'HTTP Request' || endpoint) {
-            const httpMethod = (processedConfig?.httpMethod as string) || 'POST';
+          } else if (actionType === "HTTP Request" || endpoint) {
+            const httpMethod =
+              (processedConfig?.httpMethod as string) || "POST";
             const httpHeaders = processedConfig?.httpHeaders
-              ? JSON.parse((processedConfig.httpHeaders as string) || '{}')
+              ? JSON.parse((processedConfig.httpHeaders as string) || "{}")
               : {};
             const httpBody = processedConfig?.httpBody
-              ? JSON.parse((processedConfig.httpBody as string) || '{}')
+              ? JSON.parse((processedConfig.httpBody as string) || "{}")
               : this.context.input;
 
             const apiResult = await callApi({
-              url: endpoint || 'https://api.example.com/endpoint',
-              method: httpMethod as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+              url: endpoint || "https://api.example.com/endpoint",
+              method: httpMethod as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
               headers: httpHeaders,
               body: httpBody,
             });
-            result = { success: apiResult.status === 'success', data: apiResult };
-            if (apiResult.status === 'error') {
+            result = {
+              success: apiResult.status === "success",
+              data: apiResult,
+            };
+            if (apiResult.status === "error") {
               result.error = apiResult.error;
             }
           } else {
             result = {
               success: true,
-              data: { status: 200, message: 'Action executed successfully' },
+              data: { status: 200, message: "Action executed successfully" },
             };
           }
           break;
+        }
 
-        case 'condition':
+        case "condition": {
           const condition = processedConfig?.condition as string;
           // Evaluate condition (simplified - in production use a safe eval or expression parser)
           // For now, just return true
           const conditionResult = true;
-          result = { success: true, data: { condition, result: conditionResult } };
+          result = {
+            success: true,
+            data: { condition, result: conditionResult },
+          };
           break;
+        }
 
-        case 'transform':
+        case "transform": {
           const transformType = processedConfig?.transformType as string;
           result = {
             success: true,
@@ -643,9 +726,10 @@ class ServerWorkflowExecutor {
             },
           };
           break;
+        }
 
         default:
-          result = { success: false, error: 'Unknown node type' };
+          result = { success: false, error: "Unknown node type" };
       }
 
       this.results.set(node.id, result);
@@ -656,16 +740,21 @@ class ServerWorkflowExecutor {
         data: result.data,
       };
 
-      await this.completeNodeExecution(node, 'success', result.data);
+      await this.completeNodeExecution(node, "success", result.data);
 
       return result;
     } catch (error) {
       const errorResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       this.results.set(node.id, errorResult);
-      await this.completeNodeExecution(node, 'error', undefined, errorResult.error);
+      await this.completeNodeExecution(
+        node,
+        "error",
+        undefined,
+        errorResult.error
+      );
 
       return errorResult;
     }
@@ -702,7 +791,7 @@ class ServerWorkflowExecutor {
     const triggerNodes = this.getTriggerNodes();
 
     if (triggerNodes.length === 0) {
-      throw new Error('No trigger nodes found');
+      throw new Error("No trigger nodes found");
     }
 
     // Execute from each trigger node

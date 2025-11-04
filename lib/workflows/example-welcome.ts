@@ -5,21 +5,24 @@
  * In production, this would be auto-generated from the workflow builder.
  */
 
-import { getUser } from '../integrations';
-import { sendEmail, generateEmail } from '../integrations';
+import { generateEmail, getUser, sendEmail } from "../integrations";
 
 /**
  * Welcome workflow that sends an onboarding email to a new user
  */
-export async function welcome(userId: string, apiKey: string, fromEmail?: string) {
-  'use workflow';
+export async function welcome(
+  userId: string,
+  apiKey: string,
+  fromEmail?: string
+) {
+  "use workflow";
 
   const user = await getUser(userId);
 
   const { subject, body } = await generateEmail({
     name: user.name,
     plan: user.plan,
-    context: 'welcome',
+    context: "welcome",
   });
 
   const { status } = await sendEmail({
@@ -41,18 +44,18 @@ export async function onboardUser(
   apiKey: string,
   fromEmail?: string
 ): Promise<unknown> {
-  'use workflow';
+  "use workflow";
 
   // Action: Get user data
   const user = await getUser(input.userId as string);
 
   // Condition: Check if user is on a paid plan
-  if (user.plan !== 'Free') {
+  if (user.plan !== "Free") {
     // Transform: Prepare welcome email data
     const emailData = {
       name: user.name,
       plan: user.plan,
-      context: 'premium_welcome',
+      context: "premium_welcome",
     };
 
     // Action: Generate and send premium welcome email
@@ -66,22 +69,21 @@ export async function onboardUser(
     });
 
     return emailResult;
-  } else {
-    // Action: Send basic welcome email for free users
-    const { subject, body } = await generateEmail({
-      name: user.name,
-      plan: 'Free',
-      context: 'welcome',
-    });
-
-    const emailResult = await sendEmail({
-      to: user.email,
-      subject,
-      body,
-      apiKey,
-      fromEmail,
-    });
-
-    return emailResult;
   }
+  // Action: Send basic welcome email for free users
+  const { subject, body } = await generateEmail({
+    name: user.name,
+    plan: "Free",
+    context: "welcome",
+  });
+
+  const emailResult = await sendEmail({
+    to: user.email,
+    subject,
+    body,
+    apiKey,
+    fromEmail,
+  });
+
+  return emailResult;
 }

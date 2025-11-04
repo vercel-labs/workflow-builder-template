@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { Settings } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import Editor from "@monaco-editor/react";
+import { Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { IntegrationIcon } from "@/components/ui/integration-icon";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,10 +13,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { IntegrationIcon } from '@/components/ui/integration-icon';
-import Editor from '@monaco-editor/react';
-import { SchemaBuilder, type SchemaField } from './schema-builder';
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
 interface ActionConfigProps {
   config: Record<string, unknown>;
@@ -23,17 +23,21 @@ interface ActionConfigProps {
   disabled: boolean;
 }
 
-export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigProps) {
+export function ActionConfig({
+  config,
+  onUpdateConfig,
+  disabled,
+}: ActionConfigProps) {
   return (
     <>
       <div className="space-y-2">
         <Label htmlFor="actionType">Action Type</Label>
         <Select
-          value={(config?.actionType as string) || 'HTTP Request'}
-          onValueChange={(value) => onUpdateConfig('actionType', value)}
           disabled={disabled}
+          onValueChange={(value) => onUpdateConfig("actionType", value)}
+          value={(config?.actionType as string) || "HTTP Request"}
         >
-          <SelectTrigger id="actionType" className="w-full">
+          <SelectTrigger className="w-full" id="actionType">
             <SelectValue placeholder="Select action type" />
           </SelectTrigger>
           <SelectContent>
@@ -57,7 +61,9 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
                 <IntegrationIcon integration="slack" />
                 Slack
               </SelectLabel>
-              <SelectItem value="Send Slack Message">Send Slack Message</SelectItem>
+              <SelectItem value="Send Slack Message">
+                Send Slack Message
+              </SelectItem>
             </SelectGroup>
             <SelectGroup>
               <SelectLabel className="flex items-center gap-2">
@@ -80,101 +86,103 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       </div>
 
       {/* Send Email fields */}
-      {config?.actionType === 'Send Email' && (
+      {config?.actionType === "Send Email" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="emailTo">To (Email Address)</Label>
             <Input
-              id="emailTo"
-              value={(config?.emailTo as string) || ''}
-              onChange={(e) => onUpdateConfig('emailTo', e.target.value)}
-              placeholder="user@example.com or {{NodeName.email}}"
               disabled={disabled}
+              id="emailTo"
+              onChange={(e) => onUpdateConfig("emailTo", e.target.value)}
+              placeholder="user@example.com or {{NodeName.email}}"
+              value={(config?.emailTo as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="emailSubject">Subject</Label>
             <Input
-              id="emailSubject"
-              value={(config?.emailSubject as string) || ''}
-              onChange={(e) => onUpdateConfig('emailSubject', e.target.value)}
-              placeholder="Subject or {{NodeName.title}}"
               disabled={disabled}
+              id="emailSubject"
+              onChange={(e) => onUpdateConfig("emailSubject", e.target.value)}
+              placeholder="Subject or {{NodeName.title}}"
+              value={(config?.emailSubject as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="emailBody">Body</Label>
             <Textarea
-              id="emailBody"
-              value={(config?.emailBody as string) || ''}
-              onChange={(e) => onUpdateConfig('emailBody', e.target.value)}
-              placeholder="Email body. Use {{NodeName.field}} to insert data from previous nodes."
               disabled={disabled}
+              id="emailBody"
+              onChange={(e) => onUpdateConfig("emailBody", e.target.value)}
+              placeholder="Email body. Use {{NodeName.field}} to insert data from previous nodes."
               rows={4}
+              value={(config?.emailBody as string) || ""}
             />
           </div>
         </>
       )}
 
       {/* Send Slack Message fields */}
-      {config?.actionType === 'Send Slack Message' && (
+      {config?.actionType === "Send Slack Message" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="slackChannel">Channel</Label>
             <Input
-              id="slackChannel"
-              value={(config?.slackChannel as string) || ''}
-              onChange={(e) => onUpdateConfig('slackChannel', e.target.value)}
-              placeholder="#general or @username or {{NodeName.channel}}"
               disabled={disabled}
+              id="slackChannel"
+              onChange={(e) => onUpdateConfig("slackChannel", e.target.value)}
+              placeholder="#general or @username or {{NodeName.channel}}"
+              value={(config?.slackChannel as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="slackMessage">Message</Label>
             <Textarea
-              id="slackMessage"
-              value={(config?.slackMessage as string) || ''}
-              onChange={(e) => onUpdateConfig('slackMessage', e.target.value)}
-              placeholder="Your message. Use {{NodeName.field}} to insert data from previous nodes."
               disabled={disabled}
+              id="slackMessage"
+              onChange={(e) => onUpdateConfig("slackMessage", e.target.value)}
+              placeholder="Your message. Use {{NodeName.field}} to insert data from previous nodes."
               rows={4}
+              value={(config?.slackMessage as string) || ""}
             />
           </div>
         </>
       )}
 
       {/* Create Ticket fields */}
-      {config?.actionType === 'Create Ticket' && (
+      {config?.actionType === "Create Ticket" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="ticketTitle">Ticket Title</Label>
             <Input
-              id="ticketTitle"
-              value={(config?.ticketTitle as string) || ''}
-              onChange={(e) => onUpdateConfig('ticketTitle', e.target.value)}
-              placeholder="Bug report or {{NodeName.title}}"
               disabled={disabled}
+              id="ticketTitle"
+              onChange={(e) => onUpdateConfig("ticketTitle", e.target.value)}
+              placeholder="Bug report or {{NodeName.title}}"
+              value={(config?.ticketTitle as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="ticketDescription">Description</Label>
             <Textarea
-              id="ticketDescription"
-              value={(config?.ticketDescription as string) || ''}
-              onChange={(e) => onUpdateConfig('ticketDescription', e.target.value)}
-              placeholder="Description. Use {{NodeName.field}} to insert data from previous nodes."
               disabled={disabled}
+              id="ticketDescription"
+              onChange={(e) =>
+                onUpdateConfig("ticketDescription", e.target.value)
+              }
+              placeholder="Description. Use {{NodeName.field}} to insert data from previous nodes."
               rows={4}
+              value={(config?.ticketDescription as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="ticketPriority">Priority</Label>
             <Select
-              value={(config?.ticketPriority as string) || '2'}
-              onValueChange={(value) => onUpdateConfig('ticketPriority', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("ticketPriority", value)}
+              value={(config?.ticketPriority as string) || "2"}
             >
-              <SelectTrigger id="ticketPriority" className="w-full">
+              <SelectTrigger className="w-full" id="ticketPriority">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
@@ -190,36 +198,38 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       )}
 
       {/* Find Issues fields */}
-      {config?.actionType === 'Find Issues' && (
+      {config?.actionType === "Find Issues" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="linearAssigneeId">Assignee (User ID)</Label>
             <Input
-              id="linearAssigneeId"
-              value={(config?.linearAssigneeId as string) || ''}
-              onChange={(e) => onUpdateConfig('linearAssigneeId', e.target.value)}
-              placeholder="user-id-123"
               disabled={disabled}
+              id="linearAssigneeId"
+              onChange={(e) =>
+                onUpdateConfig("linearAssigneeId", e.target.value)
+              }
+              placeholder="user-id-123"
+              value={(config?.linearAssigneeId as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="linearTeamId">Team ID (optional)</Label>
             <Input
-              id="linearTeamId"
-              value={(config?.linearTeamId as string) || ''}
-              onChange={(e) => onUpdateConfig('linearTeamId', e.target.value)}
-              placeholder="team-id-456"
               disabled={disabled}
+              id="linearTeamId"
+              onChange={(e) => onUpdateConfig("linearTeamId", e.target.value)}
+              placeholder="team-id-456"
+              value={(config?.linearTeamId as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="linearStatus">Status (optional)</Label>
             <Select
-              value={(config?.linearStatus as string) || 'any'}
-              onValueChange={(value) => onUpdateConfig('linearStatus', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("linearStatus", value)}
+              value={(config?.linearStatus as string) || "any"}
             >
-              <SelectTrigger id="linearStatus" className="w-full">
+              <SelectTrigger className="w-full" id="linearStatus">
                 <SelectValue placeholder="Any status" />
               </SelectTrigger>
               <SelectContent>
@@ -235,62 +245,62 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
           <div className="space-y-2">
             <Label htmlFor="linearLabel">Label (optional)</Label>
             <Input
-              id="linearLabel"
-              value={(config?.linearLabel as string) || ''}
-              onChange={(e) => onUpdateConfig('linearLabel', e.target.value)}
-              placeholder="bug, feature, etc."
               disabled={disabled}
+              id="linearLabel"
+              onChange={(e) => onUpdateConfig("linearLabel", e.target.value)}
+              placeholder="bug, feature, etc."
+              value={(config?.linearLabel as string) || ""}
             />
           </div>
         </>
       )}
 
       {/* Database Query fields */}
-      {config?.actionType === 'Database Query' && (
+      {config?.actionType === "Database Query" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="dbQuery">SQL Query</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
-                height="150px"
                 defaultLanguage="sql"
-                value={(config?.dbQuery as string) || ''}
-                onChange={(value) => onUpdateConfig('dbQuery', value || '')}
+                height="150px"
+                onChange={(value) => onUpdateConfig("dbQuery", value || "")}
                 options={{
                   minimap: { enabled: false },
-                  lineNumbers: 'on',
+                  lineNumbers: "on",
                   scrollBeyondLastLine: false,
                   fontSize: 12,
                   readOnly: disabled,
                 }}
                 theme="vs-dark"
+                value={(config?.dbQuery as string) || ""}
               />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="dbTable">Table Name (optional)</Label>
             <Input
-              id="dbTable"
-              value={(config?.dbTable as string) || ''}
-              onChange={(e) => onUpdateConfig('dbTable', e.target.value)}
-              placeholder="users"
               disabled={disabled}
+              id="dbTable"
+              onChange={(e) => onUpdateConfig("dbTable", e.target.value)}
+              placeholder="users"
+              value={(config?.dbTable as string) || ""}
             />
           </div>
         </>
       )}
 
       {/* HTTP Request fields */}
-      {config?.actionType === 'HTTP Request' && (
+      {config?.actionType === "HTTP Request" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="httpMethod">HTTP Method</Label>
             <Select
-              value={(config?.httpMethod as string) || 'POST'}
-              onValueChange={(value) => onUpdateConfig('httpMethod', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("httpMethod", value)}
+              value={(config?.httpMethod as string) || "POST"}
             >
-              <SelectTrigger id="httpMethod" className="w-full">
+              <SelectTrigger className="w-full" id="httpMethod">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
@@ -305,29 +315,31 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
           <div className="space-y-2">
             <Label htmlFor="endpoint">URL</Label>
             <Input
-              id="endpoint"
-              value={(config?.endpoint as string) || ''}
-              onChange={(e) => onUpdateConfig('endpoint', e.target.value)}
-              placeholder="https://api.example.com/endpoint"
               disabled={disabled}
+              id="endpoint"
+              onChange={(e) => onUpdateConfig("endpoint", e.target.value)}
+              placeholder="https://api.example.com/endpoint"
+              value={(config?.endpoint as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="httpHeaders">Headers (JSON)</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
-                height="100px"
                 defaultLanguage="json"
-                value={(config?.httpHeaders as string) || '{}'}
-                onChange={(value) => onUpdateConfig('httpHeaders', value || '{}')}
+                height="100px"
+                onChange={(value) =>
+                  onUpdateConfig("httpHeaders", value || "{}")
+                }
                 options={{
                   minimap: { enabled: false },
-                  lineNumbers: 'off',
+                  lineNumbers: "off",
                   scrollBeyondLastLine: false,
                   fontSize: 12,
                   readOnly: disabled,
                 }}
                 theme="vs-dark"
+                value={(config?.httpHeaders as string) || "{}"}
               />
             </div>
           </div>
@@ -335,18 +347,18 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             <Label htmlFor="httpBody">Body (JSON)</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
-                height="120px"
                 defaultLanguage="json"
-                value={(config?.httpBody as string) || '{}'}
-                onChange={(value) => onUpdateConfig('httpBody', value || '{}')}
+                height="120px"
+                onChange={(value) => onUpdateConfig("httpBody", value || "{}")}
                 options={{
                   minimap: { enabled: false },
-                  lineNumbers: 'off',
+                  lineNumbers: "off",
                   scrollBeyondLastLine: false,
                   fontSize: 12,
                   readOnly: disabled,
                 }}
                 theme="vs-dark"
+                value={(config?.httpBody as string) || "{}"}
               />
             </div>
           </div>
@@ -354,16 +366,16 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       )}
 
       {/* Generate Text fields */}
-      {config?.actionType === 'Generate Text' && (
+      {config?.actionType === "Generate Text" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="aiFormat">Format</Label>
             <Select
-              value={(config?.aiFormat as string) || 'text'}
-              onValueChange={(value) => onUpdateConfig('aiFormat', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("aiFormat", value)}
+              value={(config?.aiFormat as string) || "text"}
             >
-              <SelectTrigger id="aiFormat" className="w-full">
+              <SelectTrigger className="w-full" id="aiFormat">
                 <SelectValue placeholder="Select format" />
               </SelectTrigger>
               <SelectContent>
@@ -375,42 +387,50 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
           <div className="space-y-2">
             <Label htmlFor="aiModel">Model</Label>
             <Select
-              value={(config?.aiModel as string) || 'gpt-4o-mini'}
-              onValueChange={(value) => onUpdateConfig('aiModel', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("aiModel", value)}
+              value={(config?.aiModel as string) || "gpt-4o-mini"}
             >
-              <SelectTrigger id="aiModel" className="w-full">
+              <SelectTrigger className="w-full" id="aiModel">
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="gpt-4o">GPT-4o</SelectItem>
                 <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
                 <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                <SelectItem value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</SelectItem>
-                <SelectItem value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</SelectItem>
+                <SelectItem value="claude-3-5-sonnet-20241022">
+                  Claude 3.5 Sonnet
+                </SelectItem>
+                <SelectItem value="claude-3-5-haiku-20241022">
+                  Claude 3.5 Haiku
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="aiPrompt">Prompt</Label>
             <Textarea
-              id="aiPrompt"
-              value={(config?.aiPrompt as string) || ''}
-              onChange={(e) => onUpdateConfig('aiPrompt', e.target.value)}
-              placeholder="Enter your prompt here. Use {{$nodeId.field}} to reference previous outputs."
               disabled={disabled}
+              id="aiPrompt"
+              onChange={(e) => onUpdateConfig("aiPrompt", e.target.value)}
+              placeholder="Enter your prompt here. Use {{$nodeId.field}} to reference previous outputs."
               rows={4}
+              value={(config?.aiPrompt as string) || ""}
             />
           </div>
-          {config?.aiFormat === 'object' && (
+          {config?.aiFormat === "object" && (
             <div className="space-y-2">
               <Label>Schema</Label>
               <SchemaBuilder
-                schema={
-                  config?.aiSchema ? (JSON.parse(config.aiSchema as string) as SchemaField[]) : []
-                }
-                onChange={(schema) => onUpdateConfig('aiSchema', JSON.stringify(schema))}
                 disabled={disabled}
+                onChange={(schema) =>
+                  onUpdateConfig("aiSchema", JSON.stringify(schema))
+                }
+                schema={
+                  config?.aiSchema
+                    ? (JSON.parse(config.aiSchema as string) as SchemaField[])
+                    : []
+                }
               />
             </div>
           )}
@@ -418,16 +438,16 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       )}
 
       {/* Generate Image fields */}
-      {config?.actionType === 'Generate Image' && (
+      {config?.actionType === "Generate Image" && (
         <>
           <div className="space-y-2">
             <Label htmlFor="imageModel">Model</Label>
             <Select
-              value={(config?.imageModel as string) || 'openai/dall-e-3'}
-              onValueChange={(value) => onUpdateConfig('imageModel', value)}
               disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("imageModel", value)}
+              value={(config?.imageModel as string) || "openai/dall-e-3"}
             >
-              <SelectTrigger id="imageModel" className="w-full">
+              <SelectTrigger className="w-full" id="imageModel">
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
@@ -445,12 +465,12 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
           <div className="space-y-2">
             <Label htmlFor="imagePrompt">Prompt</Label>
             <Textarea
-              id="imagePrompt"
-              value={(config?.imagePrompt as string) || ''}
-              onChange={(e) => onUpdateConfig('imagePrompt', e.target.value)}
-              placeholder="Describe the image you want to generate. Use {{$nodeId.field}} to reference previous outputs."
               disabled={disabled}
+              id="imagePrompt"
+              onChange={(e) => onUpdateConfig("imagePrompt", e.target.value)}
+              placeholder="Describe the image you want to generate. Use {{$nodeId.field}} to reference previous outputs."
               rows={4}
+              value={(config?.imagePrompt as string) || ""}
             />
           </div>
         </>

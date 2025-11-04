@@ -1,5 +1,5 @@
-import 'server-only';
-import { WebClient } from '@slack/web-api';
+import "server-only";
+import { WebClient } from "@slack/web-api";
 
 export interface SendSlackMessageParams {
   channel: string;
@@ -9,7 +9,7 @@ export interface SendSlackMessageParams {
 }
 
 export interface SendSlackMessageResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   ts?: string;
   error?: string;
 }
@@ -23,8 +23,8 @@ export async function sendSlackMessage(
   try {
     if (!params.apiKey) {
       return {
-        status: 'error',
-        error: 'Slack API key not configured',
+        status: "error",
+        error: "Slack API key not configured",
       };
     }
 
@@ -38,19 +38,19 @@ export async function sendSlackMessage(
 
     if (!result.ok) {
       return {
-        status: 'error',
-        error: result.error || 'Failed to send message',
+        status: "error",
+        error: result.error || "Failed to send message",
       };
     }
 
     return {
-      status: 'success',
+      status: "success",
       ts: result.ts,
     };
   } catch (error) {
     return {
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -66,20 +66,20 @@ export async function getSlackChannels(apiKey: string) {
 
     const client = new WebClient(apiKey);
     const result = await client.conversations.list({
-      types: 'public_channel,private_channel',
+      types: "public_channel,private_channel",
       limit: 100,
     });
 
-    if (!result.ok || !result.channels) {
+    if (!(result.ok && result.channels)) {
       return [];
     }
 
     return result.channels.map((channel) => ({
-      id: channel.id || '',
-      name: channel.name || '',
+      id: channel.id || "",
+      name: channel.name || "",
     }));
   } catch (error) {
-    console.error('Error fetching Slack channels:', error);
+    console.error("Error fetching Slack channels:", error);
     return [];
   }
 }

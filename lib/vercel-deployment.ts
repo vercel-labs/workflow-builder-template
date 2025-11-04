@@ -1,9 +1,9 @@
-import 'server-only';
+import "server-only";
 
-import { Sandbox } from '@vercel/sandbox';
-import ms from 'ms';
-import type { WorkflowNode, WorkflowEdge } from './workflow-store';
-import { generateWorkflowSDKCode } from './workflow-codegen-sdk';
+import { Sandbox } from "@vercel/sandbox";
+import ms from "ms";
+import { generateWorkflowSDKCode } from "./workflow-codegen-sdk";
+import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 export interface DeploymentOptions {
   workflows: Array<{
@@ -34,7 +34,7 @@ export async function deployWorkflowToVercel(
   let sandbox: Sandbox | null = null;
 
   try {
-    logs.push('Starting deployment process...');
+    logs.push("Starting deployment process...");
     logs.push(`Deploying ${options.workflows.length} workflow(s)...`);
 
     // Get all project files with all workflows
@@ -42,7 +42,7 @@ export async function deployWorkflowToVercel(
     logs.push(`Generated code for ${options.workflows.length} workflow(s)`);
 
     // Add Vercel project configuration to link to the specific project
-    files['.vercel/project.json'] = JSON.stringify(
+    files[".vercel/project.json"] = JSON.stringify(
       {
         projectId: options.vercelProjectId,
         orgId: options.vercelTeamId || undefined,
@@ -52,12 +52,12 @@ export async function deployWorkflowToVercel(
     );
 
     // Add Vercel configuration for Next.js
-    files['vercel.json'] = JSON.stringify(
+    files["vercel.json"] = JSON.stringify(
       {
-        framework: 'nextjs',
-        buildCommand: 'npm run build',
-        devCommand: 'npm run dev',
-        installCommand: 'npm install',
+        framework: "nextjs",
+        buildCommand: "npm run build",
+        devCommand: "npm run dev",
+        installCommand: "npm install",
       },
       null,
       2
@@ -66,7 +66,7 @@ export async function deployWorkflowToVercel(
     logs.push(`Generated ${Object.keys(files).length} project files`);
 
     // Create sandbox environment
-    logs.push('Creating Vercel sandbox...');
+    logs.push("Creating Vercel sandbox...");
 
     // Build sandbox config - only include teamId/projectId if they exist
     const sandboxConfig: {
@@ -74,15 +74,15 @@ export async function deployWorkflowToVercel(
       resources: { vcpus: number };
       timeout: number;
       ports: number[];
-      runtime: 'node22';
+      runtime: "node22";
       teamId?: string;
       projectId?: string;
     } = {
       token: options.vercelToken,
       resources: { vcpus: 4 },
-      timeout: ms('10m'),
+      timeout: ms("10m"),
       ports: [3000],
-      runtime: 'node22',
+      runtime: "node22",
     };
 
     if (options.vercelTeamId) {
@@ -94,29 +94,35 @@ export async function deployWorkflowToVercel(
     }
 
     try {
-      console.log('Creating sandbox with config:', sandboxConfig);
+      console.log("Creating sandbox with config:", sandboxConfig);
       sandbox = await Sandbox.create(sandboxConfig);
-      logs.push('Sandbox created successfully');
+      logs.push("Sandbox created successfully");
     } catch (sandboxError) {
-      const errorMsg = sandboxError instanceof Error ? sandboxError.message : String(sandboxError);
+      const errorMsg =
+        sandboxError instanceof Error
+          ? sandboxError.message
+          : String(sandboxError);
       logs.push(`Failed to create sandbox: ${errorMsg}`);
 
-      if (errorMsg.includes('404')) {
+      if (errorMsg.includes("404")) {
         throw new Error(
-          'Failed to create Vercel Sandbox (404). Please verify:\n' +
-            '1. Your Vercel API token is valid and has the correct permissions\n' +
-            '2. Your team ID is correct (if using a team)\n' +
-            '3. The project ID exists and you have access to it\n' +
-            '4. You have access to create sandboxes on your Vercel plan'
+          "Failed to create Vercel Sandbox (404). Please verify:\n" +
+            "1. Your Vercel API token is valid and has the correct permissions\n" +
+            "2. Your team ID is correct (if using a team)\n" +
+            "3. The project ID exists and you have access to it\n" +
+            "4. You have access to create sandboxes on your Vercel plan"
         );
       }
 
-      if (errorMsg.includes('Missing credentials') || errorMsg.includes('projectId')) {
+      if (
+        errorMsg.includes("Missing credentials") ||
+        errorMsg.includes("projectId")
+      ) {
         throw new Error(
-          'Vercel Sandbox requires a project ID. Please:\n' +
-            '1. Create a Vercel project first\n' +
-            '2. Link this workflow to a Vercel project in the workflow settings\n' +
-            '3. Or create a new project via the Vercel dashboard'
+          "Vercel Sandbox requires a project ID. Please:\n" +
+            "1. Create a Vercel project first\n" +
+            "2. Link this workflow to a Vercel project in the workflow settings\n" +
+            "3. Or create a new project via the Vercel dashboard"
         );
       }
 
@@ -124,71 +130,77 @@ export async function deployWorkflowToVercel(
     }
 
     // Write all project files to sandbox
-    logs.push('Writing project files to sandbox...');
+    logs.push("Writing project files to sandbox...");
     const fileEntries = Object.entries(files).map(([path, content]) => ({
       path,
-      content: Buffer.from(content, 'utf-8'),
+      content: Buffer.from(content, "utf-8"),
     }));
     await sandbox.writeFiles(fileEntries);
-    logs.push('Files written successfully');
+    logs.push("Files written successfully");
 
     // Install dependencies
-    logs.push('Installing dependencies...');
+    logs.push("Installing dependencies...");
     const install = await sandbox.runCommand({
-      cmd: 'npm',
-      args: ['install', '--loglevel', 'info'],
+      cmd: "npm",
+      args: ["install", "--loglevel", "info"],
     });
 
     if (install.exitCode !== 0) {
-      const stderrOutput = install.stderr ? await install.stderr() : 'Unknown error';
+      const stderrOutput = install.stderr
+        ? await install.stderr()
+        : "Unknown error";
       throw new Error(`Failed to install dependencies: ${stderrOutput}`);
     }
-    logs.push('Dependencies installed successfully');
+    logs.push("Dependencies installed successfully");
 
     // Build the project
-    logs.push('Building Next.js project...');
+    logs.push("Building Next.js project...");
     const build = await sandbox.runCommand({
-      cmd: 'npm',
-      args: ['run', 'build'],
+      cmd: "npm",
+      args: ["run", "build"],
     });
 
     if (build.exitCode !== 0) {
-      const stderrOutput = build.stderr ? await build.stderr() : 'Unknown error';
+      const stderrOutput = build.stderr
+        ? await build.stderr()
+        : "Unknown error";
       throw new Error(`Build failed: ${stderrOutput}`);
     }
-    logs.push('Project built successfully');
+    logs.push("Project built successfully");
 
     // Deploy to Vercel
-    logs.push('Deploying to Vercel...');
+    logs.push("Deploying to Vercel...");
     const deployArgs = [
-      'vercel',
-      'deploy',
-      '--prod',
-      '--yes', // Non-interactive confirmation
-      '--token',
+      "vercel",
+      "deploy",
+      "--prod",
+      "--yes", // Non-interactive confirmation
+      "--token",
       options.vercelToken,
     ];
     if (options.vercelTeamId) {
-      deployArgs.push('--scope', options.vercelTeamId);
+      deployArgs.push("--scope", options.vercelTeamId);
     }
 
     const deploy = await sandbox.runCommand({
-      cmd: 'npx',
+      cmd: "npx",
       args: deployArgs,
     });
 
     if (deploy.exitCode !== 0) {
-      const stderrOutput = deploy.stderr ? await deploy.stderr() : 'Unknown error';
+      const stderrOutput = deploy.stderr
+        ? await deploy.stderr()
+        : "Unknown error";
       throw new Error(`Deployment failed: ${stderrOutput}`);
     }
 
     // Parse deployment output to get the production URL
-    const deployOutput = deploy.stdout ? await deploy.stdout() : '';
-    const lines = deployOutput.split('\n');
+    const deployOutput = deploy.stdout ? await deploy.stdout() : "";
+    const lines = deployOutput.split("\n");
 
     // Look for the Production URL line
-    const productionLine = lines.find((line) => line.includes('Production:'));
-    let deploymentUrl = '';
+    const productionLine = lines.find((line) => line.includes("Production:"));
+    let deploymentUrl = "";
 
     if (productionLine) {
       // Extract URL from line like "Production: https://my-app.vercel.app [1s]"
@@ -215,7 +227,8 @@ export async function deployWorkflowToVercel(
       logs,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logs.push(`Error: ${errorMessage}`);
 
     return {
@@ -226,7 +239,7 @@ export async function deployWorkflowToVercel(
   } finally {
     // Sandbox is automatically cleaned up after timeout
     if (sandbox) {
-      logs.push('Sandbox will be automatically cleaned up');
+      logs.push("Sandbox will be automatically cleaned up");
     }
   }
 }
@@ -234,14 +247,21 @@ export async function deployWorkflowToVercel(
 /**
  * Generate all project files for the Next.js workflow app
  */
-async function generateProjectFiles(options: DeploymentOptions): Promise<Record<string, string>> {
+async function generateProjectFiles(
+  options: DeploymentOptions
+): Promise<Record<string, string>> {
   const files: Record<string, string> = {};
 
   // Generate code for each workflow
-  const workflowFiles: Array<{ name: string; code: string; fileName: string }> = [];
+  const workflowFiles: Array<{ name: string; code: string; fileName: string }> =
+    [];
 
   for (const workflow of options.workflows) {
-    const workflowCode = generateWorkflowSDKCode(workflow.name, workflow.nodes, workflow.edges);
+    const workflowCode = generateWorkflowSDKCode(
+      workflow.name,
+      workflow.nodes,
+      workflow.edges
+    );
     const fileName = sanitizeFileName(workflow.name);
 
     workflowFiles.push({
@@ -255,7 +275,8 @@ async function generateProjectFiles(options: DeploymentOptions): Promise<Record<
 
     // Add API route for this workflow
     const functionName = sanitizeFunctionName(workflow.name);
-    files[`app/api/workflows/${fileName}/route.ts`] = `import { start } from 'workflow/api';
+    files[`app/api/workflows/${fileName}/route.ts`] =
+      `import { start } from 'workflow/api';
 import { ${functionName} } from '@/workflows/${fileName}';
 import { NextResponse } from 'next/server';
 
@@ -288,19 +309,19 @@ export async function POST(request: Request) {
 
   // Generate package.json
   const packageJson = {
-    name: `workflows`,
-    version: '0.1.0',
+    name: "workflows",
+    version: "0.1.0",
     private: true,
     scripts: {
-      dev: 'next dev',
-      build: 'next build',
-      start: 'next start',
+      dev: "next dev",
+      build: "next build",
+      start: "next start",
     },
     dependencies: {
-      next: '16.0.1',
-      react: '19.2.0',
-      'react-dom': '19.2.0',
-      workflow: '4.0.1-beta.7',
+      next: "16.0.1",
+      react: "19.2.0",
+      "react-dom": "19.2.0",
+      workflow: "4.0.1-beta.7",
       // Add integration dependencies based on all nodes
       ...getIntegrationDependencies(allNodes),
     },
@@ -317,10 +338,12 @@ export default withWorkflow(nextConfig);
 
   // Generate app page listing all workflows
   const workflowsList = workflowFiles
-    .map((wf) => `<li><a href="/api/workflows/${wf.fileName}">${wf.name}</a></li>`)
-    .join('\n          ');
+    .map(
+      (wf) => `<li><a href="/api/workflows/${wf.fileName}">${wf.name}</a></li>`
+    )
+    .join("\n          ");
 
-  files['app/page.tsx'] = `export default function Home() {
+  files["app/page.tsx"] = `export default function Home() {
   return (
     <main className="p-8">
       <h1 className="text-2xl font-bold mb-4">Workflows</h1>
@@ -333,7 +356,7 @@ export default withWorkflow(nextConfig);
 }
 `;
 
-  files['app/layout.tsx'] = `export default function RootLayout({
+  files["app/layout.tsx"] = `export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -346,45 +369,45 @@ export default withWorkflow(nextConfig);
 }
 `;
 
-  files['package.json'] = JSON.stringify(packageJson, null, 2);
-  files['next.config.ts'] = nextConfig;
-  files['.gitignore'] = `node_modules
+  files["package.json"] = JSON.stringify(packageJson, null, 2);
+  files["next.config.ts"] = nextConfig;
+  files[".gitignore"] = `node_modules
 .next
 .env*.local
 `;
 
   const tsConfig = {
     compilerOptions: {
-      target: 'ES2017',
-      lib: ['dom', 'dom.iterable', 'esnext'],
+      target: "ES2017",
+      lib: ["dom", "dom.iterable", "esnext"],
       allowJs: true,
       skipLibCheck: true,
       strict: true,
       noEmit: true,
       esModuleInterop: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
+      module: "esnext",
+      moduleResolution: "bundler",
       resolveJsonModule: true,
       isolatedModules: true,
-      jsx: 'preserve',
+      jsx: "preserve",
       incremental: true,
       plugins: [
         {
-          name: 'next',
+          name: "next",
         },
         {
-          name: 'workflow',
+          name: "workflow",
         },
       ],
       paths: {
-        '@/*': ['./*'],
+        "@/*": ["./*"],
       },
     },
-    include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
-    exclude: ['node_modules'],
+    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+    exclude: ["node_modules"],
   };
 
-  files['tsconfig.json'] = JSON.stringify(tsConfig, null, 2);
+  files["tsconfig.json"] = JSON.stringify(tsConfig, null, 2);
 
   return files;
 }
@@ -392,23 +415,28 @@ export default withWorkflow(nextConfig);
 /**
  * Get npm dependencies based on workflow nodes
  */
-function getIntegrationDependencies(nodes: WorkflowNode[]): Record<string, string> {
+function getIntegrationDependencies(
+  nodes: WorkflowNode[]
+): Record<string, string> {
   const deps: Record<string, string> = {};
 
   for (const node of nodes) {
     const actionType = node.data.config?.actionType as string;
 
-    if (actionType === 'Send Email') {
-      deps['resend'] = '^6.4.0';
-    } else if (actionType === 'Create Ticket' || actionType === 'Find Issues') {
-      deps['@linear/sdk'] = '^63.2.0';
-    } else if (actionType === 'Send Slack Message') {
-      deps['@slack/web-api'] = '^7.12.0';
-    } else if (actionType === 'Generate Text' || actionType === 'Generate Image') {
-      deps['ai'] = '^5.0.86';
-      deps['openai'] = '^6.8.0';
-      deps['@google/genai'] = '^1.28.0';
-      deps['zod'] = '^4.1.12';
+    if (actionType === "Send Email") {
+      deps["resend"] = "^6.4.0";
+    } else if (actionType === "Create Ticket" || actionType === "Find Issues") {
+      deps["@linear/sdk"] = "^63.2.0";
+    } else if (actionType === "Send Slack Message") {
+      deps["@slack/web-api"] = "^7.12.0";
+    } else if (
+      actionType === "Generate Text" ||
+      actionType === "Generate Image"
+    ) {
+      deps["ai"] = "^5.0.86";
+      deps["openai"] = "^6.8.0";
+      deps["@google/genai"] = "^1.28.0";
+      deps["zod"] = "^4.1.12";
     }
   }
 
@@ -420,9 +448,9 @@ function getIntegrationDependencies(nodes: WorkflowNode[]): Record<string, strin
  */
 function sanitizeFunctionName(name: string): string {
   return name
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    .replace(/^[0-9]/, '_$&')
-    .replace(/_+/g, '_');
+    .replace(/[^a-zA-Z0-9]/g, "_")
+    .replace(/^[0-9]/, "_$&")
+    .replace(/_+/g, "_");
 }
 
 /**
@@ -431,7 +459,7 @@ function sanitizeFunctionName(name: string): string {
 function sanitizeFileName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }

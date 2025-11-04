@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
-import { db } from '@/lib/db';
-import { workflows } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { generateWorkflowSDKCode } from '@/lib/workflow-codegen-sdk';
+import { and, eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { workflows } from "@/lib/db/schema";
+import { generateWorkflowSDKCode } from "@/lib/workflow-codegen-sdk";
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
 
@@ -16,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get workflow
@@ -25,22 +28,30 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     });
 
     if (!workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Workflow not found" },
+        { status: 404 }
+      );
     }
 
     // Generate code
-    const code = generateWorkflowSDKCode(workflow.name, workflow.nodes, workflow.edges);
+    const code = generateWorkflowSDKCode(
+      workflow.name,
+      workflow.nodes,
+      workflow.edges
+    );
 
     return NextResponse.json({
       code,
       workflowName: workflow.name,
     });
   } catch (error) {
-    console.error('Error generating code:', error);
+    console.error("Error generating code:", error);
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to generate code',
+        error:
+          error instanceof Error ? error.message : "Failed to generate code",
       },
       { status: 500 }
     );

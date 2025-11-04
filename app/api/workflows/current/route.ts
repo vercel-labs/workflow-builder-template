@@ -1,23 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { workflows } from '@/lib/db/schema';
-import { desc, eq, and } from 'drizzle-orm';
-import { auth } from '@/lib/auth';
+import { and, desc, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { workflows } from "@/lib/db/schema";
 
-const CURRENT_WORKFLOW_NAME = '__current__';
+const CURRENT_WORKFLOW_NAME = "__current__";
 
 // GET /api/workflows/current - Get the current workflow state
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [currentWorkflow] = await db
       .select()
       .from(workflows)
-      .where(and(eq(workflows.name, CURRENT_WORKFLOW_NAME), eq(workflows.userId, session.user.id)))
+      .where(
+        and(
+          eq(workflows.name, CURRENT_WORKFLOW_NAME),
+          eq(workflows.userId, session.user.id)
+        )
+      )
       .orderBy(desc(workflows.updatedAt))
       .limit(1);
 
@@ -35,8 +40,11 @@ export async function GET(request: NextRequest) {
       edges: currentWorkflow.edges,
     });
   } catch (error) {
-    console.error('Failed to fetch current workflow:', error);
-    return NextResponse.json({ error: 'Failed to fetch current workflow' }, { status: 500 });
+    console.error("Failed to fetch current workflow:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch current workflow" },
+      { status: 500 }
+    );
   }
 }
 
@@ -45,21 +53,29 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const { nodes, edges } = body;
 
-    if (!nodes || !edges) {
-      return NextResponse.json({ error: 'Nodes and edges are required' }, { status: 400 });
+    if (!(nodes && edges)) {
+      return NextResponse.json(
+        { error: "Nodes and edges are required" },
+        { status: 400 }
+      );
     }
 
     // Check if current workflow exists
     const [existingWorkflow] = await db
       .select()
       .from(workflows)
-      .where(and(eq(workflows.name, CURRENT_WORKFLOW_NAME), eq(workflows.userId, session.user.id)))
+      .where(
+        and(
+          eq(workflows.name, CURRENT_WORKFLOW_NAME),
+          eq(workflows.userId, session.user.id)
+        )
+      )
       .limit(1);
 
     let savedWorkflow;
@@ -81,7 +97,7 @@ export async function PUT(request: NextRequest) {
         .insert(workflows)
         .values({
           name: CURRENT_WORKFLOW_NAME,
-          description: 'Auto-saved current workflow',
+          description: "Auto-saved current workflow",
           nodes,
           edges,
           userId: session.user.id,
@@ -95,7 +111,10 @@ export async function PUT(request: NextRequest) {
       edges: savedWorkflow.edges,
     });
   } catch (error) {
-    console.error('Failed to save current workflow:', error);
-    return NextResponse.json({ error: 'Failed to save current workflow' }, { status: 500 });
+    console.error("Failed to save current workflow:", error);
+    return NextResponse.json(
+      { error: "Failed to save current workflow" },
+      { status: 500 }
+    );
   }
 }

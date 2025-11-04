@@ -1,76 +1,72 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { useAtom, useSetAtom } from 'jotai';
 import {
-  ReactFlow,
-  Background,
-  MiniMap,
   ConnectionMode,
-  type Connection as XYFlowConnection,
+  MiniMap,
   type OnConnect,
-  BackgroundVariant,
   useReactFlow,
   type Viewport,
-} from '@xyflow/react';
-import { Canvas } from '@/components/ai-elements/canvas';
-import { Controls } from '@/components/ai-elements/controls';
-import { Connection } from '@/components/ai-elements/connection';
-import '@xyflow/react/dist/style.css';
+  type Connection as XYFlowConnection,
+} from "@xyflow/react";
+import { useAtom, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas } from "@/components/ai-elements/canvas";
+import { Connection } from "@/components/ai-elements/connection";
+import { Controls } from "@/components/ai-elements/controls";
+import "@xyflow/react/dist/style.css";
 
+import { GitBranch, Loader2, PlayCircle, Shuffle, Zap } from "lucide-react";
+import { nanoid } from "nanoid";
 import {
-  nodesAtom,
-  edgesAtom,
-  onNodesChangeAtom,
-  onEdgesChangeAtom,
-  selectedNodeAtom,
-  isGeneratingAtom,
   addNodeAtom,
   currentWorkflowIdAtom,
+  edgesAtom,
+  isGeneratingAtom,
+  nodesAtom,
+  onEdgesChangeAtom,
+  onNodesChangeAtom,
+  selectedNodeAtom,
   type WorkflowNode,
   type WorkflowNodeType,
-} from '@/lib/workflow-store';
-import { TriggerNode } from './nodes/trigger-node';
-import { ActionNode } from './nodes/action-node';
-import { ConditionNode } from './nodes/condition-node';
-import { TransformNode } from './nodes/transform-node';
-import { nanoid } from 'nanoid';
-import { Loader2, PlayCircle, Zap, GitBranch, Shuffle } from 'lucide-react';
-import { Node, NodeFooter, NodeContent, NodeDescription, NodeHeader, NodeTitle } from '../ai-elements/node';
-import { Edge } from '../ai-elements/edge';
+} from "@/lib/workflow-store";
+import { Edge } from "../ai-elements/edge";
+import { ActionNode } from "./nodes/action-node";
+import { ConditionNode } from "./nodes/condition-node";
+import { TransformNode } from "./nodes/transform-node";
+import { TriggerNode } from "./nodes/trigger-node";
 
 const nodeTemplates = [
   {
-    type: 'trigger' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Trigger',
+    type: "trigger" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Trigger",
     icon: PlayCircle,
-    defaultConfig: { triggerType: 'Manual' },
+    defaultConfig: { triggerType: "Manual" },
   },
   {
-    type: 'action' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Action',
+    type: "action" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Action",
     icon: Zap,
-    defaultConfig: { actionType: 'HTTP Request' },
+    defaultConfig: { actionType: "HTTP Request" },
   },
   {
-    type: 'condition' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Condition',
+    type: "condition" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Condition",
     icon: GitBranch,
-    defaultConfig: { condition: 'If true' },
+    defaultConfig: { condition: "If true" },
   },
   {
-    type: 'transform' as WorkflowNodeType,
-    label: '',
-    description: '',
-    displayLabel: 'Transform',
+    type: "transform" as WorkflowNodeType,
+    label: "",
+    description: "",
+    displayLabel: "Transform",
     icon: Shuffle,
-    defaultConfig: { transformType: 'Map Data' },
+    defaultConfig: { transformType: "Map Data" },
   },
 ];
 
@@ -98,14 +94,18 @@ export function WorkflowCanvas() {
   } | null>(null);
   const connectingNodeId = useRef<string | null>(null);
   const menuJustOpened = useRef(false);
-  const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(undefined);
+  const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(
+    undefined
+  );
   const viewportInitialized = useRef(false);
 
   // Load saved viewport when workflow changes
   useEffect(() => {
     if (!currentWorkflowId) return;
 
-    const saved = localStorage.getItem(`workflow-viewport-${currentWorkflowId}`);
+    const saved = localStorage.getItem(
+      `workflow-viewport-${currentWorkflowId}`
+    );
     if (saved) {
       try {
         const viewport = JSON.parse(saved) as Viewport;
@@ -117,7 +117,7 @@ export function WorkflowCanvas() {
           viewportInitialized.current = true;
         }, 100);
       } catch (error) {
-        console.error('Failed to load viewport:', error);
+        console.error("Failed to load viewport:", error);
         viewportInitialized.current = true;
       }
     } else {
@@ -132,8 +132,11 @@ export function WorkflowCanvas() {
   // Save viewport changes
   const onMoveEnd = useCallback(
     (_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
-      if (!currentWorkflowId || !viewportInitialized.current) return;
-      localStorage.setItem(`workflow-viewport-${currentWorkflowId}`, JSON.stringify(viewport));
+      if (!(currentWorkflowId && viewportInitialized.current)) return;
+      localStorage.setItem(
+        `workflow-viewport-${currentWorkflowId}`,
+        JSON.stringify(viewport)
+      );
     },
     [currentWorkflowId]
   );
@@ -154,7 +157,7 @@ export function WorkflowCanvas() {
       const newEdge = {
         id: nanoid(),
         ...connection,
-        type: 'animated',
+        type: "animated",
       };
       setEdges([...edges, newEdge]);
     },
@@ -186,22 +189,32 @@ export function WorkflowCanvas() {
       const target = event.target as Element;
 
       // Check if we're not dropping on a node or handle
-      const isNode = target.closest('.react-flow__node');
-      const isHandle = target.closest('.react-flow__handle');
+      const isNode = target.closest(".react-flow__node");
+      const isHandle = target.closest(".react-flow__handle");
 
-      if (!isNode && !isHandle) {
+      if (!(isNode || isHandle)) {
         // Get mouse position relative to the viewport
-        const clientX = 'changedTouches' in event ? event.changedTouches[0].clientX : event.clientX;
-        const clientY = 'changedTouches' in event ? event.changedTouches[0].clientY : event.clientY;
+        const clientX =
+          "changedTouches" in event
+            ? event.changedTouches[0].clientX
+            : event.clientX;
+        const clientY =
+          "changedTouches" in event
+            ? event.changedTouches[0].clientY
+            : event.clientY;
 
         // Get the ReactFlow wrapper element to calculate offset
         const reactFlowBounds = (event.target as Element)
-          .closest('.react-flow')
+          .closest(".react-flow")
           ?.getBoundingClientRect();
 
         // Adjust position relative to the ReactFlow container
-        const adjustedX = reactFlowBounds ? clientX - reactFlowBounds.left : clientX;
-        const adjustedY = reactFlowBounds ? clientY - reactFlowBounds.top : clientY;
+        const adjustedX = reactFlowBounds
+          ? clientX - reactFlowBounds.left
+          : clientX;
+        const adjustedY = reactFlowBounds
+          ? clientY - reactFlowBounds.top
+          : clientY;
 
         menuJustOpened.current = true;
         setMenu({
@@ -241,7 +254,7 @@ export function WorkflowCanvas() {
           description: template.description,
           type: template.type,
           config: template.defaultConfig,
-          status: 'idle',
+          status: "idle",
         },
       };
 
@@ -252,7 +265,7 @@ export function WorkflowCanvas() {
         id: nanoid(),
         source: menu.id,
         target: newNode.id,
-        type: 'animated',
+        type: "animated",
       };
       setEdges([...edges, newEdge]);
 
@@ -274,34 +287,34 @@ export function WorkflowCanvas() {
   return (
     <div className="relative h-full w-full">
       {isGenerating && (
-        <div className="bg-background/80 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="text-center">
             <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
-            <div className="text-lg font-semibold">Generating workflow...</div>
+            <div className="font-semibold text-lg">Generating workflow...</div>
           </div>
         </div>
       )}
       <Canvas
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={isGenerating ? undefined : onNodesChange}
-        onEdgesChange={isGenerating ? undefined : onEdgesChange}
-        onConnect={isGenerating ? undefined : onConnect}
-        onConnectStart={isGenerating ? undefined : onConnectStart}
-        onConnectEnd={isGenerating ? undefined : onConnectEnd}
-        onNodeClick={isGenerating ? undefined : onNodeClick}
-        onPaneClick={onPaneClick}
-        onMoveEnd={onMoveEnd}
-        nodeTypes={nodeTypes}
+        className="bg-background"
+        connectionLineComponent={Connection}
         connectionMode={ConnectionMode.Loose}
         defaultViewport={defaultViewport}
-        fitView={!defaultViewport}
-        className="bg-background"
-        nodesDraggable={!isGenerating}
-        nodesConnectable={!isGenerating}
-        elementsSelectable={!isGenerating}
+        edges={edges}
         edgeTypes={edgeTypes}
-        connectionLineComponent={Connection}
+        elementsSelectable={!isGenerating}
+        fitView={!defaultViewport}
+        nodes={nodes}
+        nodesConnectable={!isGenerating}
+        nodesDraggable={!isGenerating}
+        nodeTypes={nodeTypes}
+        onConnect={isGenerating ? undefined : onConnect}
+        onConnectEnd={isGenerating ? undefined : onConnectEnd}
+        onConnectStart={isGenerating ? undefined : onConnectStart}
+        onEdgesChange={isGenerating ? undefined : onEdgesChange}
+        onMoveEnd={onMoveEnd}
+        onNodeClick={isGenerating ? undefined : onNodeClick}
+        onNodesChange={isGenerating ? undefined : onNodesChange}
+        onPaneClick={onPaneClick}
       >
         <Controls />
         <MiniMap className="!bg-secondary" />
@@ -309,28 +322,30 @@ export function WorkflowCanvas() {
 
       {menu && (
         <div
+          className="fade-in-0 zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 min-w-[8rem] animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out"
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: menu.top,
             left: menu.left,
             zIndex: 50,
           }}
-          className="bg-popover text-popover-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-md"
         >
           {nodeTemplates
-            .filter((template) => template.type !== 'trigger')
+            .filter((template) => template.type !== "trigger")
             .map((template, index, filteredArray) => {
               const Icon = template.icon;
               return (
                 <div key={template.type}>
                   <div
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                     onClick={() => onAddNodeFromMenu(template)}
-                    className="focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none"
                   >
                     <Icon className="mr-2 h-4 w-4" />
                     {template.displayLabel}
                   </div>
-                  {index < filteredArray.length - 1 && <div className="bg-muted -mx-1 my-1 h-px" />}
+                  {index < filteredArray.length - 1 && (
+                    <div className="-mx-1 my-1 h-px bg-muted" />
+                  )}
                 </div>
               );
             })}

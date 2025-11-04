@@ -1,167 +1,174 @@
-import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
-import { customAlphabet } from 'nanoid';
-import { relations } from 'drizzle-orm';
+import { relations } from "drizzle-orm";
+import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { customAlphabet } from "nanoid";
 
 // Create a nanoid generator with URL-safe characters
-const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 21);
+const nanoid = customAlphabet(
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  21
+);
 
 // Better Auth tables
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('emailVerified').notNull(),
-  image: text('image'),
-  createdAt: timestamp('createdAt').notNull(),
-  updatedAt: timestamp('updatedAt').notNull(),
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull(),
+  image: text("image"),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
   // User-level integrations
-  resendApiKey: text('resend_api_key'),
-  resendFromEmail: text('resend_from_email'),
-  linearApiKey: text('linear_api_key'),
-  slackApiKey: text('slack_api_key'),
-  vercelApiToken: text('vercel_api_token'),
-  vercelTeamId: text('vercel_team_id'),
+  resendApiKey: text("resend_api_key"),
+  resendFromEmail: text("resend_from_email"),
+  linearApiKey: text("linear_api_key"),
+  slackApiKey: text("slack_api_key"),
+  vercelApiToken: text("vercel_api_token"),
+  vercelTeamId: text("vercel_team_id"),
 });
 
-export const session = pgTable('session', {
-  id: text('id').primaryKey(),
-  expiresAt: timestamp('expiresAt').notNull(),
-  token: text('token').notNull().unique(),
-  createdAt: timestamp('createdAt').notNull(),
-  updatedAt: timestamp('updatedAt').notNull(),
-  ipAddress: text('ipAddress'),
-  userAgent: text('userAgent'),
-  userId: text('userId')
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+  ipAddress: text("ipAddress"),
+  userAgent: text("userAgent"),
+  userId: text("userId")
     .notNull()
     .references(() => user.id),
 });
 
-export const account = pgTable('account', {
-  id: text('id').primaryKey(),
-  accountId: text('accountId').notNull(),
-  providerId: text('providerId').notNull(),
-  userId: text('userId')
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("accountId").notNull(),
+  providerId: text("providerId").notNull(),
+  userId: text("userId")
     .notNull()
     .references(() => user.id),
-  accessToken: text('accessToken'),
-  refreshToken: text('refreshToken'),
-  idToken: text('idToken'),
-  accessTokenExpiresAt: timestamp('accessTokenExpiresAt'),
-  refreshTokenExpiresAt: timestamp('refreshTokenExpiresAt'),
-  scope: text('scope'),
-  password: text('password'),
-  createdAt: timestamp('createdAt').notNull(),
-  updatedAt: timestamp('updatedAt').notNull(),
+  accessToken: text("accessToken"),
+  refreshToken: text("refreshToken"),
+  idToken: text("idToken"),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
+  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
 });
 
-export const verification = pgTable('verification', {
-  id: text('id').primaryKey(),
-  identifier: text('identifier').notNull(),
-  value: text('value').notNull(),
-  expiresAt: timestamp('expiresAt').notNull(),
-  createdAt: timestamp('createdAt'),
-  updatedAt: timestamp('updatedAt'),
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt"),
+  updatedAt: timestamp("updatedAt"),
 });
 
 // Vercel Projects table
-export const vercelProjects = pgTable('vercel_projects', {
-  id: text('id')
+export const vercelProjects = pgTable("vercel_projects", {
+  id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  userId: text('user_id')
+  userId: text("user_id")
     .notNull()
     .references(() => user.id),
-  vercelProjectId: text('vercel_project_id').notNull(),
-  name: text('name').notNull(),
-  framework: text('framework'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  vercelProjectId: text("vercel_project_id").notNull(),
+  name: text("name").notNull(),
+  framework: text("framework"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Workflows table with user association
-export const workflows = pgTable('workflows', {
-  id: text('id')
+export const workflows = pgTable("workflows", {
+  id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  name: text('name').notNull(),
-  description: text('description'),
-  userId: text('userId')
+  name: text("name").notNull(),
+  description: text("description"),
+  userId: text("userId")
     .notNull()
     .references(() => user.id),
-  vercelProjectId: text('vercel_project_id').references(() => vercelProjects.id),
+  vercelProjectId: text("vercel_project_id").references(
+    () => vercelProjects.id
+  ),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  nodes: jsonb('nodes').notNull().$type<Array<any>>(),
+  nodes: jsonb("nodes").notNull().$type<Array<any>>(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  edges: jsonb('edges').notNull().$type<Array<any>>(),
-  deploymentStatus: text('deployment_status')
-    .$type<'none' | 'pending' | 'deploying' | 'deployed' | 'failed'>()
-    .default('none'),
-  deploymentUrl: text('deployment_url'),
-  lastDeployedAt: timestamp('last_deployed_at'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  edges: jsonb("edges").notNull().$type<Array<any>>(),
+  deploymentStatus: text("deployment_status")
+    .$type<"none" | "pending" | "deploying" | "deployed" | "failed">()
+    .default("none"),
+  deploymentUrl: text("deployment_url"),
+  lastDeployedAt: timestamp("last_deployed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Workflow executions table to track workflow runs
-export const workflowExecutions = pgTable('workflow_executions', {
-  id: text('id')
+export const workflowExecutions = pgTable("workflow_executions", {
+  id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  workflowId: text('workflow_id')
+  workflowId: text("workflow_id")
     .notNull()
     .references(() => workflows.id),
-  userId: text('user_id')
+  userId: text("user_id")
     .notNull()
     .references(() => user.id),
-  status: text('status')
+  status: text("status")
     .notNull()
-    .$type<'pending' | 'running' | 'success' | 'error' | 'cancelled'>(),
+    .$type<"pending" | "running" | "success" | "error" | "cancelled">(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  input: jsonb('input').$type<Record<string, any>>(),
+  input: jsonb("input").$type<Record<string, any>>(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  output: jsonb('output').$type<any>(),
-  error: text('error'),
-  startedAt: timestamp('started_at').notNull().defaultNow(),
-  completedAt: timestamp('completed_at'),
-  duration: text('duration'), // Duration in milliseconds
+  output: jsonb("output").$type<any>(),
+  error: text("error"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  duration: text("duration"), // Duration in milliseconds
 });
 
 // Workflow execution logs to track individual node executions
-export const workflowExecutionLogs = pgTable('workflow_execution_logs', {
-  id: text('id')
+export const workflowExecutionLogs = pgTable("workflow_execution_logs", {
+  id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  executionId: text('execution_id')
+  executionId: text("execution_id")
     .notNull()
     .references(() => workflowExecutions.id),
-  nodeId: text('node_id').notNull(),
-  nodeName: text('node_name').notNull(),
-  nodeType: text('node_type').notNull(),
-  status: text('status').notNull().$type<'pending' | 'running' | 'success' | 'error'>(),
+  nodeId: text("node_id").notNull(),
+  nodeName: text("node_name").notNull(),
+  nodeType: text("node_type").notNull(),
+  status: text("status")
+    .notNull()
+    .$type<"pending" | "running" | "success" | "error">(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  input: jsonb('input').$type<any>(),
+  input: jsonb("input").$type<any>(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  output: jsonb('output').$type<any>(),
-  error: text('error'),
-  startedAt: timestamp('started_at').notNull().defaultNow(),
-  completedAt: timestamp('completed_at'),
-  duration: text('duration'), // Duration in milliseconds
+  output: jsonb("output").$type<any>(),
+  error: text("error"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  duration: text("duration"), // Duration in milliseconds
 });
 
 // Data sources table for user-configured database connections
-export const dataSources = pgTable('data_sources', {
-  id: text('id')
+export const dataSources = pgTable("data_sources", {
+  id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  userId: text('user_id')
+  userId: text("user_id")
     .notNull()
     .references(() => user.id),
-  name: text('name').notNull(),
-  type: text('type').notNull().$type<'postgresql' | 'mysql' | 'mongodb'>(),
-  connectionString: text('connection_string').notNull(),
-  isDefault: boolean('is_default').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  name: text("name").notNull(),
+  type: text("type").notNull().$type<"postgresql" | "mysql" | "mongodb">(),
+  connectionString: text("connection_string").notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Relations
@@ -172,9 +179,12 @@ export const workflowsRelations = relations(workflows, ({ one }) => ({
   }),
 }));
 
-export const vercelProjectsRelations = relations(vercelProjects, ({ many }) => ({
-  workflows: many(workflows),
-}));
+export const vercelProjectsRelations = relations(
+  vercelProjects,
+  ({ many }) => ({
+    workflows: many(workflows),
+  })
+);
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;

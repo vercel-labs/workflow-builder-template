@@ -1,16 +1,16 @@
-import { atom } from 'jotai';
-import type { Node, Edge, NodeChange, EdgeChange } from '@xyflow/react';
-import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
-import { workflowApi } from './workflow-api';
+import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
+import { applyEdgeChanges, applyNodeChanges } from "@xyflow/react";
+import { atom } from "jotai";
+import { workflowApi } from "./workflow-api";
 
-export type WorkflowNodeType = 'trigger' | 'action' | 'condition' | 'transform';
+export type WorkflowNodeType = "trigger" | "action" | "condition" | "transform";
 
 export type WorkflowNodeData = {
   label: string;
   description?: string;
   type: WorkflowNodeType;
   config?: Record<string, unknown>;
-  status?: 'idle' | 'running' | 'success' | 'error';
+  status?: "idle" | "running" | "success" | "error";
 };
 
 export type WorkflowNode = Node<WorkflowNodeData>;
@@ -24,39 +24,45 @@ export const isExecutingAtom = atom(false);
 export const isLoadingAtom = atom(false);
 export const isGeneratingAtom = atom(false);
 export const currentWorkflowIdAtom = atom<string | null>(null);
-export const currentWorkflowNameAtom = atom<string>('Untitled');
+export const currentWorkflowNameAtom = atom<string>("Untitled");
 export const currentVercelProjectNameAtom = atom<string | null>(null);
 
 // UI state atoms
 export const propertiesPanelWidthAtom = atom<number>(320);
 export const propertiesPanelResizingAtom = atom<boolean>(false);
-export const propertiesPanelActiveTabAtom = atom<string>('runs');
+export const propertiesPanelActiveTabAtom = atom<string>("runs");
 
 // Derived atoms for node/edge operations
-export const onNodesChangeAtom = atom(null, (get, set, changes: NodeChange[]) => {
-  const currentNodes = get(nodesAtom);
-  const newNodes = applyNodeChanges(changes, currentNodes) as WorkflowNode[];
-  set(nodesAtom, newNodes);
+export const onNodesChangeAtom = atom(
+  null,
+  (get, set, changes: NodeChange[]) => {
+    const currentNodes = get(nodesAtom);
+    const newNodes = applyNodeChanges(changes, currentNodes) as WorkflowNode[];
+    set(nodesAtom, newNodes);
 
-  // Sync selection state with selectedNodeAtom
-  const selectedNode = newNodes.find((n) => n.selected);
-  if (selectedNode) {
-    set(selectedNodeAtom, selectedNode.id);
-  } else if (get(selectedNodeAtom)) {
-    // If no node is selected in ReactFlow but we have a selection, clear it
-    const currentSelection = get(selectedNodeAtom);
-    const stillExists = newNodes.find((n) => n.id === currentSelection);
-    if (!stillExists) {
-      set(selectedNodeAtom, null);
+    // Sync selection state with selectedNodeAtom
+    const selectedNode = newNodes.find((n) => n.selected);
+    if (selectedNode) {
+      set(selectedNodeAtom, selectedNode.id);
+    } else if (get(selectedNodeAtom)) {
+      // If no node is selected in ReactFlow but we have a selection, clear it
+      const currentSelection = get(selectedNodeAtom);
+      const stillExists = newNodes.find((n) => n.id === currentSelection);
+      if (!stillExists) {
+        set(selectedNodeAtom, null);
+      }
     }
   }
-});
+);
 
-export const onEdgesChangeAtom = atom(null, (get, set, changes: EdgeChange[]) => {
-  const currentEdges = get(edgesAtom);
-  const newEdges = applyEdgeChanges(changes, currentEdges) as WorkflowEdge[];
-  set(edgesAtom, newEdges);
-});
+export const onEdgesChangeAtom = atom(
+  null,
+  (get, set, changes: EdgeChange[]) => {
+    const currentEdges = get(edgesAtom);
+    const newEdges = applyEdgeChanges(changes, currentEdges) as WorkflowEdge[];
+    set(edgesAtom, newEdges);
+  }
+);
 
 export const addNodeAtom = atom(null, (get, set, node: WorkflowNode) => {
   // Save current state to history before making changes
@@ -96,7 +102,9 @@ export const deleteNodeAtom = atom(null, (get, set, nodeId: string) => {
   set(futureAtom, []);
 
   const newNodes = currentNodes.filter((node) => node.id !== nodeId);
-  const newEdges = currentEdges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId);
+  const newEdges = currentEdges.filter(
+    (edge) => edge.source !== nodeId && edge.target !== nodeId
+  );
 
   set(nodesAtom, newNodes);
   set(edgesAtom, newEdges);
@@ -130,7 +138,7 @@ export const loadWorkflowAtom = atom(null, async (_get, set) => {
       set(currentWorkflowIdAtom, workflow.id);
     }
   } catch (error) {
-    console.error('Failed to load workflow:', error);
+    console.error("Failed to load workflow:", error);
   } finally {
     set(isLoadingAtom, false);
   }
@@ -139,15 +147,24 @@ export const loadWorkflowAtom = atom(null, async (_get, set) => {
 // Save workflow with a name
 export const saveWorkflowAsAtom = atom(
   null,
-  async (get, _set, { name, description }: { name: string; description?: string }) => {
+  async (
+    get,
+    _set,
+    { name, description }: { name: string; description?: string }
+  ) => {
     const nodes = get(nodesAtom);
     const edges = get(edgesAtom);
 
     try {
-      const workflow = await workflowApi.create({ name, description, nodes, edges });
+      const workflow = await workflowApi.create({
+        name,
+        description,
+        nodes,
+        edges,
+      });
       return workflow;
     } catch (error) {
-      console.error('Failed to save workflow:', error);
+      console.error("Failed to save workflow:", error);
       throw error;
     }
   }
@@ -155,7 +172,7 @@ export const saveWorkflowAsAtom = atom(
 
 // Workflow toolbar UI state atoms
 export const isEditingWorkflowNameAtom = atom(false);
-export const editingWorkflowNameAtom = atom('');
+export const editingWorkflowNameAtom = atom("");
 export const showClearDialogAtom = atom(false);
 export const showDeleteDialogAtom = atom(false);
 export const isSavingAtom = atom(false);

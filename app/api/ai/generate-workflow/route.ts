@@ -1,18 +1,18 @@
-import { streamText } from 'ai';
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { streamText } from "ai";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
     if (!session) {
-      return new Response('Unauthorized', { status: 401 });
+      return new Response("Unauthorized", { status: 401 });
     }
 
     const { prompt } = await req.json();
 
     const result = streamText({
-      model: process.env.AI_MODEL || 'openai/gpt-4o-mini',
+      model: process.env.AI_MODEL || "openai/gpt-4o-mini",
       system: `You are a workflow automation expert. Generate a workflow based on the user's description.
           
 Return a JSON object with this structure:
@@ -76,7 +76,7 @@ IMPORTANT:
     });
 
     // Convert stream to text
-    let fullText = '';
+    let fullText = "";
     for await (const chunk of result.textStream) {
       fullText += chunk;
     }
@@ -84,11 +84,12 @@ IMPORTANT:
     const workflowData = JSON.parse(fullText);
     return NextResponse.json(workflowData);
   } catch (error) {
-    console.error('Failed to generate workflow:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Failed to generate workflow:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       {
-        error: 'Failed to generate workflow',
+        error: "Failed to generate workflow",
         details: errorMessage,
       },
       { status: 500 }

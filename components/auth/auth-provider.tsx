@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { ReactNode, useEffect } from 'react';
-import { useSession } from '@/lib/auth-client';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from "next/navigation";
+import { type ReactNode, useEffect } from "react";
+import { useSession } from "@/lib/auth-client";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending, error } = useSession();
@@ -13,8 +13,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Add a timeout to prevent infinite loading
     const timeout = setTimeout(() => {
       if (isPending) {
-        console.warn('Session check timed out, redirecting to login');
-        router.push('/login');
+        console.warn("Session check timed out, redirecting to login");
+        router.push("/login");
       }
     }, 5000);
 
@@ -22,16 +22,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isPending, router]);
 
   useEffect(() => {
-    if (!isPending && !session && pathname !== '/login') {
-      router.push('/login');
+    if (!(isPending || session) && pathname !== "/login") {
+      router.push("/login");
     }
   }, [session, isPending, router, pathname]);
 
   // Show error if session check failed
   if (error) {
-    console.error('Auth error:', error);
-    if (pathname !== '/login') {
-      router.push('/login');
+    console.error("Auth error:", error);
+    if (pathname !== "/login") {
+      router.push("/login");
     }
     return null;
   }

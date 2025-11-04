@@ -1,4 +1,4 @@
-import type { WorkflowNode, WorkflowEdge } from './workflow-store';
+import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 export interface WorkflowData {
   id?: string;
@@ -28,9 +28,9 @@ let autosaveTimeout: NodeJS.Timeout | null = null;
 export const workflowApi = {
   // Get all workflows
   async getAll(): Promise<SavedWorkflow[]> {
-    const response = await fetch('/api/workflows');
+    const response = await fetch("/api/workflows");
     if (!response.ok) {
-      throw new Error('Failed to fetch workflows');
+      throw new Error("Failed to fetch workflows");
     }
     return response.json();
   },
@@ -39,33 +39,36 @@ export const workflowApi = {
   async getById(id: string): Promise<SavedWorkflow> {
     const response = await fetch(`/api/workflows/${id}`);
     if (!response.ok) {
-      throw new Error('Failed to fetch workflow');
+      throw new Error("Failed to fetch workflow");
     }
     return response.json();
   },
 
   // Create a new workflow
   async create(workflow: WorkflowData): Promise<SavedWorkflow> {
-    const response = await fetch('/api/workflows', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(workflow),
     });
     if (!response.ok) {
-      throw new Error('Failed to create workflow');
+      throw new Error("Failed to create workflow");
     }
     return response.json();
   },
 
   // Update a workflow
-  async update(id: string, workflow: Partial<WorkflowData>): Promise<SavedWorkflow> {
+  async update(
+    id: string,
+    workflow: Partial<WorkflowData>
+  ): Promise<SavedWorkflow> {
     const response = await fetch(`/api/workflows/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(workflow),
     });
     if (!response.ok) {
-      throw new Error('Failed to update workflow');
+      throw new Error("Failed to update workflow");
     }
     return response.json();
   },
@@ -73,31 +76,34 @@ export const workflowApi = {
   // Delete a workflow
   async delete(id: string): Promise<void> {
     const response = await fetch(`/api/workflows/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
     if (!response.ok) {
-      throw new Error('Failed to delete workflow');
+      throw new Error("Failed to delete workflow");
     }
   },
 
   // Get current workflow state
   async getCurrent(): Promise<WorkflowData> {
-    const response = await fetch('/api/workflows/current');
+    const response = await fetch("/api/workflows/current");
     if (!response.ok) {
-      throw new Error('Failed to fetch current workflow');
+      throw new Error("Failed to fetch current workflow");
     }
     return response.json();
   },
 
   // Save current workflow state
-  async saveCurrent(nodes: WorkflowNode[], edges: WorkflowEdge[]): Promise<void> {
-    const response = await fetch('/api/workflows/current', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+  async saveCurrent(
+    nodes: WorkflowNode[],
+    edges: WorkflowEdge[]
+  ): Promise<void> {
+    const response = await fetch("/api/workflows/current", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nodes, edges }),
     });
     if (!response.ok) {
-      throw new Error('Failed to save current workflow');
+      throw new Error("Failed to save current workflow");
     }
   },
 
@@ -109,7 +115,7 @@ export const workflowApi = {
 
     autosaveTimeout = setTimeout(() => {
       this.saveCurrent(nodes, edges).catch((error) => {
-        console.error('Auto-save failed:', error);
+        console.error("Auto-save failed:", error);
       });
     }, AUTOSAVE_DELAY);
   },
@@ -118,7 +124,7 @@ export const workflowApi = {
   autoSaveWorkflow(
     id: string,
     data: Partial<WorkflowData>,
-    debounce: boolean = true
+    debounce = true
   ): Promise<SavedWorkflow> | void {
     if (!debounce) {
       return this.update(id, data);
@@ -130,7 +136,7 @@ export const workflowApi = {
 
     autosaveTimeout = setTimeout(() => {
       this.update(id, data).catch((error) => {
-        console.error('Auto-save failed:', error);
+        console.error("Auto-save failed:", error);
       });
     }, AUTOSAVE_DELAY);
   },

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { user, vercelProjects } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { listProjects, createProject } from '@/lib/integrations/vercel';
+import { and, eq } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { user, vercelProjects } from "@/lib/db/schema";
+import { createProject, listProjects } from "@/lib/integrations/vercel";
 
 /**
  * GET /api/user/vercel-projects
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userData = await db.query.user.findFirst({
@@ -26,7 +26,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!userData?.vercelApiToken) {
-      return NextResponse.json({ error: 'Vercel API token not configured' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Vercel API token not configured" },
+        { status: 400 }
+      );
     }
 
     // Fetch projects from Vercel API
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
       teamId: userData.vercelTeamId || undefined,
     });
 
-    if (result.status === 'error') {
+    if (result.status === "error") {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
@@ -47,15 +50,7 @@ export async function GET(request: NextRequest) {
           where: eq(vercelProjects.vercelProjectId, project.id),
         });
 
-        if (!existingProject) {
-          // Insert new project
-          await db.insert(vercelProjects).values({
-            userId: session.user.id,
-            vercelProjectId: project.id,
-            name: project.name,
-            framework: project.framework || null,
-          });
-        } else {
+        if (existingProject) {
           // Update existing project
           await db
             .update(vercelProjects)
@@ -65,6 +60,14 @@ export async function GET(request: NextRequest) {
               updatedAt: new Date(),
             })
             .where(eq(vercelProjects.id, existingProject.id));
+        } else {
+          // Insert new project
+          await db.insert(vercelProjects).values({
+            userId: session.user.id,
+            vercelProjectId: project.id,
+            name: project.name,
+            framework: project.framework || null,
+          });
         }
       }
     }
@@ -77,11 +80,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ projects: localProjects });
   } catch (error) {
-    console.error('Failed to fetch Vercel projects:', error);
+    console.error("Failed to fetch Vercel projects:", error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch Vercel projects',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to fetch Vercel projects",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -97,14 +100,17 @@ export async function POST(request: NextRequest) {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
     const { name, framework } = body;
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: 'Project name is required' }, { status: 400 });
+    if (!(name && name.trim())) {
+      return NextResponse.json(
+        { error: "Project name is required" },
+        { status: 400 }
+      );
     }
 
     const userData = await db.query.user.findFirst({
@@ -127,12 +133,15 @@ export async function POST(request: NextRequest) {
         framework: framework || undefined,
       });
 
-      if (result.status === 'error') {
+      if (result.status === "error") {
         return NextResponse.json({ error: result.error }, { status: 500 });
       }
 
       if (!result.project) {
-        return NextResponse.json({ error: 'Failed to create project on Vercel' }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to create project on Vercel" },
+          { status: 500 }
+        );
       }
 
       vercelProjectId = result.project.id;
@@ -155,11 +164,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ project: newProject });
   } catch (error) {
-    console.error('Failed to create Vercel project:', error);
+    console.error("Failed to create Vercel project:", error);
     return NextResponse.json(
       {
-        error: 'Failed to create Vercel project',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to create Vercel project",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -175,25 +184,33 @@ export async function DELETE(request: NextRequest) {
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const projectId = request.nextUrl.searchParams.get('id');
+    const projectId = request.nextUrl.searchParams.get("id");
     if (!projectId) {
-      return NextResponse.json({ error: 'Project ID required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Project ID required" },
+        { status: 400 }
+      );
     }
 
     await db
       .delete(vercelProjects)
-      .where(and(eq(vercelProjects.id, projectId), eq(vercelProjects.userId, session.user.id)));
+      .where(
+        and(
+          eq(vercelProjects.id, projectId),
+          eq(vercelProjects.userId, session.user.id)
+        )
+      );
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete Vercel project:', error);
+    console.error("Failed to delete Vercel project:", error);
     return NextResponse.json(
       {
-        error: 'Failed to delete Vercel project',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: "Failed to delete Vercel project",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

@@ -1,13 +1,13 @@
-import type { Config } from 'drizzle-kit';
-import * as dotenv from 'dotenv';
+import * as dotenv from "dotenv";
+import type { Config } from "drizzle-kit";
 
 dotenv.config();
 
 export default {
-  schema: './lib/db/schema.ts',
-  out: './drizzle',
-  dialect: 'postgresql',
+  schema: "./lib/db/schema.ts",
+  out: "./drizzle",
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgres://localhost:5432/workflow',
+    url: process.env.DATABASE_URL || "postgres://localhost:5432/workflow",
   },
 } satisfies Config;

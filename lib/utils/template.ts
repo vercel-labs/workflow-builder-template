@@ -18,8 +18,11 @@ export interface NodeOutputs {
  * - Nested fields: {{$nodeId.nested.field}}
  * - Array access: {{$nodeId.items[0]}}
  */
-export function processTemplate(template: string, nodeOutputs: NodeOutputs): string {
-  if (!template || typeof template !== 'string') {
+export function processTemplate(
+  template: string,
+  nodeOutputs: NodeOutputs
+): string {
+  if (!template || typeof template !== "string") {
     return template;
   }
 
@@ -30,18 +33,20 @@ export function processTemplate(template: string, nodeOutputs: NodeOutputs): str
     const trimmed = expression.trim();
 
     // Check if this is a node ID reference (starts with $)
-    const isNodeIdRef = trimmed.startsWith('$');
+    const isNodeIdRef = trimmed.startsWith("$");
 
     if (isNodeIdRef) {
       const withoutDollar = trimmed.substring(1);
 
       // Handle special case: {{$nodeId}} (entire output)
-      if (!withoutDollar.includes('.') && !withoutDollar.includes('[')) {
+      if (!(withoutDollar.includes(".") || withoutDollar.includes("["))) {
         const nodeOutput = nodeOutputs[withoutDollar];
         if (nodeOutput) {
           return formatValue(nodeOutput.data);
         }
-        console.warn(`[Template] Node with ID "${withoutDollar}" not found in outputs`);
+        console.warn(
+          `[Template] Node with ID "${withoutDollar}" not found in outputs`
+        );
         return match;
       }
 
@@ -53,7 +58,7 @@ export function processTemplate(template: string, nodeOutputs: NodeOutputs): str
     } else {
       // Legacy label-based references
       // Handle special case: {{nodeName}} (entire output)
-      if (!trimmed.includes('.') && !trimmed.includes('[')) {
+      if (!(trimmed.includes(".") || trimmed.includes("["))) {
         const nodeOutput = findNodeOutputByLabel(trimmed, nodeOutputs);
         if (nodeOutput) {
           return formatValue(nodeOutput.data);
@@ -87,10 +92,17 @@ export function processConfigTemplates(
   const processed: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(config)) {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       processed[key] = processTemplate(value, nodeOutputs);
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      processed[key] = processConfigTemplates(value as Record<string, unknown>, nodeOutputs);
+    } else if (
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      processed[key] = processConfigTemplates(
+        value as Record<string, unknown>,
+        nodeOutputs
+      );
     } else {
       processed[key] = value;
     }
@@ -114,18 +126,21 @@ function findNodeOutputByLabel(
     }
   }
 
-  return undefined;
+  return;
 }
 
 /**
  * Resolve a dotted/bracketed expression using node ID like "nodeId.field.nested" or "nodeId.items[0]"
  */
-function resolveExpressionById(expression: string, nodeOutputs: NodeOutputs): unknown {
+function resolveExpressionById(
+  expression: string,
+  nodeOutputs: NodeOutputs
+): unknown {
   // Split by dots, but handle array brackets
-  const parts = expression.split('.');
+  const parts = expression.split(".");
 
   if (parts.length === 0) {
-    return undefined;
+    return;
   }
 
   // First part is the node ID
@@ -134,14 +149,17 @@ function resolveExpressionById(expression: string, nodeOutputs: NodeOutputs): un
 
   if (!nodeOutput) {
     console.warn(`[Template] Node with ID "${nodeId}" not found in outputs`);
-    return undefined;
+    return;
   }
 
   // Start with the node's data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let current: any = nodeOutput.data;
 
-  console.log(`[Template] Resolving "${expression}". Node data:`, JSON.stringify(current, null, 2));
+  console.log(
+    `[Template] Resolving "${expression}". Node data:`,
+    JSON.stringify(current, null, 2)
+  );
 
   // Navigate through remaining parts
   for (let i = 1; i < parts.length; i++) {
@@ -155,13 +173,13 @@ function resolveExpressionById(expression: string, nodeOutputs: NodeOutputs): un
     const arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
-      current = current?.[field]?.[parseInt(index, 10)];
+      current = current?.[field]?.[Number.parseInt(index, 10)];
     } else {
       current = current?.[part];
     }
 
     if (current === undefined || current === null) {
-      return undefined;
+      return;
     }
   }
 
@@ -171,12 +189,15 @@ function resolveExpressionById(expression: string, nodeOutputs: NodeOutputs): un
 /**
  * Resolve a dotted/bracketed expression like "nodeName.field.nested" or "nodeName.items[0]"
  */
-function resolveExpression(expression: string, nodeOutputs: NodeOutputs): unknown {
+function resolveExpression(
+  expression: string,
+  nodeOutputs: NodeOutputs
+): unknown {
   // Split by dots, but handle array brackets
-  const parts = expression.split('.');
+  const parts = expression.split(".");
 
   if (parts.length === 0) {
-    return undefined;
+    return;
   }
 
   // First part is the node label
@@ -188,14 +209,17 @@ function resolveExpression(expression: string, nodeOutputs: NodeOutputs): unknow
       `[Template] Node "${nodeLabel}" not found. Available nodes:`,
       Object.values(nodeOutputs).map((n) => n.label)
     );
-    return undefined;
+    return;
   }
 
   // Start with the node's data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let current: any = nodeOutput.data;
 
-  console.log(`[Template] Resolving "${expression}". Node data:`, JSON.stringify(current, null, 2));
+  console.log(
+    `[Template] Resolving "${expression}". Node data:`,
+    JSON.stringify(current, null, 2)
+  );
 
   // Navigate through remaining parts
   for (let i = 1; i < parts.length; i++) {
@@ -209,13 +233,13 @@ function resolveExpression(expression: string, nodeOutputs: NodeOutputs): unknow
     const arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
-      current = current?.[field]?.[parseInt(index, 10)];
+      current = current?.[field]?.[Number.parseInt(index, 10)];
     } else {
       current = current?.[part];
     }
 
     if (current === undefined || current === null) {
-      return undefined;
+      return;
     }
   }
 
@@ -227,23 +251,23 @@ function resolveExpression(expression: string, nodeOutputs: NodeOutputs): unknow
  */
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
-    return '';
+    return "";
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value;
   }
 
-  if (typeof value === 'number' || typeof value === 'boolean') {
+  if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
   }
 
   if (Array.isArray(value)) {
     // Format arrays as comma-separated values
-    return value.map(formatValue).join(', ');
+    return value.map(formatValue).join(", ");
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     // For objects, try to find a meaningful representation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj = value as any;
@@ -266,7 +290,7 @@ function formatValue(value: unknown): string {
  * Returns array of expressions found in {{...}}
  */
 export function extractTemplateVariables(template: string): string[] {
-  if (!template || typeof template !== 'string') {
+  if (!template || typeof template !== "string") {
     return [];
   }
 
@@ -301,13 +325,13 @@ export function getAvailableFields(nodeOutputs: NodeOutputs): Array<{
     // Add the whole node
     fields.push({
       nodeLabel: output.label,
-      field: '',
+      field: "",
       path: `{{${output.label}}}`,
       sample: output.data,
     });
 
     // Add individual fields if data is an object
-    if (output.data && typeof output.data === 'object') {
+    if (output.data && typeof output.data === "object") {
       extractFields(output.data, output.label, fields, `{{${output.label}}`);
     }
   }
@@ -322,12 +346,17 @@ function extractFields(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   obj: any,
   nodeLabel: string,
-  fields: Array<{ nodeLabel: string; field: string; path: string; sample?: unknown }>,
+  fields: Array<{
+    nodeLabel: string;
+    field: string;
+    path: string;
+    sample?: unknown;
+  }>,
   currentPath: string,
   maxDepth = 3,
   currentDepth = 0
 ): void {
-  if (currentDepth >= maxDepth || !obj || typeof obj !== 'object') {
+  if (currentDepth >= maxDepth || !obj || typeof obj !== "object") {
     return;
   }
 
@@ -342,8 +371,15 @@ function extractFields(
     });
 
     // Recurse for nested objects (but not arrays)
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      extractFields(value, nodeLabel, fields, `${currentPath}.${key}`, maxDepth, currentDepth + 1);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      extractFields(
+        value,
+        nodeLabel,
+        fields,
+        `${currentPath}.${key}`,
+        maxDepth,
+        currentDepth + 1
+      );
     }
   }
 }

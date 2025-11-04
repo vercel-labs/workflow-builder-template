@@ -1,4 +1,4 @@
-import type { WorkflowNode, WorkflowEdge } from './workflow-store';
+import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 type ExecutionResult = {
   success: boolean;
@@ -16,12 +16,18 @@ class WorkflowExecutor {
   private nodes: Map<string, WorkflowNode>;
   private edges: WorkflowEdge[];
   private results: Map<string, ExecutionResult>;
-  private onNodeUpdate?: (nodeId: string, status: 'running' | 'success' | 'error') => void;
+  private onNodeUpdate?: (
+    nodeId: string,
+    status: "running" | "success" | "error"
+  ) => void;
 
   constructor(
     nodes: WorkflowNode[],
     edges: WorkflowEdge[],
-    onNodeUpdate?: (nodeId: string, status: 'running' | 'success' | 'error') => void
+    onNodeUpdate?: (
+      nodeId: string,
+      status: "running" | "success" | "error"
+    ) => void
   ) {
     this.nodes = new Map(nodes.map((n) => [n.id, n]));
     this.edges = edges;
@@ -30,18 +36,20 @@ class WorkflowExecutor {
   }
 
   private getNextNodes(nodeId: string): string[] {
-    return this.edges.filter((edge) => edge.source === nodeId).map((edge) => edge.target);
+    return this.edges
+      .filter((edge) => edge.source === nodeId)
+      .map((edge) => edge.target);
   }
 
   private getTriggerNodes(): WorkflowNode[] {
     const nodesWithIncoming = new Set(this.edges.map((e) => e.target));
     return Array.from(this.nodes.values()).filter(
-      (node) => node.data.type === 'trigger' && !nodesWithIncoming.has(node.id)
+      (node) => node.data.type === "trigger" && !nodesWithIncoming.has(node.id)
     );
   }
 
   private async executeNode(node: WorkflowNode): Promise<ExecutionResult> {
-    this.onNodeUpdate?.(node.id, 'running');
+    this.onNodeUpdate?.(node.id, "running");
 
     try {
       // Simulate execution delay for UI
@@ -50,30 +58,41 @@ class WorkflowExecutor {
       let result: ExecutionResult = { success: true };
 
       switch (node.data.type) {
-        case 'trigger':
-          result = { success: true, data: { triggered: true, timestamp: Date.now() } };
+        case "trigger":
+          result = {
+            success: true,
+            data: { triggered: true, timestamp: Date.now() },
+          };
           break;
 
-        case 'action':
+        case "action": {
           // Simulate action execution for UI
           const endpoint = node.data.config?.endpoint as string;
           result = {
             success: true,
             data: {
               endpoint,
-              response: { status: 200, message: 'Action executed successfully' },
+              response: {
+                status: 200,
+                message: "Action executed successfully",
+              },
             },
           };
           break;
+        }
 
-        case 'condition':
+        case "condition": {
           // Simulate condition evaluation
           const condition = node.data.config?.condition as string;
           const conditionResult = Math.random() > 0.5; // Random for demo
-          result = { success: true, data: { condition, result: conditionResult } };
+          result = {
+            success: true,
+            data: { condition, result: conditionResult },
+          };
           break;
+        }
 
-        case 'transform':
+        case "transform": {
           // Simulate data transformation
           const transformType = node.data.config?.transformType as string;
           result = {
@@ -81,21 +100,22 @@ class WorkflowExecutor {
             data: { transformType, transformed: true },
           };
           break;
+        }
 
         default:
-          result = { success: false, error: 'Unknown node type' };
+          result = { success: false, error: "Unknown node type" };
       }
 
       this.results.set(node.id, result);
-      this.onNodeUpdate?.(node.id, 'success');
+      this.onNodeUpdate?.(node.id, "success");
       return result;
     } catch (error) {
       const errorResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
       this.results.set(node.id, errorResult);
-      this.onNodeUpdate?.(node.id, 'error');
+      this.onNodeUpdate?.(node.id, "error");
       return errorResult;
     }
   }
@@ -128,7 +148,7 @@ class WorkflowExecutor {
     const triggerNodes = this.getTriggerNodes();
 
     if (triggerNodes.length === 0) {
-      throw new Error('No trigger nodes found');
+      throw new Error("No trigger nodes found");
     }
 
     // Execute from each trigger node
@@ -143,7 +163,10 @@ class WorkflowExecutor {
 export async function executeWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
-  onNodeUpdate?: (nodeId: string, status: 'running' | 'success' | 'error') => void
+  onNodeUpdate?: (
+    nodeId: string,
+    status: "running" | "success" | "error"
+  ) => void
 ): Promise<Map<string, ExecutionResult>> {
   const executor = new WorkflowExecutor(nodes, edges, onNodeUpdate);
   return await executor.execute();

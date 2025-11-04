@@ -1,29 +1,8 @@
-'use client';
+"use client";
 
-import { useAtom, useSetAtom } from 'jotai';
-import { useEffect, useRef, useState } from 'react';
-import {
-  selectedNodeAtom,
-  nodesAtom,
-  updateNodeDataAtom,
-  deleteNodeAtom,
-  isGeneratingAtom,
-  propertiesPanelWidthAtom,
-  propertiesPanelResizingAtom,
-  propertiesPanelActiveTabAtom,
-  currentWorkflowIdAtom,
-} from '@/lib/workflow-store';
-import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Trash2, MoreVertical } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useAtom, useSetAtom } from "jotai";
+import { MoreVertical, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,11 +12,32 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { TriggerConfig } from './config/trigger-config';
-import { ActionConfig } from './config/action-config';
-import { AvailableOutputs } from './available-outputs';
-import { WorkflowRuns } from './workflow-runs';
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  currentWorkflowIdAtom,
+  deleteNodeAtom,
+  isGeneratingAtom,
+  nodesAtom,
+  propertiesPanelActiveTabAtom,
+  propertiesPanelResizingAtom,
+  propertiesPanelWidthAtom,
+  selectedNodeAtom,
+  updateNodeDataAtom,
+} from "@/lib/workflow-store";
+import { AvailableOutputs } from "./available-outputs";
+import { ActionConfig } from "./config/action-config";
+import { TriggerConfig } from "./config/trigger-config";
+import { WorkflowRuns } from "./workflow-runs";
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 600;
@@ -61,9 +61,9 @@ export function NodeConfigPanel() {
 
   // Load saved width from localStorage after mount to avoid hydration mismatch
   useEffect(() => {
-    const saved = localStorage.getItem('nodeConfigPanelWidth');
+    const saved = localStorage.getItem("nodeConfigPanelWidth");
     if (saved) {
-      const width = parseInt(saved, 10);
+      const width = Number.parseInt(saved, 10);
       if (width >= MIN_WIDTH && width <= MAX_WIDTH) {
         setPanelWidth(width);
       }
@@ -75,8 +75,8 @@ export function NodeConfigPanel() {
     if (!isResizing) return;
 
     // Prevent text selection while resizing
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!panelRef.current) return;
@@ -88,19 +88,19 @@ export function NodeConfigPanel() {
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      localStorage.setItem('nodeConfigPanelWidth', panelWidth.toString());
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
+      localStorage.setItem("nodeConfigPanelWidth", panelWidth.toString());
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
     };
   }, [isResizing, panelWidth, setPanelWidth, setIsResizing]);
 
@@ -120,23 +120,29 @@ export function NodeConfigPanel() {
     if (!currentWorkflowId) return;
 
     try {
-      const response = await fetch(`/api/workflows/${currentWorkflowId}/executions`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const response = await fetch(
+        `/api/workflows/${currentWorkflowId}/executions`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || 'Failed to delete runs');
+        throw new Error(
+          errorData.message || errorData.error || "Failed to delete runs"
+        );
       }
 
-      const { toast } = await import('sonner');
-      toast.success('All runs deleted');
+      const { toast } = await import("sonner");
+      toast.success("All runs deleted");
       setShowDeleteRunsAlert(false);
     } catch (error) {
-      console.error('Failed to delete runs:', error);
-      const { toast } = await import('sonner');
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete runs';
+      console.error("Failed to delete runs:", error);
+      const { toast } = await import("sonner");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to delete runs";
       toast.error(errorMessage);
     }
   };
@@ -145,41 +151,43 @@ export function NodeConfigPanel() {
     return (
       <>
         <Card
-          ref={panelRef}
           className="relative hidden h-full flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:flex"
+          ref={panelRef}
           style={{ width: `${panelWidth}px` }}
         >
           {/* Resize handle */}
           <div
             className="absolute top-0 bottom-0 left-0 z-10 w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600"
             onMouseDown={handleResizeStart}
-            style={{ cursor: isResizing ? 'col-resize' : undefined }}
+            style={{ cursor: isResizing ? "col-resize" : undefined }}
           />
           <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
             <Button
+              className={activeTab === "properties" ? "font-semibold" : ""}
+              onClick={() => setActiveTab("properties")}
               variant="ghost"
-              className={activeTab === 'properties' ? 'font-semibold' : ''}
-              onClick={() => setActiveTab('properties')}
             >
               Properties
             </Button>
             <Button
+              className={activeTab === "runs" ? "font-semibold" : ""}
+              onClick={() => setActiveTab("runs")}
               variant="ghost"
-              className={activeTab === 'runs' ? 'font-semibold' : ''}
-              onClick={() => setActiveTab('runs')}
             >
               Runs
             </Button>
             <div className="ml-auto">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button className="h-8 w-8" size="icon" variant="ghost">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {activeTab === 'runs' && (
-                    <DropdownMenuItem onClick={() => setShowDeleteRunsAlert(true)}>
+                  {activeTab === "runs" && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteRunsAlert(true)}
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete All Runs
                     </DropdownMenuItem>
@@ -189,25 +197,35 @@ export function NodeConfigPanel() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto">
-            {activeTab === 'properties' && (
-              <div className="text-muted-foreground text-sm">Select a node to configure</div>
+            {activeTab === "properties" && (
+              <div className="text-muted-foreground text-sm">
+                Select a node to configure
+              </div>
             )}
-            {activeTab === 'runs' && <WorkflowRuns isActive={activeTab === 'runs'} />}
+            {activeTab === "runs" && (
+              <WorkflowRuns isActive={activeTab === "runs"} />
+            )}
           </CardContent>
         </Card>
 
         {/* Delete All Runs Alert Dialog */}
-        <AlertDialog open={showDeleteRunsAlert} onOpenChange={setShowDeleteRunsAlert}>
+        <AlertDialog
+          onOpenChange={setShowDeleteRunsAlert}
+          open={showDeleteRunsAlert}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete All Runs</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete all workflow runs? This action cannot be undone.
+                Are you sure you want to delete all workflow runs? This action
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteAllRuns}>Delete</AlertDialogAction>
+              <AlertDialogAction onClick={handleDeleteAllRuns}>
+                Delete
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -231,51 +249,58 @@ export function NodeConfigPanel() {
   return (
     <>
       {/* Mobile overlay backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/50 md:hidden" aria-hidden="true" />
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-40 bg-black/50 md:hidden"
+      />
 
       {/* Properties panel - Mobile: Fixed sidebar, Desktop: Resizable sidebar */}
       <Card
-        ref={panelRef}
         className="fixed top-0 right-0 bottom-0 z-50 flex h-full w-80 flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:relative md:z-0"
+        ref={panelRef}
         style={{ width: `${panelWidth}px` }}
       >
         {/* Resize handle - only visible on desktop */}
         <div
           className="absolute top-0 bottom-0 left-0 z-10 hidden w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 md:block"
           onMouseDown={handleResizeStart}
-          style={{ cursor: isResizing ? 'col-resize' : undefined }}
+          style={{ cursor: isResizing ? "col-resize" : undefined }}
         />
         <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
           <Button
+            className={activeTab === "properties" ? "font-semibold" : ""}
+            onClick={() => setActiveTab("properties")}
             variant="ghost"
-            className={activeTab === 'properties' ? 'font-semibold' : ''}
-            onClick={() => setActiveTab('properties')}
           >
             Properties
           </Button>
           <Button
+            className={activeTab === "runs" ? "font-semibold" : ""}
+            onClick={() => setActiveTab("runs")}
             variant="ghost"
-            className={activeTab === 'runs' ? 'font-semibold' : ''}
-            onClick={() => setActiveTab('runs')}
           >
             Runs
           </Button>
           <div className="ml-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button className="h-8 w-8" size="icon" variant="ghost">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {activeTab === 'properties' && (
-                  <DropdownMenuItem onClick={() => setShowDeleteNodeAlert(true)}>
+                {activeTab === "properties" && (
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteNodeAlert(true)}
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete Node
                   </DropdownMenuItem>
                 )}
-                {activeTab === 'runs' && (
-                  <DropdownMenuItem onClick={() => setShowDeleteRunsAlert(true)}>
+                {activeTab === "runs" && (
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteRunsAlert(true)}
+                  >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete All Runs
                   </DropdownMenuItem>
@@ -285,46 +310,54 @@ export function NodeConfigPanel() {
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
-          {activeTab === 'properties' && (
+          {activeTab === "properties" && (
             <div className="space-y-4">
-              {selectedNode.data.type === 'trigger' && (
+              {selectedNode.data.type === "trigger" && (
                 <TriggerConfig
                   config={selectedNode.data.config || {}}
-                  onUpdateConfig={handleUpdateConfig}
                   disabled={isGenerating}
+                  onUpdateConfig={handleUpdateConfig}
                 />
               )}
 
-              {selectedNode.data.type === 'action' && (
+              {selectedNode.data.type === "action" && (
                 <ActionConfig
                   config={selectedNode.data.config || {}}
-                  onUpdateConfig={handleUpdateConfig}
                   disabled={isGenerating}
+                  onUpdateConfig={handleUpdateConfig}
                 />
               )}
 
-              {selectedNode.data.type === 'condition' && (
+              {selectedNode.data.type === "condition" && (
                 <div className="space-y-2">
                   <Label htmlFor="condition">Condition</Label>
                   <Input
-                    id="condition"
-                    value={(selectedNode.data.config?.condition as string) || ''}
-                    onChange={(e) => handleUpdateConfig('condition', e.target.value)}
-                    placeholder="e.g., value > 100"
                     disabled={isGenerating}
+                    id="condition"
+                    onChange={(e) =>
+                      handleUpdateConfig("condition", e.target.value)
+                    }
+                    placeholder="e.g., value > 100"
+                    value={
+                      (selectedNode.data.config?.condition as string) || ""
+                    }
                   />
                 </div>
               )}
 
-              {selectedNode.data.type === 'transform' && (
+              {selectedNode.data.type === "transform" && (
                 <div className="space-y-2">
                   <Label htmlFor="transformType">Transform Type</Label>
                   <Input
-                    id="transformType"
-                    value={(selectedNode.data.config?.transformType as string) || ''}
-                    onChange={(e) => handleUpdateConfig('transformType', e.target.value)}
-                    placeholder="e.g., Map Data, Filter, Aggregate"
                     disabled={isGenerating}
+                    id="transformType"
+                    onChange={(e) =>
+                      handleUpdateConfig("transformType", e.target.value)
+                    }
+                    placeholder="e.g., Map Data, Filter, Aggregate"
+                    value={
+                      (selectedNode.data.config?.transformType as string) || ""
+                    }
                   />
                 </div>
               )}
@@ -332,41 +365,47 @@ export function NodeConfigPanel() {
               <div className="space-y-2">
                 <Label htmlFor="label">Label</Label>
                 <Input
-                  id="label"
-                  value={selectedNode.data.label}
-                  onChange={(e) => handleUpdateLabel(e.target.value)}
                   disabled={isGenerating}
+                  id="label"
+                  onChange={(e) => handleUpdateLabel(e.target.value)}
+                  value={selectedNode.data.label}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Input
+                  disabled={isGenerating}
                   id="description"
-                  value={selectedNode.data.description || ''}
                   onChange={(e) => handleUpdateDescription(e.target.value)}
                   placeholder="Optional description"
-                  disabled={isGenerating}
+                  value={selectedNode.data.description || ""}
                 />
               </div>
 
               {/* Show available outputs from previous nodes */}
-              {(selectedNode.data.type === 'action' ||
-                selectedNode.data.type === 'condition' ||
-                selectedNode.data.type === 'transform') && <AvailableOutputs />}
+              {(selectedNode.data.type === "action" ||
+                selectedNode.data.type === "condition" ||
+                selectedNode.data.type === "transform") && <AvailableOutputs />}
             </div>
           )}
-          {activeTab === 'runs' && <WorkflowRuns isActive={activeTab === 'runs'} />}
+          {activeTab === "runs" && (
+            <WorkflowRuns isActive={activeTab === "runs"} />
+          )}
         </CardContent>
       </Card>
 
       {/* Delete Node Alert Dialog */}
-      <AlertDialog open={showDeleteNodeAlert} onOpenChange={setShowDeleteNodeAlert}>
+      <AlertDialog
+        onOpenChange={setShowDeleteNodeAlert}
+        open={showDeleteNodeAlert}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Node</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this node? This action cannot be undone.
+              Are you sure you want to delete this node? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -377,17 +416,23 @@ export function NodeConfigPanel() {
       </AlertDialog>
 
       {/* Delete All Runs Alert Dialog */}
-      <AlertDialog open={showDeleteRunsAlert} onOpenChange={setShowDeleteRunsAlert}>
+      <AlertDialog
+        onOpenChange={setShowDeleteRunsAlert}
+        open={showDeleteRunsAlert}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete All Runs</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete all workflow runs? This action cannot be undone.
+              Are you sure you want to delete all workflow runs? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAllRuns}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteAllRuns}>
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

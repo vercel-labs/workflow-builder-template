@@ -1,13 +1,13 @@
 export interface ApiCallParams {
   url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   headers?: Record<string, string>;
   body?: unknown;
   timeout?: number;
 }
 
 export interface ApiCallResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   statusCode?: number;
   data?: unknown;
   error?: string;
@@ -17,7 +17,7 @@ export interface ApiCallResult {
  * Make an HTTP API call
  */
 export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
-  const { url, method = 'GET', headers = {}, body, timeout = 30000 } = params;
+  const { url, method = "GET", headers = {}, body, timeout = 30_000 } = params;
 
   try {
     const controller = new AbortController();
@@ -26,7 +26,7 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
     const response = await fetch(url, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...headers,
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -36,9 +36,9 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
     clearTimeout(timeoutId);
 
     let data: unknown;
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get("content-type");
 
-    if (contentType?.includes('application/json')) {
+    if (contentType?.includes("application/json")) {
       data = await response.json();
     } else {
       data = await response.text();
@@ -46,7 +46,7 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
 
     if (!response.ok) {
       return {
-        status: 'error',
+        status: "error",
         statusCode: response.status,
         error: `HTTP ${response.status}: ${response.statusText}`,
         data,
@@ -54,26 +54,26 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
     }
 
     return {
-      status: 'success',
+      status: "success",
       statusCode: response.status,
       data,
     };
   } catch (error) {
     if (error instanceof Error) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         return {
-          status: 'error',
+          status: "error",
           error: `Request timeout after ${timeout}ms`,
         };
       }
       return {
-        status: 'error',
+        status: "error",
         error: error.message,
       };
     }
     return {
-      status: 'error',
-      error: 'Unknown error',
+      status: "error",
+      error: "Unknown error",
     };
   }
 }
@@ -81,8 +81,11 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
 /**
  * Make a GET request
  */
-export async function get(url: string, headers?: Record<string, string>): Promise<ApiCallResult> {
-  return callApi({ url, method: 'GET', headers });
+export async function get(
+  url: string,
+  headers?: Record<string, string>
+): Promise<ApiCallResult> {
+  return callApi({ url, method: "GET", headers });
 }
 
 /**
@@ -93,7 +96,7 @@ export async function post(
   body: unknown,
   headers?: Record<string, string>
 ): Promise<ApiCallResult> {
-  return callApi({ url, method: 'POST', body, headers });
+  return callApi({ url, method: "POST", body, headers });
 }
 
 /**
@@ -104,7 +107,7 @@ export async function put(
   body: unknown,
   headers?: Record<string, string>
 ): Promise<ApiCallResult> {
-  return callApi({ url, method: 'PUT', body, headers });
+  return callApi({ url, method: "PUT", body, headers });
 }
 
 /**
@@ -115,12 +118,15 @@ export async function patch(
   body: unknown,
   headers?: Record<string, string>
 ): Promise<ApiCallResult> {
-  return callApi({ url, method: 'PATCH', body, headers });
+  return callApi({ url, method: "PATCH", body, headers });
 }
 
 /**
  * Make a DELETE request
  */
-export async function del(url: string, headers?: Record<string, string>): Promise<ApiCallResult> {
-  return callApi({ url, method: 'DELETE', headers });
+export async function del(
+  url: string,
+  headers?: Record<string, string>
+): Promise<ApiCallResult> {
+  return callApi({ url, method: "DELETE", headers });
 }

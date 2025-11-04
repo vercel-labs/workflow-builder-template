@@ -1,4 +1,4 @@
-import 'server-only';
+import "server-only";
 
 /**
  * Workflow Integrations
@@ -7,20 +7,20 @@ import 'server-only';
  * SERVER-SIDE ONLY - Do not import in client components
  */
 
-export * from './resend';
-export * from './linear';
-export * from './slack';
-export * from './database';
-export * from './api';
-export * from './vercel';
+export * from "./api";
+export * from "./database";
+export * from "./linear";
+export * from "./resend";
+export * from "./slack";
+export * from "./vercel";
 
 // Helper to get user data (placeholder - should integrate with your auth system)
 export async function getUser(userId: string) {
   // This would normally query your user database
   return {
     id: userId,
-    name: 'John Doe',
-    email: 'john@example.com',
-    plan: 'Pro',
+    name: "John Doe",
+    email: "john@example.com",
+    plan: "Pro",
   };
 }

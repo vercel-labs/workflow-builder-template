@@ -1,17 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { useAtom } from 'jotai';
-import { currentWorkflowIdAtom } from '@/lib/workflow-store';
-import { getRelativeTime } from '@/lib/utils/time';
+import { useAtom } from "jotai";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Loader2,
+  XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { getRelativeTime } from "@/lib/utils/time";
+import { currentWorkflowIdAtom } from "@/lib/workflow-store";
 
 interface ExecutionLog {
   id: string;
   nodeId: string;
   nodeName: string;
   nodeType: string;
-  status: 'pending' | 'running' | 'success' | 'error';
+  status: "pending" | "running" | "success" | "error";
   startedAt: Date;
   completedAt: Date | null;
   duration: string | null;
@@ -21,7 +28,7 @@ interface ExecutionLog {
 interface WorkflowExecution {
   id: string;
   workflowId: string;
-  status: 'pending' | 'running' | 'success' | 'error' | 'cancelled';
+  status: "pending" | "running" | "success" | "error" | "cancelled";
   startedAt: Date;
   completedAt: Date | null;
   duration: string | null;
@@ -48,7 +55,9 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     const loadExecutions = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/workflows/${currentWorkflowId}/executions`);
+        const response = await fetch(
+          `/api/workflows/${currentWorkflowId}/executions`
+        );
         if (response.ok) {
           const data = await response.json();
           setExecutions(Array.isArray(data) ? data : []);
@@ -56,7 +65,7 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
           setExecutions([]);
         }
       } catch (error) {
-        console.error('Failed to load executions:', error);
+        console.error("Failed to load executions:", error);
         setExecutions([]);
       } finally {
         setLoading(false);
@@ -68,17 +77,19 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
   // Poll for new executions when tab is active
   useEffect(() => {
-    if (!isActive || !currentWorkflowId) return;
+    if (!(isActive && currentWorkflowId)) return;
 
     const loadExecutions = async () => {
       try {
-        const response = await fetch(`/api/workflows/${currentWorkflowId}/executions`);
+        const response = await fetch(
+          `/api/workflows/${currentWorkflowId}/executions`
+        );
         if (response.ok) {
           const data = await response.json();
           setExecutions(Array.isArray(data) ? data : []);
         }
       } catch (error) {
-        console.error('Failed to poll executions:', error);
+        console.error("Failed to poll executions:", error);
       }
     };
 
@@ -90,15 +101,20 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     if (logs[executionId]) return; // Already loaded
 
     try {
-      const response = await fetch(`/api/workflows/executions/${executionId}/logs`);
+      const response = await fetch(
+        `/api/workflows/executions/${executionId}/logs`
+      );
       if (response.ok) {
         const data = await response.json();
-        setLogs((prev) => ({ ...prev, [executionId]: Array.isArray(data) ? data : [] }));
+        setLogs((prev) => ({
+          ...prev,
+          [executionId]: Array.isArray(data) ? data : [],
+        }));
       } else {
         setLogs((prev) => ({ ...prev, [executionId]: [] }));
       }
     } catch (error) {
-      console.error('Failed to load execution logs:', error);
+      console.error("Failed to load execution logs:", error);
       setLogs((prev) => ({ ...prev, [executionId]: [] }));
     }
   };
@@ -116,14 +132,14 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle2 className="h-3 w-3 text-green-600" />;
-      case 'error':
+      case "error":
         return <XCircle className="h-3 w-3 text-red-600" />;
-      case 'running':
+      case "running":
         return <Loader2 className="h-3 w-3 animate-spin text-blue-600" />;
       default:
-        return <Clock className="text-muted-foreground h-3 w-3" />;
+        return <Clock className="h-3 w-3 text-muted-foreground" />;
     }
   };
 
@@ -150,9 +166,9 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
         const executionLogs = logs[execution.id] || [];
 
         return (
-          <div key={execution.id} className="border-muted rounded-lg border">
+          <div className="rounded-lg border border-muted" key={execution.id}>
             <div
-              className="hover:bg-muted/50 flex w-full cursor-pointer items-center gap-2 p-2 transition-colors"
+              className="flex w-full cursor-pointer items-center gap-2 p-2 transition-colors hover:bg-muted/50"
               onClick={() => toggleRun(execution.id)}
             >
               {isExpanded ? (
@@ -163,19 +179,21 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
               {getStatusIcon(execution.status)}
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium">
+                  <span className="font-medium text-xs">
                     {getRelativeTime(execution.startedAt)}
                   </span>
                   {execution.duration && (
                     <span className="text-muted-foreground text-xs">
-                      {parseInt(execution.duration) < 1000
+                      {Number.parseInt(execution.duration) < 1000
                         ? `${execution.duration}ms`
-                        : `${(parseInt(execution.duration) / 1000).toFixed(2)}s`}
+                        : `${(Number.parseInt(execution.duration) / 1000).toFixed(2)}s`}
                     </span>
                   )}
                 </div>
                 {execution.error && (
-                  <div className="truncate text-xs text-red-600">{execution.error}</div>
+                  <div className="truncate text-red-600 text-xs">
+                    {execution.error}
+                  </div>
                 )}
               </div>
             </div>
@@ -183,29 +201,38 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
             {isExpanded && (
               <div className="border-muted border-t">
                 {executionLogs.length === 0 ? (
-                  <div className="text-muted-foreground px-2 py-2 text-xs">No steps recorded</div>
+                  <div className="px-2 py-2 text-muted-foreground text-xs">
+                    No steps recorded
+                  </div>
                 ) : (
                   <div className="space-y-1 p-2">
                     {executionLogs.map((log) => (
-                      <div key={log.id} className="hover:bg-muted/30 rounded px-2 py-1.5">
+                      <div
+                        className="rounded px-2 py-1.5 hover:bg-muted/30"
+                        key={log.id}
+                      >
                         <div className="flex items-center gap-2">
                           {getStatusIcon(log.status)}
                           <div className="flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-medium">
+                              <span className="font-medium text-xs">
                                 {log.nodeName || log.nodeType}
                               </span>
                               {log.duration && (
                                 <span className="text-muted-foreground text-xs">
-                                  {parseInt(log.duration) < 1000
+                                  {Number.parseInt(log.duration) < 1000
                                     ? `${log.duration}ms`
-                                    : `${(parseInt(log.duration) / 1000).toFixed(2)}s`}
+                                    : `${(Number.parseInt(log.duration) / 1000).toFixed(2)}s`}
                                 </span>
                               )}
                             </div>
-                            <div className="text-muted-foreground text-xs">{log.nodeType}</div>
+                            <div className="text-muted-foreground text-xs">
+                              {log.nodeType}
+                            </div>
                             {log.error && (
-                              <div className="mt-1 text-xs text-red-600">{log.error}</div>
+                              <div className="mt-1 text-red-600 text-xs">
+                                {log.error}
+                              </div>
                             )}
                           </div>
                         </div>

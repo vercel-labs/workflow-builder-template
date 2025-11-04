@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { UserMenu } from '@/components/workflows/user-menu';
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/workflows/user-menu";
 
 interface AppHeaderProps {
   title?: React.ReactNode;
@@ -16,7 +16,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({
-  title = 'Workflow Builder',
+  title = "Workflow Builder",
   showBackButton,
   onBack,
   actions,
@@ -29,7 +29,7 @@ export function AppHeader({
     if (onBack) {
       onBack();
     } else {
-      router.push('/');
+      router.push("/");
     }
   };
 
@@ -42,15 +42,25 @@ export function AppHeader({
           {/* First line: Back button + Title + Avatar */}
           <div className="flex items-center gap-2">
             {showBackButton && (
-              <Button variant="ghost" size="icon" onClick={handleBack} title="Back to workflows">
+              <Button
+                onClick={handleBack}
+                size="icon"
+                title="Back to workflows"
+                variant="ghost"
+              >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
             {disableTitleLink ? (
-              <div className="min-w-0 flex-1 truncate text-lg font-semibold">{title}</div>
+              <div className="min-w-0 flex-1 truncate font-semibold text-lg">
+                {title}
+              </div>
             ) : (
-              <Link href="/" className="min-w-0 flex-1 transition-opacity hover:opacity-80">
-                <h1 className="truncate text-lg font-semibold">{title}</h1>
+              <Link
+                className="min-w-0 flex-1 transition-opacity hover:opacity-80"
+                href="/"
+              >
+                <h1 className="truncate font-semibold text-lg">{title}</h1>
               </Link>
             )}
             <UserMenu />
@@ -63,15 +73,20 @@ export function AppHeader({
         <div className="hidden items-center justify-between md:flex">
           <div className="flex items-center gap-2">
             {showBackButton && (
-              <Button variant="ghost" size="icon" onClick={handleBack} title="Back to workflows">
+              <Button
+                onClick={handleBack}
+                size="icon"
+                title="Back to workflows"
+                variant="ghost"
+              >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
             {disableTitleLink ? (
-              <div className="text-xl font-semibold">{title}</div>
+              <div className="font-semibold text-xl">{title}</div>
             ) : (
-              <Link href="/" className="transition-opacity hover:opacity-80">
-                <h1 className="text-xl font-semibold">{title}</h1>
+              <Link className="transition-opacity hover:opacity-80" href="/">
+                <h1 className="font-semibold text-xl">{title}</h1>
               </Link>
             )}
           </div>
@@ -90,15 +105,20 @@ export function AppHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {showBackButton && (
-            <Button variant="ghost" size="icon" onClick={handleBack} title="Back to workflows">
+            <Button
+              onClick={handleBack}
+              size="icon"
+              title="Back to workflows"
+              variant="ghost"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
           {disableTitleLink ? (
-            <div className="text-xl font-semibold">{title}</div>
+            <div className="font-semibold text-xl">{title}</div>
           ) : (
-            <Link href="/" className="transition-opacity hover:opacity-80">
-              <h1 className="text-xl font-semibold">{title}</h1>
+            <Link className="transition-opacity hover:opacity-80" href="/">
+              <h1 className="font-semibold text-xl">{title}</h1>
             </Link>
           )}
         </div>
