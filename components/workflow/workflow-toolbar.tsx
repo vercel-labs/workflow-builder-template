@@ -2,6 +2,7 @@
 
 import { useAtom, useSetAtom } from "jotai";
 import {
+  ArrowLeftIcon,
   Check,
   ChevronDown,
   Code,
@@ -21,7 +22,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -70,6 +70,8 @@ import {
   undoAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
+import { Panel } from "../ai-elements/panel";
+import { UserMenu } from "../workflows/user-menu";
 
 type WorkflowToolbarProps = {
   workflowId?: string;
@@ -626,15 +628,28 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     </>
   );
 
+  const handleBack = () => {
+    router.push("/");
+  };
+
   return (
     <>
-      <AppHeader
-        actions={actions}
-        disableTitleLink
-        showBackButton
-        title={titleElement}
-        useMobileTwoLineLayout
-      />
+      <Panel className="flex items-center gap-2 pr-4" position="top-left">
+        <Button
+          onClick={handleBack}
+          size="icon"
+          title="Back to workflows"
+          variant="ghost"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+        </Button>
+        <p className="font-medium">{workflowName}</p>
+      </Panel>
+
+      <Panel className="flex items-center gap-2 pr-4" position="top-right">
+        {actions}
+        <UserMenu />
+      </Panel>
 
       {/* Clear Workflow Dialog */}
       <Dialog onOpenChange={setShowClearDialog} open={showClearDialog}>
