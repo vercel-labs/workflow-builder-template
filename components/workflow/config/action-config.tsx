@@ -26,15 +26,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="actionType" className="text-xs">
-          Action Type
-        </Label>
+        <Label htmlFor="actionType">Action Type</Label>
         <Select
           value={(config?.actionType as string) || 'HTTP Request'}
           onValueChange={(value) => onUpdateConfig('actionType', value)}
           disabled={disabled}
         >
-          <SelectTrigger id="actionType">
+          <SelectTrigger id="actionType" className="w-full">
             <SelectValue placeholder="Select action type" />
           </SelectTrigger>
           <SelectContent>
@@ -84,9 +82,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Send Email' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="emailTo" className="text-xs">
-              To (Email Address)
-            </Label>
+            <Label htmlFor="emailTo">To (Email Address)</Label>
             <Input
               id="emailTo"
               value={(config?.emailTo as string) || ''}
@@ -96,9 +92,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="emailSubject" className="text-xs">
-              Subject
-            </Label>
+            <Label htmlFor="emailSubject">Subject</Label>
             <Input
               id="emailSubject"
               value={(config?.emailSubject as string) || ''}
@@ -108,9 +102,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="emailBody" className="text-xs">
-              Body
-            </Label>
+            <Label htmlFor="emailBody">Body</Label>
             <Textarea
               id="emailBody"
               value={(config?.emailBody as string) || ''}
@@ -127,9 +119,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Send Slack Message' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="slackChannel" className="text-xs">
-              Channel
-            </Label>
+            <Label htmlFor="slackChannel">Channel</Label>
             <Input
               id="slackChannel"
               value={(config?.slackChannel as string) || ''}
@@ -139,9 +129,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slackMessage" className="text-xs">
-              Message
-            </Label>
+            <Label htmlFor="slackMessage">Message</Label>
             <Textarea
               id="slackMessage"
               value={(config?.slackMessage as string) || ''}
@@ -158,9 +146,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Create Ticket' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="ticketTitle" className="text-xs">
-              Ticket Title
-            </Label>
+            <Label htmlFor="ticketTitle">Ticket Title</Label>
             <Input
               id="ticketTitle"
               value={(config?.ticketTitle as string) || ''}
@@ -170,9 +156,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ticketDescription" className="text-xs">
-              Description
-            </Label>
+            <Label htmlFor="ticketDescription">Description</Label>
             <Textarea
               id="ticketDescription"
               value={(config?.ticketDescription as string) || ''}
@@ -183,15 +167,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ticketPriority" className="text-xs">
-              Priority
-            </Label>
+            <Label htmlFor="ticketPriority">Priority</Label>
             <Select
               value={(config?.ticketPriority as string) || '2'}
               onValueChange={(value) => onUpdateConfig('ticketPriority', value)}
               disabled={disabled}
             >
-              <SelectTrigger id="ticketPriority">
+              <SelectTrigger id="ticketPriority" className="w-full">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
@@ -210,9 +192,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Find Issues' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="linearAssigneeId" className="text-xs">
-              Assignee (User ID)
-            </Label>
+            <Label htmlFor="linearAssigneeId">Assignee (User ID)</Label>
             <Input
               id="linearAssigneeId"
               value={(config?.linearAssigneeId as string) || ''}
@@ -222,9 +202,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="linearTeamId" className="text-xs">
-              Team ID (optional)
-            </Label>
+            <Label htmlFor="linearTeamId">Team ID (optional)</Label>
             <Input
               id="linearTeamId"
               value={(config?.linearTeamId as string) || ''}
@@ -234,15 +212,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="linearStatus" className="text-xs">
-              Status (optional)
-            </Label>
+            <Label htmlFor="linearStatus">Status (optional)</Label>
             <Select
               value={(config?.linearStatus as string) || 'any'}
               onValueChange={(value) => onUpdateConfig('linearStatus', value)}
               disabled={disabled}
             >
-              <SelectTrigger id="linearStatus">
+              <SelectTrigger id="linearStatus" className="w-full">
                 <SelectValue placeholder="Any status" />
               </SelectTrigger>
               <SelectContent>
@@ -256,9 +232,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="linearLabel" className="text-xs">
-              Label (optional)
-            </Label>
+            <Label htmlFor="linearLabel">Label (optional)</Label>
             <Input
               id="linearLabel"
               value={(config?.linearLabel as string) || ''}
@@ -274,9 +248,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Database Query' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="dbQuery" className="text-xs">
-              SQL Query
-            </Label>
+            <Label htmlFor="dbQuery">SQL Query</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
                 height="150px"
@@ -295,9 +267,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="dbTable" className="text-xs">
-              Table Name (optional)
-            </Label>
+            <Label htmlFor="dbTable">Table Name (optional)</Label>
             <Input
               id="dbTable"
               value={(config?.dbTable as string) || ''}
@@ -313,15 +283,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'HTTP Request' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="httpMethod" className="text-xs">
-              HTTP Method
-            </Label>
+            <Label htmlFor="httpMethod">HTTP Method</Label>
             <Select
               value={(config?.httpMethod as string) || 'POST'}
               onValueChange={(value) => onUpdateConfig('httpMethod', value)}
               disabled={disabled}
             >
-              <SelectTrigger id="httpMethod">
+              <SelectTrigger id="httpMethod" className="w-full">
                 <SelectValue placeholder="Select method" />
               </SelectTrigger>
               <SelectContent>
@@ -334,9 +302,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="endpoint" className="text-xs">
-              URL
-            </Label>
+            <Label htmlFor="endpoint">URL</Label>
             <Input
               id="endpoint"
               value={(config?.endpoint as string) || ''}
@@ -346,9 +312,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="httpHeaders" className="text-xs">
-              Headers (JSON)
-            </Label>
+            <Label htmlFor="httpHeaders">Headers (JSON)</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
                 height="100px"
@@ -367,9 +331,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="httpBody" className="text-xs">
-              Body (JSON)
-            </Label>
+            <Label htmlFor="httpBody">Body (JSON)</Label>
             <div className="overflow-hidden rounded-md border">
               <Editor
                 height="120px"
@@ -394,15 +356,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Generate Text' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="aiModel" className="text-xs">
-              Model
-            </Label>
+            <Label htmlFor="aiModel">Model</Label>
             <Select
               value={(config?.aiModel as string) || 'gpt-4o-mini'}
               onValueChange={(value) => onUpdateConfig('aiModel', value)}
               disabled={disabled}
             >
-              <SelectTrigger id="aiModel">
+              <SelectTrigger id="aiModel" className="w-full">
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
@@ -415,9 +375,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="aiPrompt" className="text-xs">
-              Prompt
-            </Label>
+            <Label htmlFor="aiPrompt">Prompt</Label>
             <Textarea
               id="aiPrompt"
               value={(config?.aiPrompt as string) || ''}
@@ -434,15 +392,13 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
       {config?.actionType === 'Generate Image' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="imageModel" className="text-xs">
-              Model
-            </Label>
+            <Label htmlFor="imageModel">Model</Label>
             <Select
               value={(config?.imageModel as string) || 'openai/dall-e-3'}
               onValueChange={(value) => onUpdateConfig('imageModel', value)}
               disabled={disabled}
             >
-              <SelectTrigger id="imageModel">
+              <SelectTrigger id="imageModel" className="w-full">
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
@@ -458,9 +414,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="imagePrompt" className="text-xs">
-              Prompt
-            </Label>
+            <Label htmlFor="imagePrompt">Prompt</Label>
             <Textarea
               id="imagePrompt"
               value={(config?.imagePrompt as string) || ''}

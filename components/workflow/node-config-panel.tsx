@@ -1,7 +1,7 @@
 'use client';
 
 import { useAtom, useSetAtom } from 'jotai';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   selectedNodeAtom,
   nodesAtom,
@@ -11,13 +11,29 @@ import {
   propertiesPanelWidthAtom,
   propertiesPanelResizingAtom,
   propertiesPanelActiveTabAtom,
+  currentWorkflowIdAtom,
 } from '@/lib/workflow-store';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, MoreVertical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { TriggerConfig } from './config/trigger-config';
 import { ActionConfig } from './config/action-config';
 import { AvailableOutputs } from './available-outputs';
@@ -30,12 +46,16 @@ export function NodeConfigPanel() {
   const [selectedNodeId] = useAtom(selectedNodeAtom);
   const [nodes] = useAtom(nodesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
+  const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
   const [panelWidth, setPanelWidth] = useAtom(propertiesPanelWidthAtom);
   const [isResizing, setIsResizing] = useAtom(propertiesPanelResizingAtom);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
+  const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 
@@ -89,41 +109,109 @@ export function NodeConfigPanel() {
     setIsResizing(true);
   };
 
+  const handleDelete = () => {
+    if (selectedNodeId) {
+      deleteNode(selectedNodeId);
+      setShowDeleteNodeAlert(false);
+    }
+  };
+
+  const handleDeleteAllRuns = async () => {
+    if (!currentWorkflowId) return;
+
+    try {
+      const response = await fetch(`/api/workflows/${currentWorkflowId}/executions`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || 'Failed to delete runs');
+      }
+
+      const { toast } = await import('sonner');
+      toast.success('All runs deleted');
+      setShowDeleteRunsAlert(false);
+    } catch (error) {
+      console.error('Failed to delete runs:', error);
+      const { toast } = await import('sonner');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete runs';
+      toast.error(errorMessage);
+    }
+  };
+
   if (!selectedNode) {
     return (
-      <Card
-        ref={panelRef}
-        className="relative hidden h-full flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:flex"
-        style={{ width: `${panelWidth}px` }}
-      >
-        {/* Resize handle */}
-        <div
-          className="absolute top-0 bottom-0 left-0 z-10 w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600"
-          onMouseDown={handleResizeStart}
-          style={{ cursor: isResizing ? 'col-resize' : undefined }}
-        />
-        <CardHeader>
-          <CardTitle className="text-lg">Workflow</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="properties" className="flex-1">
-                Properties
-              </TabsTrigger>
-              <TabsTrigger value="runs" className="flex-1">
-                Runs
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="properties" className="mt-4">
+      <>
+        <Card
+          ref={panelRef}
+          className="relative hidden h-full flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:flex"
+          style={{ width: `${panelWidth}px` }}
+        >
+          {/* Resize handle */}
+          <div
+            className="absolute top-0 bottom-0 left-0 z-10 w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600"
+            onMouseDown={handleResizeStart}
+            style={{ cursor: isResizing ? 'col-resize' : undefined }}
+          />
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
+            <Button
+              variant="ghost"
+              className={activeTab === 'properties' ? 'font-semibold' : ''}
+              onClick={() => setActiveTab('properties')}
+            >
+              Properties
+            </Button>
+            <Button
+              variant="ghost"
+              className={activeTab === 'runs' ? 'font-semibold' : ''}
+              onClick={() => setActiveTab('runs')}
+            >
+              Runs
+            </Button>
+            <div className="ml-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {activeTab === 'runs' && (
+                    <DropdownMenuItem onClick={() => setShowDeleteRunsAlert(true)}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete All Runs
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto">
+            {activeTab === 'properties' && (
               <div className="text-muted-foreground text-sm">Select a node to configure</div>
-            </TabsContent>
-            <TabsContent value="runs" className="mt-4">
-              <WorkflowRuns isActive={activeTab === 'runs'} />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            )}
+            {activeTab === 'runs' && <WorkflowRuns isActive={activeTab === 'runs'} />}
+          </CardContent>
+        </Card>
+
+        {/* Delete All Runs Alert Dialog */}
+        <AlertDialog open={showDeleteRunsAlert} onOpenChange={setShowDeleteRunsAlert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete All Runs</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete all workflow runs? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAllRuns}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 
@@ -138,12 +226,6 @@ export function NodeConfigPanel() {
   const handleUpdateConfig = (key: string, value: string) => {
     const newConfig = { ...selectedNode.data.config, [key]: value };
     updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
-  };
-
-  const handleDelete = () => {
-    if (selectedNodeId) {
-      deleteNode(selectedNodeId);
-    }
   };
 
   return (
@@ -163,20 +245,90 @@ export function NodeConfigPanel() {
           onMouseDown={handleResizeStart}
           style={{ cursor: isResizing ? 'col-resize' : undefined }}
         />
-        <CardHeader>
-          <CardTitle className="text-lg">Workflow</CardTitle>
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
+          <Button
+            variant="ghost"
+            className={activeTab === 'properties' ? 'font-semibold' : ''}
+            onClick={() => setActiveTab('properties')}
+          >
+            Properties
+          </Button>
+          <Button
+            variant="ghost"
+            className={activeTab === 'runs' ? 'font-semibold' : ''}
+            onClick={() => setActiveTab('runs')}
+          >
+            Runs
+          </Button>
+          <div className="ml-auto">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {activeTab === 'properties' && (
+                  <DropdownMenuItem onClick={() => setShowDeleteNodeAlert(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Node
+                  </DropdownMenuItem>
+                )}
+                {activeTab === 'runs' && (
+                  <DropdownMenuItem onClick={() => setShowDeleteRunsAlert(true)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete All Runs
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="properties" className="flex-1">
-                Properties
-              </TabsTrigger>
-              <TabsTrigger value="runs" className="flex-1">
-                Runs
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="properties" className="mt-4 space-y-4">
+          {activeTab === 'properties' && (
+            <div className="space-y-4">
+              {selectedNode.data.type === 'trigger' && (
+                <TriggerConfig
+                  config={selectedNode.data.config || {}}
+                  onUpdateConfig={handleUpdateConfig}
+                  disabled={isGenerating}
+                />
+              )}
+
+              {selectedNode.data.type === 'action' && (
+                <ActionConfig
+                  config={selectedNode.data.config || {}}
+                  onUpdateConfig={handleUpdateConfig}
+                  disabled={isGenerating}
+                />
+              )}
+
+              {selectedNode.data.type === 'condition' && (
+                <div className="space-y-2">
+                  <Label htmlFor="condition">Condition</Label>
+                  <Input
+                    id="condition"
+                    value={(selectedNode.data.config?.condition as string) || ''}
+                    onChange={(e) => handleUpdateConfig('condition', e.target.value)}
+                    placeholder="e.g., value > 100"
+                    disabled={isGenerating}
+                  />
+                </div>
+              )}
+
+              {selectedNode.data.type === 'transform' && (
+                <div className="space-y-2">
+                  <Label htmlFor="transformType">Transform Type</Label>
+                  <Input
+                    id="transformType"
+                    value={(selectedNode.data.config?.transformType as string) || ''}
+                    onChange={(e) => handleUpdateConfig('transformType', e.target.value)}
+                    placeholder="e.g., Map Data, Filter, Aggregate"
+                    disabled={isGenerating}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="label">Label</Label>
                 <Input
@@ -202,76 +354,43 @@ export function NodeConfigPanel() {
               {(selectedNode.data.type === 'action' ||
                 selectedNode.data.type === 'condition' ||
                 selectedNode.data.type === 'transform') && <AvailableOutputs />}
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Configuration</Label>
-                <div className="space-y-2">
-                  {selectedNode.data.type === 'trigger' && (
-                    <TriggerConfig
-                      config={selectedNode.data.config || {}}
-                      onUpdateConfig={handleUpdateConfig}
-                      disabled={isGenerating}
-                    />
-                  )}
-
-                  {selectedNode.data.type === 'action' && (
-                    <ActionConfig
-                      config={selectedNode.data.config || {}}
-                      onUpdateConfig={handleUpdateConfig}
-                      disabled={isGenerating}
-                    />
-                  )}
-
-                  {selectedNode.data.type === 'condition' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="condition" className="text-xs">
-                        Condition
-                      </Label>
-                      <Input
-                        id="condition"
-                        value={(selectedNode.data.config?.condition as string) || ''}
-                        onChange={(e) => handleUpdateConfig('condition', e.target.value)}
-                        placeholder="e.g., value > 100"
-                        disabled={isGenerating}
-                      />
-                    </div>
-                  )}
-
-                  {selectedNode.data.type === 'transform' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="transformType" className="text-xs">
-                        Transform Type
-                      </Label>
-                      <Input
-                        id="transformType"
-                        value={(selectedNode.data.config?.transformType as string) || ''}
-                        onChange={(e) => handleUpdateConfig('transformType', e.target.value)}
-                        placeholder="e.g., Map Data, Filter, Aggregate"
-                        disabled={isGenerating}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={handleDelete}
-                  disabled={isGenerating}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Node
-                </Button>
-              </div>
-            </TabsContent>
-            <TabsContent value="runs" className="mt-4">
-              <WorkflowRuns isActive={activeTab === 'runs'} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
+          {activeTab === 'runs' && <WorkflowRuns isActive={activeTab === 'runs'} />}
         </CardContent>
       </Card>
+
+      {/* Delete Node Alert Dialog */}
+      <AlertDialog open={showDeleteNodeAlert} onOpenChange={setShowDeleteNodeAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Node</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this node? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Runs Alert Dialog */}
+      <AlertDialog open={showDeleteRunsAlert} onOpenChange={setShowDeleteRunsAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Runs</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all workflow runs? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAllRuns}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
