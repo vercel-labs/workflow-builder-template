@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useAtom } from 'jotai';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -186,81 +185,33 @@ export function WorkflowPrompt() {
             <PromptInputTextarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your workflow..." ref={textareaRef} />
           </PromptInputBody>
           <PromptInputFooter>
-            <div />
+            <Select
+              value={selectedProjectId}
+              onValueChange={handleProjectChange}
+              disabled={isGenerating}
+            >
+              <SelectTrigger className="border-none hover:bg-accent shadow-none">
+                <SelectValue placeholder="Select project (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No project</SelectItem>
+                {vercelProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+                <SelectItem value="new" className="text-primary">
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span>New Project</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <PromptInputSubmit status={isGenerating ? 'submitted' : 'ready'} />
           </PromptInputFooter>
         </PromptInput>
       </PromptInputProvider>
-
-      <form onSubmit={handleGenerate}>
-        <div className="bg-muted/30 relative cursor-text overflow-hidden rounded-2xl border shadow-sm">
-          {/* Textarea */}
-          <div className="relative bg-transparent">
-            <Textarea
-              ref={textareaRef}
-              placeholder="Describe your workflow..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={isGenerating}
-              required
-              rows={3}
-              autoFocus
-              className="w-full resize-none border-0 bg-transparent! p-4 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
-          </div>
-
-          {/* Project Selection and Submit Button */}
-          <div className="p-4 pt-0">
-            <div className="flex items-center justify-between gap-2">
-              {/* Left side: Project Selector */}
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                {session && (
-                  <Select
-                    value={selectedProjectId}
-                    onValueChange={handleProjectChange}
-                    disabled={isGenerating}
-                  >
-                    <SelectTrigger className="h-8 w-auto min-w-[180px] shrink-0 border-0 bg-transparent shadow-none focus:ring-0">
-                      <SelectValue placeholder="Select project (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No project</SelectItem>
-                      {vercelProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="new" className="text-primary">
-                        <div className="flex items-center gap-2">
-                          <Plus className="h-4 w-4" />
-                          <span>New Project</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Right side: Submit Button */}
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  type="submit"
-                  disabled={isGenerating || !prompt.trim()}
-                  size="sm"
-                  className="h-8 w-8 rounded-full p-0"
-                >
-                  {isGenerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowUp className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </form>
 
       {/* New Project Dialog */}
       <Dialog open={showNewProjectDialog} onOpenChange={setShowNewProjectDialog}>
