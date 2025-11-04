@@ -23,11 +23,11 @@ import {
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 
-function WorkflowEditor({
-  params,
-}: {
+type WorkflowPageProps = {
   params: Promise<{ workflowId: string }>;
-}) {
+};
+
+const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const { workflowId } = use(params);
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
@@ -266,18 +266,14 @@ function WorkflowEditor({
       </div>
     </div>
   );
-}
+};
 
-export default function WorkflowPage({
-  params,
-}: {
-  params: Promise<{ workflowId: string }>;
-}) {
-  return (
-    <Provider>
-      <AuthProvider>
-        <WorkflowEditor params={params} />
-      </AuthProvider>
-    </Provider>
-  );
-}
+const WorkflowPage = ({ params }: WorkflowPageProps) => (
+  <Provider>
+    <AuthProvider>
+      <WorkflowEditor params={params} />
+    </AuthProvider>
+  </Provider>
+);
+
+export default WorkflowPage;
