@@ -70,7 +70,11 @@ import {
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 
-export function WorkflowToolbar({}: { workflowId?: string }) {
+type WorkflowToolbarProps = {
+  workflowId?: string;
+};
+
+export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const [nodes] = useAtom(nodesAtom);
   const [edges] = useAtom(edgesAtom);
   const [isExecuting, setIsExecuting] = useAtom(isExecutingAtom);
@@ -160,9 +164,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     setIsExecuting(true);
 
     // Set all nodes to idle first
-    nodes.forEach((node) => {
+    for (const node of nodes) {
       updateNodeData({ id: node.id, data: { status: "idle" } });
-    });
+    }
 
     try {
       // Call the server API to execute the workflow
@@ -190,12 +194,12 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
 
       // Update all nodes to success (in production, we'd stream status updates)
       // For now, just mark them all as success or check the result
-      nodes.forEach((node) => {
+      for (const node of nodes) {
         updateNodeData({
           id: node.id,
           data: { status: result.status === "error" ? "error" : "success" },
         });
-      });
+      }
     } catch (error) {
       console.error("Failed to execute workflow:", error);
       toast.error(
@@ -203,9 +207,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       );
 
       // Mark all nodes as error
-      nodes.forEach((node) => {
+      for (const node of nodes) {
         updateNodeData({ id: node.id, data: { status: "error" } });
-      });
+      }
     } finally {
       setIsExecuting(false);
     }
@@ -246,7 +250,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   };
 
   const handleSave = async () => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -266,7 +272,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   };
 
   const handleDeleteWorkflow = async () => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      return;
+    }
 
     try {
       await workflowApi.delete(currentWorkflowId);
@@ -280,7 +288,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   };
 
   const handleChangeProject = async () => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      return;
+    }
 
     try {
       const newProjectId =
@@ -383,7 +393,9 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   }, [currentWorkflowId]);
 
   const handleViewCode = async () => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      return;
+    }
 
     try {
       const response = await fetch(`/api/workflows/${currentWorkflowId}/code`);
@@ -746,4 +758,4 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
       </Dialog>
     </>
   );
-}
+};
