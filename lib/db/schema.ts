@@ -93,6 +93,11 @@ export const workflows = pgTable('workflows', {
   nodes: jsonb('nodes').notNull().$type<Array<any>>(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   edges: jsonb('edges').notNull().$type<Array<any>>(),
+  deploymentStatus: text('deployment_status')
+    .$type<'none' | 'pending' | 'deploying' | 'deployed' | 'failed'>()
+    .default('none'),
+  deploymentUrl: text('deployment_url'),
+  lastDeployedAt: timestamp('last_deployed_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

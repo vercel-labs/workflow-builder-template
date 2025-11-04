@@ -15,6 +15,13 @@
       "when": 1762235788438,
       "tag": "0001_tired_lockheed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762238873197,
+      "tag": "0002_lovely_mathemanic",
+      "breakpoints": true
     }
   ]
 }
