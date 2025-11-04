@@ -33,11 +33,11 @@ export const WorkflowIndexPrompt = () => {
   };
 
   return (
-    <div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10">
+    <div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 z-10 w-full">
       <div className="flex flex-1 flex-col items-center justify-center p-8">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-lg">
           <div className="mb-8 text-center">
-            <h1 className="mb-2 font-bold text-4xl">
+            <h1 className="mb-2 font-semibold text-3xl">
               Workflow Builder Template
             </h1>
             <p className="text-muted-foreground text-sm">

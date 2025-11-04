@@ -170,7 +170,7 @@ export function WorkflowPrompt() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="mx-auto w-full max-w-lg">
       <PromptInputProvider>
         <PromptInput
           className="bg-background"
