@@ -78,7 +78,10 @@ export function NodeToolbar() {
   };
 
   return (
-    <Panel className="flex items-center gap-1" position="bottom-center">
+    <Panel
+      className="-translate-x-[178px] flex items-center gap-1"
+      position="bottom-center"
+    >
       {nodeTemplates.map((template) => (
         <Button
           disabled={isGenerating}
