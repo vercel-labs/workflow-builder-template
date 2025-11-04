@@ -9,29 +9,37 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 const nodeTemplates = [
   {
     type: 'trigger' as WorkflowNodeType,
-    label: 'Trigger',
-    description: 'Start your workflow',
+    label: '',
+    description: '',
+    displayLabel: 'Trigger',
+    displayDescription: 'Start your workflow',
     icon: PlayCircle,
     defaultConfig: { triggerType: 'Manual' },
   },
   {
     type: 'action' as WorkflowNodeType,
-    label: 'Action',
-    description: 'Perform an action',
+    label: '',
+    description: '',
+    displayLabel: 'Action',
+    displayDescription: 'Perform an action',
     icon: Zap,
-    defaultConfig: { actionType: 'HTTP Request', endpoint: 'https://api.example.com' },
+    defaultConfig: { actionType: 'HTTP Request' },
   },
   {
     type: 'condition' as WorkflowNodeType,
-    label: 'Condition',
-    description: 'Branch your workflow',
+    label: '',
+    description: '',
+    displayLabel: 'Condition',
+    displayDescription: 'Branch your workflow',
     icon: GitBranch,
     defaultConfig: { condition: 'If true' },
   },
   {
     type: 'transform' as WorkflowNodeType,
-    label: 'Transform',
-    description: 'Transform data',
+    label: '',
+    description: '',
+    displayLabel: 'Transform',
+    displayDescription: 'Transform data',
     icon: Shuffle,
     defaultConfig: { transformType: 'Map Data' },
   },
@@ -83,8 +91,8 @@ export function NodeLibrary() {
               <div className="flex items-start gap-3">
                 <Icon className="mt-0.5 h-5 w-5" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{template.label}</div>
-                  <div className="text-muted-foreground text-xs">{template.description}</div>
+                  <div className="text-sm font-medium">{template.displayLabel}</div>
+                  <div className="text-muted-foreground text-xs">{template.displayDescription}</div>
                 </div>
               </div>
             </button>

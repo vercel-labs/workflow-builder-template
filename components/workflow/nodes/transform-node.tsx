@@ -15,23 +15,29 @@ import type { WorkflowNodeData } from '@/lib/workflow-store';
 export const TransformNode = memo(({ data, selected }: NodeProps) => {
   const nodeData = data as WorkflowNodeData;
   if (!nodeData) return null;
+
+  const transformType = (nodeData.config?.transformType as string) || 'Map Data';
+  const displayTitle = nodeData.label || transformType;
+  const displayDescription = nodeData.description || 'Transform';
+  const hasContent = !!transformType;
+
   return (
     <Node
       handles={{ target: true, source: true }}
       className={selected ? 'ring-primary rounded-md ring-2' : ''}
     >
-      <NodeHeader>
+      <NodeHeader className={!hasContent ? 'rounded-b-md border-b-0' : ''}>
         <div className="flex items-center gap-2">
           <Shuffle className="h-4 w-4" />
-          <NodeTitle>{nodeData.label}</NodeTitle>
+          <NodeTitle>{displayTitle}</NodeTitle>
         </div>
-        {nodeData.description && <NodeDescription>{nodeData.description}</NodeDescription>}
+        {displayDescription && <NodeDescription>{displayDescription}</NodeDescription>}
       </NodeHeader>
-      <NodeContent>
-        <div className="text-muted-foreground text-xs">
-          Transform: {(nodeData.config?.transformType as string) || 'Map Data'}
-        </div>
-      </NodeContent>
+      {hasContent && (
+        <NodeContent>
+          <div className="text-muted-foreground text-xs">{transformType}</div>
+        </NodeContent>
+      )}
     </Node>
   );
 });

@@ -181,7 +181,6 @@
 /* Node Width */
 .node-container {
   width: 280px;
-  min-height: 100px;
 }
 
 /* Remove ReactFlow default node shadow */

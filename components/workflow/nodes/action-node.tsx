@@ -12,33 +12,49 @@ import {
 import { Zap } from 'lucide-react';
 import type { WorkflowNodeData } from '@/lib/workflow-store';
 
+// Helper to get integration name from action type
+const getIntegrationFromActionType = (actionType: string): string => {
+  const integrationMap: Record<string, string> = {
+    'Send Email': 'Resend',
+    'Send Slack Message': 'Slack',
+    'Create Ticket': 'Linear',
+    'Find Issues': 'Linear',
+    'HTTP Request': 'System',
+    'Database Query': 'System',
+  };
+  return integrationMap[actionType] || 'System';
+};
+
 export const ActionNode = memo(({ data, selected }: NodeProps) => {
   const nodeData = data as WorkflowNodeData;
   if (!nodeData) return null;
+
+  const actionType = (nodeData.config?.actionType as string) || 'HTTP Request';
+  const displayTitle = nodeData.label || actionType;
+  const displayDescription = nodeData.description || getIntegrationFromActionType(actionType);
+
+  // Only show URL for action types that actually use endpoints
+  const shouldShowUrl = actionType === 'HTTP Request' || actionType === 'Database Query';
+  const endpoint = nodeData.config?.endpoint as string | undefined;
+  const hasContent = shouldShowUrl && endpoint;
+
   return (
     <Node
       handles={{ target: true, source: true }}
       className={selected ? 'ring-primary rounded-md ring-2' : ''}
     >
-      <NodeHeader>
+      <NodeHeader className={!hasContent ? 'rounded-b-md border-b-0' : ''}>
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4" />
-          <NodeTitle>{nodeData.label}</NodeTitle>
+          <NodeTitle>{displayTitle}</NodeTitle>
         </div>
-        {nodeData.description && <NodeDescription>{nodeData.description}</NodeDescription>}
+        {displayDescription && <NodeDescription>{displayDescription}</NodeDescription>}
       </NodeHeader>
-      <NodeContent>
-        <div className="space-y-2">
-          <div className="text-muted-foreground text-xs">
-            Action: {(nodeData.config?.actionType as string) || 'HTTP Request'}
-          </div>
-          {(nodeData.config?.endpoint as string | undefined) && (
-            <div className="text-muted-foreground truncate text-xs">
-              URL: {nodeData.config?.endpoint as string}
-            </div>
-          )}
-        </div>
-      </NodeContent>
+      {hasContent && (
+        <NodeContent>
+          <div className="text-muted-foreground truncate text-xs">URL: {endpoint}</div>
+        </NodeContent>
+      )}
     </Node>
   );
 });

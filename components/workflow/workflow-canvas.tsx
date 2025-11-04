@@ -38,29 +38,33 @@ import { Loader2, PlayCircle, Zap, GitBranch, Shuffle } from 'lucide-react';
 const nodeTemplates = [
   {
     type: 'trigger' as WorkflowNodeType,
-    label: 'Trigger',
-    description: 'Start your workflow',
+    label: '',
+    description: '',
+    displayLabel: 'Trigger',
     icon: PlayCircle,
     defaultConfig: { triggerType: 'Manual' },
   },
   {
     type: 'action' as WorkflowNodeType,
-    label: 'Action',
-    description: 'Perform an action',
+    label: '',
+    description: '',
+    displayLabel: 'Action',
     icon: Zap,
-    defaultConfig: { actionType: 'HTTP Request', endpoint: 'https://api.example.com' },
+    defaultConfig: { actionType: 'HTTP Request' },
   },
   {
     type: 'condition' as WorkflowNodeType,
-    label: 'Condition',
-    description: 'Branch your workflow',
+    label: '',
+    description: '',
+    displayLabel: 'Condition',
     icon: GitBranch,
     defaultConfig: { condition: 'If true' },
   },
   {
     type: 'transform' as WorkflowNodeType,
-    label: 'Transform',
-    description: 'Transform data',
+    label: '',
+    description: '',
+    displayLabel: 'Transform',
     icon: Shuffle,
     defaultConfig: { transformType: 'Map Data' },
   },
@@ -322,7 +326,7 @@ export function WorkflowCanvas() {
                     className="focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground relative flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none"
                   >
                     <Icon className="mr-2 h-4 w-4" />
-                    {template.label}
+                    {template.displayLabel}
                   </div>
                   {index < filteredArray.length - 1 && <div className="bg-muted -mx-1 my-1 h-px" />}
                 </div>

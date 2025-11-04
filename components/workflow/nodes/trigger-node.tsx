@@ -15,23 +15,29 @@ import type { WorkflowNodeData } from '@/lib/workflow-store';
 export const TriggerNode = memo(({ data, selected }: NodeProps) => {
   const nodeData = data as WorkflowNodeData;
   if (!nodeData) return null;
+
+  const triggerType = (nodeData.config?.triggerType as string) || 'Manual';
+  const displayTitle = nodeData.label || triggerType;
+  const displayDescription = nodeData.description || 'Trigger';
+  const hasContent = !!triggerType;
+
   return (
     <Node
       handles={{ target: false, source: true }}
       className={selected ? 'ring-primary rounded-md ring-2' : ''}
     >
-      <NodeHeader>
+      <NodeHeader className={!hasContent ? 'rounded-b-md border-b-0' : ''}>
         <div className="flex items-center gap-2">
           <PlayCircle className="h-4 w-4" />
-          <NodeTitle>{nodeData.label}</NodeTitle>
+          <NodeTitle>{displayTitle}</NodeTitle>
         </div>
-        {nodeData.description && <NodeDescription>{nodeData.description}</NodeDescription>}
+        {displayDescription && <NodeDescription>{displayDescription}</NodeDescription>}
       </NodeHeader>
-      <NodeContent>
-        <div className="text-muted-foreground text-xs">
-          Trigger Type: {(nodeData.config?.triggerType as string) || 'Manual'}
-        </div>
-      </NodeContent>
+      {hasContent && (
+        <NodeContent>
+          <div className="text-muted-foreground text-xs">{triggerType}</div>
+        </NodeContent>
+      )}
     </Node>
   );
 });
