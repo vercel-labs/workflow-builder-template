@@ -11,6 +11,11 @@ import { workflowExecutionLogs, user } from './db/schema';
 import { eq } from 'drizzle-orm';
 import { processConfigTemplates, type NodeOutputs } from './utils/template';
 
+interface NodeExecutionLog {
+  logId?: string;
+  startTime: number;
+}
+
 type ExecutionResult = {
   success: boolean;
   data?: unknown;
@@ -37,6 +42,7 @@ class ServerWorkflowExecutor {
   private nodeOutputs: NodeOutputs = {};
   private context: WorkflowExecutionContext;
   private userIntegrations: UserIntegrations = {};
+  private executionLogs: Map<string, NodeExecutionLog> = new Map();
 
   constructor(
     nodes: WorkflowNode[],
@@ -87,35 +93,64 @@ class ServerWorkflowExecutor {
     );
   }
 
-  private async logNodeExecution(
+  private async startNodeExecution(node: WorkflowNode, input?: unknown): Promise<void> {
+    if (!this.context.executionId) return;
+
+    try {
+      const [log] = await db
+        .insert(workflowExecutionLogs)
+        .values({
+          executionId: this.context.executionId,
+          nodeId: node.id,
+          nodeName: node.data.label || node.data.type,
+          nodeType: node.data.type,
+          status: 'running',
+          input,
+          startedAt: new Date(),
+        })
+        .returning();
+
+      this.executionLogs.set(node.id, {
+        logId: log.id,
+        startTime: Date.now(),
+      });
+    } catch (err) {
+      console.error('Failed to start node execution log:', err);
+    }
+  }
+
+  private async completeNodeExecution(
     node: WorkflowNode,
-    status: 'running' | 'success' | 'error',
-    input?: unknown,
+    status: 'success' | 'error',
     output?: unknown,
     error?: string
   ): Promise<void> {
     if (!this.context.executionId) return;
 
+    const logInfo = this.executionLogs.get(node.id);
+    if (!logInfo?.logId) return;
+
     try {
-      await db.insert(workflowExecutionLogs).values({
-        executionId: this.context.executionId,
-        nodeId: node.id,
-        nodeName: node.data.label,
-        nodeType: node.data.type,
-        status,
-        input,
-        output,
-        error,
-        completedAt: status !== 'running' ? new Date() : undefined,
-      });
+      const duration = Date.now() - logInfo.startTime;
+
+      await db
+        .update(workflowExecutionLogs)
+        .set({
+          status,
+          output,
+          error,
+          completedAt: new Date(),
+          duration: duration.toString(),
+        })
+        .where(eq(workflowExecutionLogs.id, logInfo.logId));
     } catch (err) {
-      console.error('Failed to log node execution:', err);
+      console.error('Failed to complete node execution log:', err);
     }
   }
 
   private async executeNode(node: WorkflowNode): Promise<ExecutionResult> {
     try {
-      await this.logNodeExecution(node, 'running', this.context.input);
+      await this.startNodeExecution(node, this.context.input);
 
       let result: ExecutionResult = { success: true };
 
@@ -367,7 +402,7 @@ class ServerWorkflowExecutor {
         data: result.data,
       };
 
-      await this.logNodeExecution(node, 'success', processedConfig, result.data);
+      await this.completeNodeExecution(node, 'success', result.data);
 
       return result;
     } catch (error) {
@@ -376,7 +411,7 @@ class ServerWorkflowExecutor {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
       this.results.set(node.id, errorResult);
-      await this.logNodeExecution(node, 'error', this.context.input, undefined, errorResult.error);
+      await this.completeNodeExecution(node, 'error', undefined, errorResult.error);
 
       return errorResult;
     }
