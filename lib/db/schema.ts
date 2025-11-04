@@ -1,4 +1,8 @@
-import { pgTable, text, timestamp, jsonb, uuid, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
+import { customAlphabet } from 'nanoid';
+
+// Create a nanoid generator with URL-safe characters
+const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 21);
 
 // Better Auth tables
 export const user = pgTable('user', {
@@ -58,7 +62,9 @@ export const verification = pgTable('verification', {
 
 // Workflows table with user association
 export const workflows = pgTable('workflows', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
   name: text('name').notNull(),
   description: text('description'),
   userId: text('userId')
@@ -74,8 +80,10 @@ export const workflows = pgTable('workflows', {
 
 // Workflow executions table to track workflow runs
 export const workflowExecutions = pgTable('workflow_executions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  workflowId: uuid('workflow_id')
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  workflowId: text('workflow_id')
     .notNull()
     .references(() => workflows.id),
   userId: text('user_id')
@@ -96,8 +104,10 @@ export const workflowExecutions = pgTable('workflow_executions', {
 
 // Workflow execution logs to track individual node executions
 export const workflowExecutionLogs = pgTable('workflow_execution_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  executionId: uuid('execution_id')
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  executionId: text('execution_id')
     .notNull()
     .references(() => workflowExecutions.id),
   nodeId: text('node_id').notNull(),
@@ -116,7 +126,9 @@ export const workflowExecutionLogs = pgTable('workflow_execution_logs', {
 
 // Data sources table for user-configured database connections
 export const dataSources = pgTable('data_sources', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
   userId: text('user_id')
     .notNull()
     .references(() => user.id),

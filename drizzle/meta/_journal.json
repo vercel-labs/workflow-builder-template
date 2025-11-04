@@ -36,6 +36,20 @@
       "when": 1762199049605,
       "tag": "0004_lame_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1730770000000,
+      "tag": "0005_convert_to_nanoid",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1762232934356,
+      "tag": "0006_black_genesis",
+      "breakpoints": true
     }
   ]
 }

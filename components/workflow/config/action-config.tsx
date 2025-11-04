@@ -438,7 +438,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
               Model
             </Label>
             <Select
-              value={(config?.imageModel as string) || 'openai/gpt-5-nano'}
+              value={(config?.imageModel as string) || 'openai/dall-e-3'}
               onValueChange={(value) => onUpdateConfig('imageModel', value)}
               disabled={disabled}
             >
@@ -446,9 +446,8 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
                 <SelectValue placeholder="Select model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="openai/gpt-5-nano">OpenAI GPT-5 Nano</SelectItem>
-                <SelectItem value="openai/gpt-5">OpenAI GPT-5</SelectItem>
-                <SelectItem value="openai/gpt-5-pro">OpenAI GPT-5 Pro</SelectItem>
+                <SelectItem value="openai/dall-e-3">OpenAI DALL-E 3</SelectItem>
+                <SelectItem value="openai/dall-e-2">OpenAI DALL-E 2</SelectItem>
                 <SelectItem value="google/gemini-2.5-flash-image">
                   Google Gemini 2.5 Flash Image
                 </SelectItem>

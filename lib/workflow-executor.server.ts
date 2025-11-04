@@ -10,6 +10,9 @@ import { db } from './db';
 import { workflowExecutionLogs, user } from './db/schema';
 import { eq } from 'drizzle-orm';
 import { processConfigTemplates, type NodeOutputs } from './utils/template';
+import { generateText } from 'ai';
+import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 
 interface NodeExecutionLog {
   logId?: string;
@@ -172,6 +175,11 @@ class ServerWorkflowExecutor {
       // Build config properly for logging and execution
       const nodeConfig = node.data.config || {};
 
+      console.log(`[Executor] ===== EXECUTING NODE ${node.id} =====`);
+      console.log('[Executor] Node type:', node.data.type);
+      console.log('[Executor] Node label:', node.data.label);
+      console.log('[Executor] Original node.data.config:', JSON.stringify(nodeConfig, null, 2));
+
       await this.startNodeExecution(node, nodeConfig);
 
       let result: ExecutionResult = { success: true };
@@ -179,12 +187,19 @@ class ServerWorkflowExecutor {
       // Get actionType from original config (not processed) to avoid template corruption
       const actionType = nodeConfig.actionType as string;
 
+      console.log('[Executor] actionType:', actionType);
+
       // Process templates in node configuration using outputs from previous nodes
       // But exclude actionType, aiModel, and imageModel from processing
       const configToProcess = { ...nodeConfig };
       delete configToProcess.actionType;
       delete configToProcess.aiModel;
       delete configToProcess.imageModel;
+
+      console.log(
+        '[Executor] Config to process (excluding model fields):',
+        JSON.stringify(configToProcess, null, 2)
+      );
 
       const processedConfig = processConfigTemplates(
         configToProcess as Record<string, unknown>,
@@ -195,17 +210,14 @@ class ServerWorkflowExecutor {
       processedConfig.actionType = actionType;
       if (nodeConfig.aiModel) {
         processedConfig.aiModel = nodeConfig.aiModel;
+        console.log('[Executor] Added back aiModel:', nodeConfig.aiModel);
       }
       if (nodeConfig.imageModel) {
         processedConfig.imageModel = nodeConfig.imageModel;
+        console.log('[Executor] Added back imageModel:', nodeConfig.imageModel);
       }
 
-      console.log(`[Executor] Node ${node.id} (${node.data.type}):`, {
-        actionType,
-        aiModel: processedConfig.aiModel,
-        imageModel: processedConfig.imageModel,
-        hasPrompt: !!(processedConfig.aiPrompt || processedConfig.imagePrompt),
-      });
+      console.log('[Executor] Final processedConfig:', JSON.stringify(processedConfig, null, 2));
 
       switch (node.data.type) {
         case 'trigger':
@@ -315,11 +327,19 @@ class ServerWorkflowExecutor {
             const dbResult = await queryData('your_table', {});
             result = { success: dbResult.status === 'success', data: dbResult };
           } else if (actionType === 'Generate Text') {
-            try {
-              const { generateText } = await import('ai');
+            console.log('[Executor] ===== GENERATE TEXT ACTION =====');
+            console.log('[Executor] processedConfig.aiModel:', processedConfig?.aiModel);
+            console.log(
+              '[Executor] typeof processedConfig.aiModel:',
+              typeof processedConfig?.aiModel
+            );
 
+            try {
               const modelId = (processedConfig?.aiModel as string) || 'gpt-4o-mini';
               const prompt = (processedConfig?.aiPrompt as string) || '';
+
+              console.log('[Executor] Using model ID:', modelId);
+              console.log('[Executor] Using prompt:', prompt);
 
               if (!prompt) {
                 result = {
@@ -337,10 +357,18 @@ class ServerWorkflowExecutor {
                   modelString = modelId;
                 }
 
+                console.log('[Executor] Converted to model string:', modelString);
+                console.log('[Executor] Calling generateText with:', {
+                  model: modelString,
+                  promptLength: prompt.length,
+                });
+
                 const { text } = await generateText({
                   model: modelString,
                   prompt,
                 });
+
+                console.log('[Executor] Text generated successfully, length:', text?.length);
 
                 result = {
                   success: true,
@@ -351,17 +379,30 @@ class ServerWorkflowExecutor {
                 };
               }
             } catch (error) {
+              console.error('[Executor] Generate Text error:', error);
+              console.error('[Executor] Error details:', {
+                message: error instanceof Error ? error.message : 'Unknown',
+                stack: error instanceof Error ? error.stack : undefined,
+              });
               result = {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to generate text',
               };
             }
           } else if (actionType === 'Generate Image') {
-            try {
-              const { experimental_generateImage: generateImage } = await import('ai');
+            console.log('[Executor] ===== GENERATE IMAGE ACTION =====');
+            console.log('[Executor] processedConfig.imageModel:', processedConfig?.imageModel);
+            console.log(
+              '[Executor] typeof processedConfig.imageModel:',
+              typeof processedConfig?.imageModel
+            );
 
-              const modelString = (processedConfig?.imageModel as string) || 'openai/gpt-5-nano';
+            try {
+              const modelId = (processedConfig?.imageModel as string) || 'openai/dall-e-3';
               const prompt = (processedConfig?.imagePrompt as string) || '';
+
+              console.log('[Executor] Using model ID:', modelId);
+              console.log('[Executor] Using prompt:', prompt);
 
               if (!prompt) {
                 result = {
@@ -369,24 +410,86 @@ class ServerWorkflowExecutor {
                   error: 'Prompt is required for Generate Image action',
                 };
               } else {
-                console.log('Generating image with model:', modelString, 'prompt:', prompt);
+                // Parse provider and model from modelId (e.g., "openai/dall-e-3" or "google/gemini-2.5-flash-image")
+                const [provider, modelName] = modelId.split('/');
 
-                const { image } = await generateImage({
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  model: modelString as any,
-                  prompt,
-                });
+                console.log('[Executor] Parsed provider:', provider);
+                console.log('[Executor] Parsed model name:', modelName);
+
+                let base64Image: string;
+
+                if (provider === 'openai') {
+                  const openai = new OpenAI({
+                    apiKey: process.env.OPENAI_API_KEY,
+                    baseURL: process.env.AI_GATEWAY_URL,
+                  });
+
+                  console.log('[Executor] Calling OpenAI image generation...');
+
+                  const response = await openai.images.generate({
+                    model: modelName,
+                    prompt,
+                    n: 1,
+                    response_format: 'b64_json',
+                  });
+
+                  if (!response.data?.[0]?.b64_json) {
+                    throw new Error('No image data in OpenAI response');
+                  }
+
+                  base64Image = response.data[0].b64_json;
+                  console.log(
+                    '[Executor] OpenAI image generated, base64 length:',
+                    base64Image.length
+                  );
+                } else if (provider === 'google') {
+                  const genai = new GoogleGenAI({
+                    apiKey: process.env.GOOGLE_API_KEY,
+                  });
+
+                  console.log('[Executor] Calling Google Gemini image generation...');
+
+                  const response = await genai.models.generateContent({
+                    model: modelName,
+                    contents: prompt,
+                  });
+
+                  // Extract image data from response
+                  const imagePart = response.candidates?.[0]?.content?.parts?.find(
+                    (part) => part.inlineData
+                  );
+
+                  if (imagePart?.inlineData?.data) {
+                    base64Image = imagePart.inlineData.data;
+                    console.log(
+                      '[Executor] Google image generated, base64 length:',
+                      base64Image.length
+                    );
+                  } else {
+                    throw new Error('No image data in Google response');
+                  }
+                } else {
+                  result = {
+                    success: false,
+                    error: `Unsupported provider: ${provider}. Use "openai" or "google".`,
+                  };
+                  break;
+                }
 
                 result = {
                   success: true,
                   data: {
-                    base64: image.base64,
-                    model: modelString,
+                    base64: base64Image,
+                    model: modelId,
                   },
                 };
               }
             } catch (error) {
-              console.error('Generate Image error:', error);
+              console.error('[Executor] Generate Image error:', error);
+              console.error('[Executor] Error details:', {
+                message: error instanceof Error ? error.message : 'Unknown',
+                stack: error instanceof Error ? error.stack : undefined,
+              });
               result = {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to generate image',

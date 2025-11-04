@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@google/genai": "^1.28.0",
     "@linear/sdk": "^63.2.0",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -38,8 +39,10 @@
     "drizzle-orm": "^0.44.7",
     "jotai": "^2.15.1",
     "lucide-react": "^0.552.0",
+    "nanoid": "^5.1.6",
     "next": "16.0.1",
     "next-themes": "^0.4.6",
+    "openai": "^6.8.0",
     "postgres": "^3.4.7",
     "react": "19.2.0",
     "react-dom": "19.2.0",
