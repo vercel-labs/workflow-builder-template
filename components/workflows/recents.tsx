@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { getRelativeTime } from "@/lib/utils/time";
@@ -59,13 +60,14 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
   return (
     <div className="grid w-full gap-1">
       {displayedWorkflows.map((workflow) => (
-        <div
+        <Link
           className="flex w-full items-center justify-between rounded-full bg-background px-3 py-1.5 text-sm"
+          href={`/workflows/${workflow.id}`}
           key={workflow.id}
         >
           <h3>{workflow.name}</h3>
           <p>{getRelativeTime(workflow.updatedAt)}</p>
-        </div>
+        </Link>
       ))}
     </div>
   );
