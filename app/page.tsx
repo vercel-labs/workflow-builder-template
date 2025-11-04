@@ -9,9 +9,6 @@ const Home = () => (
   <Provider>
     <div className="fixed top-0 left-0 z-0 h-screen w-screen">
       <Canvas>
-        <Panel position="top-left">
-          <p>Workflow Builder Template</p>
-        </Panel>
         <Panel className="rounded-full p-0" position="top-right">
           <UserMenu />
         </Panel>
