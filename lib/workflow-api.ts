@@ -6,7 +6,7 @@ export interface WorkflowData {
   description?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
-  vercelProjectId?: string;
+  vercelProjectId?: string | null;
 }
 
 export interface SavedWorkflow extends WorkflowData {

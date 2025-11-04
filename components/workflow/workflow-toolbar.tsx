@@ -1,7 +1,18 @@
 'use client';
 
 import { useAtom, useSetAtom } from 'jotai';
-import { Play, Save, MoreVertical, Trash2, Pencil, Loader2, Undo2, Redo2 } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Play,
+  Save,
+  MoreVertical,
+  Trash2,
+  Pencil,
+  Loader2,
+  Undo2,
+  Redo2,
+  FolderOpen,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -27,6 +38,15 @@ import {
   canUndoAtom,
   canRedoAtom,
 } from '@/lib/workflow-store';
+import { vercelProjectsAtom } from '@/lib/atoms/vercel-projects';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +73,7 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const [workflowName, setWorkflowName] = useAtom(currentWorkflowNameAtom);
-  const [vercelProjectName] = useAtom(currentVercelProjectNameAtom);
+  const [vercelProjectName, setVercelProjectName] = useAtom(currentVercelProjectNameAtom);
   const router = useRouter();
   const [isEditing, setIsEditing] = useAtom(isEditingWorkflowNameAtom);
   const [editingName, setEditingName] = useAtom(editingWorkflowNameAtom);
@@ -64,6 +84,11 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
   const redo = useSetAtom(redoAtom);
   const [canUndo] = useAtom(canUndoAtom);
   const [canRedo] = useAtom(canRedoAtom);
+  const [vercelProjects] = useAtom(vercelProjectsAtom);
+
+  // Component-local state for change project dialog (doesn't need to be shared)
+  const [showChangeProjectDialog, setShowChangeProjectDialog] = useState(false);
+  const [selectedNewProjectId, setSelectedNewProjectId] = useState<string>('none');
 
   const handleExecute = async () => {
     if (!currentWorkflowId) {
@@ -188,6 +213,28 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
     }
   };
 
+  const handleChangeProject = async () => {
+    if (!currentWorkflowId) return;
+
+    try {
+      const newProjectId = selectedNewProjectId === 'none' ? null : selectedNewProjectId;
+
+      await workflowApi.update(currentWorkflowId, {
+        vercelProjectId: newProjectId,
+      });
+
+      // Update the local state
+      const selectedProject = vercelProjects.find((p) => p.id === newProjectId);
+      setVercelProjectName(selectedProject?.name || null);
+
+      setShowChangeProjectDialog(false);
+      toast.success('Project changed successfully');
+    } catch (error) {
+      console.error('Failed to change project:', error);
+      toast.error('Failed to change project. Please try again.');
+    }
+  };
+
   const titleElement = isEditing ? (
     <Input
       value={editingName}
@@ -266,6 +313,13 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => setShowChangeProjectDialog(true)}
+            disabled={!currentWorkflowId}
+          >
+            <FolderOpen className="mr-2 h-4 w-4" />
+            <span>Change Project</span>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setShowClearDialog(true)} disabled={nodes.length === 0}>
             <Trash2 className="mr-2 h-4 w-4" />
             <span>Clear Workflow</span>
@@ -331,6 +385,48 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
             <Button variant="destructive" onClick={handleDeleteWorkflow}>
               Delete Workflow
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Project Dialog */}
+      <Dialog open={showChangeProjectDialog} onOpenChange={setShowChangeProjectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Project</DialogTitle>
+            <DialogDescription>
+              Move this workflow to a different Vercel project or remove it from its current
+              project.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="projectSelect">Select Project</Label>
+              <Select value={selectedNewProjectId} onValueChange={setSelectedNewProjectId}>
+                <SelectTrigger id="projectSelect">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No project</SelectItem>
+                  {vercelProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Current project: {vercelProjectName || 'None'}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowChangeProjectDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleChangeProject}>Change Project</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

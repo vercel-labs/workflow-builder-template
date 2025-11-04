@@ -30,17 +30,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, description, nodes, edges } = body;
+    const { name, description, nodes, edges, vercelProjectId } = body;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (nodes !== undefined) updateData.nodes = nodes;
+    if (edges !== undefined) updateData.edges = edges;
+    if (vercelProjectId !== undefined) updateData.vercelProjectId = vercelProjectId;
 
     const [updatedWorkflow] = await db
       .update(workflows)
-      .set({
-        name,
-        description,
-        nodes,
-        edges,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(workflows.id, id))
       .returning();
 
