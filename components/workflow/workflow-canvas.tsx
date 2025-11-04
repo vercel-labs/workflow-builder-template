@@ -5,15 +5,17 @@ import { useAtom, useSetAtom } from 'jotai';
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   ConnectionMode,
-  type Connection,
+  type Connection as XYFlowConnection,
   type OnConnect,
   BackgroundVariant,
   useReactFlow,
   type Viewport,
 } from '@xyflow/react';
+import { Canvas } from '@/components/ai-elements/canvas';
+import { Controls } from '@/components/ai-elements/controls';
+import { Connection } from '@/components/ai-elements/connection';
 import '@xyflow/react/dist/style.css';
 
 import {
@@ -141,7 +143,7 @@ export function WorkflowCanvas() {
   );
 
   const onConnect: OnConnect = useCallback(
-    (connection: Connection) => {
+    (connection: XYFlowConnection) => {
       const newEdge = {
         id: nanoid(),
         ...connection,
@@ -272,7 +274,7 @@ export function WorkflowCanvas() {
           </div>
         </div>
       )}
-      <ReactFlow
+      <Canvas
         nodes={nodes}
         edges={edges}
         onNodesChange={isGenerating ? undefined : onNodesChange}
@@ -291,19 +293,12 @@ export function WorkflowCanvas() {
         nodesDraggable={!isGenerating}
         nodesConnectable={!isGenerating}
         elementsSelectable={!isGenerating}
+
+        connectionLineComponent={Connection}
       >
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <Controls
-          style={{
-            background: 'white',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: '8px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-          }}
-          className="dark:!bg-[hsl(var(--card))]"
-        />
+        <Controls />
         <MiniMap className="!bg-secondary" />
-      </ReactFlow>
+      </Canvas>
 
       {menu && (
         <div
