@@ -164,23 +164,11 @@ export function WorkflowPrompt() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !isGenerating) {
-      e.preventDefault();
-      if (prompt.trim()) {
-        const form = e.currentTarget.closest('form');
-        if (form) {
-          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-        }
-      }
-    }
-  };
-
   return (
     <div className="mx-auto w-full max-w-2xl">
 
       <PromptInputProvider>
-        <PromptInput globalDrop multiple onSubmit={(message, event) => handleGenerate(event)}>
+        <PromptInput className="bg-background" globalDrop multiple onSubmit={(message, event) => handleGenerate(event)}>
           <PromptInputBody>
             <PromptInputTextarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your workflow..." ref={textareaRef} />
           </PromptInputBody>

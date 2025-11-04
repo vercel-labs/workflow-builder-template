@@ -20,6 +20,7 @@ import { AppHeader } from '@/components/app-header';
 import { getRelativeTime } from '@/lib/utils/time';
 import { useSession } from '@/lib/auth-client';
 import { toast } from 'sonner';
+import { Spinner } from '../ui/spinner';
 
 interface WorkflowsListProps {
   limit?: number;
@@ -67,27 +68,6 @@ export function WorkflowsList({
 
   const displayedWorkflows = limit ? workflows.slice(0, limit) : workflows;
 
-  const handleNewWorkflow = async () => {
-    // Check if user is logged in
-    if (!session) {
-      router.push('/login');
-      return;
-    }
-
-    try {
-      const newWorkflow = await workflowApi.create({
-        name: 'Untitled',
-        description: '',
-        nodes: [],
-        edges: [],
-      });
-      router.push(`/workflows/${newWorkflow.id}`);
-    } catch (error) {
-      console.error('Failed to create workflow:', error);
-      toast.error('Failed to create workflow. Please try again.');
-    }
-  };
-
   const handleOpenWorkflow = (id: string) => {
     router.push(`/workflows/${id}`);
   };
@@ -124,58 +104,12 @@ export function WorkflowsList({
     }
   };
 
-  return (
-    <div className="bg-background flex min-h-screen flex-col">
-      <AppHeader />
-      {showPrompt && (
-        <div className="flex flex-1 flex-col items-center justify-center p-8">
-          <div className="w-full max-w-2xl">
-            <div className="mb-8 text-center">
-              <h1 className="mb-2 text-4xl font-bold">Workflow Builder Template</h1>
-              <p className="text-muted-foreground text-sm">
-                Powered by{' '}
-                <a
-                  href="https://useworkflow.dev/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:no-underline"
-                >
-                  Workflow
-                </a>
-                ,{' '}
-                <a
-                  href="https://ai-sdk.dev/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:no-underline"
-                >
-                  AI SDK
-                </a>
-                ,{' '}
-                <a
-                  href="https://vercel.com/ai-gateway"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:no-underline"
-                >
-                  AI Gateway
-                </a>
-                , and{' '}
-                <a
-                  href="https://ai-sdk.dev/elements"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:no-underline"
-                >
-                  AI Elements
-                </a>
-              </p>
-            </div>
-            <WorkflowPrompt />
-          </div>
-        </div>
-      )}
+  if (loading) {
+    return <Spinner />;
+  }
 
+  return (
+    <>
       <div className={showPrompt ? 'p-8' : 'flex-1 p-8'}>
         <div className="mx-auto w-full max-w-2xl">
           <div className="mb-4 flex items-center justify-between">
@@ -212,15 +146,11 @@ export function WorkflowsList({
                   View All
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleNewWorkflow}>
-                <Plus className="mr-2 h-3 w-3" />
-                Start from Scratch
-              </Button>
             </div>
           </div>
 
           {/* Reserve minimum height to prevent layout shift */}
-          <div className="min-h-[240px]">
+          <div>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-muted-foreground text-sm">Loading workflows...</div>
@@ -284,6 +214,6 @@ export function WorkflowsList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
