@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1762190583542,
-      "tag": "0000_shallow_shiva",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1762191190338,
-      "tag": "0001_bright_aqueduct",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1762196700031,
-      "tag": "0002_stormy_nico_minoru",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1762197767335,
-      "tag": "0003_previous_gorilla_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1762199049605,
-      "tag": "0004_lame_argent",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1730770000000,
-      "tag": "0005_convert_to_nanoid",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1762232934356,
-      "tag": "0006_black_genesis",
+      "when": 1762233266697,
+      "tag": "0000_little_jack_murdock",
       "breakpoints": true
     }
   ]
