@@ -74,6 +74,7 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
                 AI Gateway
               </SelectLabel>
               <SelectItem value="Generate Text">Generate Text</SelectItem>
+              <SelectItem value="Generate Image">Generate Image</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -422,6 +423,50 @@ export function ActionConfig({ config, onUpdateConfig, disabled }: ActionConfigP
               value={(config?.aiPrompt as string) || ''}
               onChange={(e) => onUpdateConfig('aiPrompt', e.target.value)}
               placeholder="Enter your prompt here. Use {{$nodeId.field}} to reference previous outputs."
+              disabled={disabled}
+              rows={4}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Generate Image fields */}
+      {config?.actionType === 'Generate Image' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="imageModel" className="text-xs">
+              Model
+            </Label>
+            <Select
+              value={(config?.imageModel as string) || 'openai/gpt-5-nano'}
+              onValueChange={(value) => onUpdateConfig('imageModel', value)}
+              disabled={disabled}
+            >
+              <SelectTrigger id="imageModel">
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openai/gpt-5-nano">OpenAI GPT-5 Nano</SelectItem>
+                <SelectItem value="openai/gpt-5">OpenAI GPT-5</SelectItem>
+                <SelectItem value="openai/gpt-5-pro">OpenAI GPT-5 Pro</SelectItem>
+                <SelectItem value="google/gemini-2.5-flash-image">
+                  Google Gemini 2.5 Flash Image
+                </SelectItem>
+                <SelectItem value="google/gemini-2.5-flash-image-preview">
+                  Google Gemini 2.5 Flash Image Preview
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="imagePrompt" className="text-xs">
+              Prompt
+            </Label>
+            <Textarea
+              id="imagePrompt"
+              value={(config?.imagePrompt as string) || ''}
+              onChange={(e) => onUpdateConfig('imagePrompt', e.target.value)}
+              placeholder="Describe the image you want to generate. Use {{$nodeId.field}} to reference previous outputs."
               disabled={disabled}
               rows={4}
             />

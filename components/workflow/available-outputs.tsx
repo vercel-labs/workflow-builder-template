@@ -137,6 +137,11 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
         { field: 'text', description: 'Generated text' },
         { field: 'model', description: 'Model used' },
       ];
+    } else if (actionType === 'Generate Image') {
+      return [
+        { field: 'base64', description: 'Base64 image data' },
+        { field: 'model', description: 'Model used' },
+      ];
     } else if (node.data.type === 'trigger') {
       return [
         { field: 'triggered', description: 'Trigger status' },

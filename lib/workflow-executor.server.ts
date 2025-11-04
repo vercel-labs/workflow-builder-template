@@ -274,6 +274,39 @@ class ServerWorkflowExecutor {
                 error: error instanceof Error ? error.message : 'Failed to generate text',
               };
             }
+          } else if (actionType === 'Generate Image') {
+            try {
+              const { experimental_generateImage: generateImage } = await import('ai');
+
+              const modelString = (processedConfig?.imageModel as string) || 'openai/gpt-5-nano';
+              const prompt = (processedConfig?.imagePrompt as string) || '';
+
+              if (!prompt) {
+                result = {
+                  success: false,
+                  error: 'Prompt is required for Generate Image action',
+                };
+              } else {
+                const { image } = await generateImage({
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  model: modelString as any,
+                  prompt,
+                });
+
+                result = {
+                  success: true,
+                  data: {
+                    base64: image.base64,
+                    model: modelString,
+                  },
+                };
+              }
+            } catch (error) {
+              result = {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to generate image',
+              };
+            }
           } else if (actionType === 'HTTP Request' || endpoint) {
             const httpMethod = (processedConfig?.httpMethod as string) || 'POST';
             const httpHeaders = processedConfig?.httpHeaders
