@@ -46,9 +46,9 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
   if (loading) {
     return (
       <div className="grid w-full gap-1">
-        <Skeleton className="h-8 w-full rounded-full" />
-        <Skeleton className="h-8 w-full rounded-full" />
-        <Skeleton className="h-8 w-full rounded-full" />
+        {new Array(limit).fill(0).map((_, index) => (
+          <Skeleton className="h-[30px] w-full rounded-full" key={index} />
+        ))}
       </div>
     );
   }
@@ -61,12 +61,14 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
     <div className="grid w-full gap-1">
       {displayedWorkflows.map((workflow) => (
         <Link
-          className="flex w-full items-center justify-between rounded-full bg-background px-3 py-1.5 text-sm"
+          className="flex w-full items-center justify-between rounded-full border bg-background px-3 py-1.5 text-xs"
           href={`/workflows/${workflow.id}`}
           key={workflow.id}
         >
           <h3>{workflow.name}</h3>
-          <p>{getRelativeTime(workflow.updatedAt)}</p>
+          <p className="text-muted-foreground text-xs">
+            {getRelativeTime(workflow.updatedAt)}
+          </p>
         </Link>
       ))}
     </div>
