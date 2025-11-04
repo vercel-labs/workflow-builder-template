@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Dialog,
   DialogContent,
@@ -559,9 +560,9 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <Separator className="h-6" orientation="vertical" />
-      <div className="flex items-center">
+      <ButtonGroup>
         <Button
-          className="relative rounded-r-none"
+          className="relative"
           disabled={isExecuting || nodes.length === 0 || isGenerating}
           onClick={() => handleExecute()}
           size="icon"
@@ -574,7 +575,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 ? "Running on production..."
                 : "Run on production"
           }
-          variant="ghost"
+          variant="outline"
         >
           {isExecuting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -594,11 +595,11 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
-              className="h-9 w-6 rounded-l-none border-l px-1"
+              className="w-6 px-1"
               disabled={isExecuting || nodes.length === 0 || isGenerating}
               size="icon"
               title="Select run mode"
-              variant="ghost"
+              variant="outline"
             >
               <ChevronDown className="h-3 w-3" />
             </Button>
@@ -621,7 +622,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </ButtonGroup>
     </>
   );
 
