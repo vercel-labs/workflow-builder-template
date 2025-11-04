@@ -4,13 +4,13 @@ import { useAtom, useSetAtom } from "jotai";
 import { GitBranch, PlayCircle, Shuffle, Zap } from "lucide-react";
 import { nanoid } from "nanoid";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   addNodeAtom,
   isGeneratingAtom,
   type WorkflowNode,
   type WorkflowNodeType,
 } from "@/lib/workflow-store";
+import { Panel } from "../ai-elements/panel";
 
 const nodeTemplates = [
   {
@@ -46,16 +46,17 @@ const nodeTemplates = [
   },
 ];
 
+const RANDOM_MULTIPLIER = 300;
+const RANDOM_OFFSET = 100;
+
 export function NodeToolbar() {
   const addNode = useSetAtom(addNodeAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
 
   const handleAddNode = (template: (typeof nodeTemplates)[0]) => {
     // Generate random position - this is fine in event handlers
-    // eslint-disable-next-line react-hooks/purity
-    const randomX = Math.random() * 300 + 100;
-    // eslint-disable-next-line react-hooks/purity
-    const randomY = Math.random() * 300 + 100;
+    const randomX = Math.random() * RANDOM_MULTIPLIER + RANDOM_OFFSET;
+    const randomY = Math.random() * RANDOM_MULTIPLIER + RANDOM_OFFSET;
 
     const newNode: WorkflowNode = {
       id: nanoid(),
@@ -77,30 +78,19 @@ export function NodeToolbar() {
   };
 
   return (
-    <div className="absolute top-4 left-4 z-10 flex border bg-background shadow-lg">
-      {nodeTemplates.map((template, index) => {
-        const Icon = template.icon;
-        return (
-          <div className="flex" key={template.type}>
-            <Button
-              className="h-[26px] w-[26px] rounded-none p-0"
-              disabled={isGenerating}
-              onClick={() => handleAddNode(template)}
-              size="icon"
-              title={template.label}
-              variant="ghost"
-            >
-              <Icon className="h-4 w-4" />
-            </Button>
-            {index < nodeTemplates.length - 1 && (
-              <Separator
-                className="h-[26px] bg-border"
-                orientation="vertical"
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <Panel className="flex items-center gap-1" position="bottom-center">
+      {nodeTemplates.map((template) => (
+        <Button
+          disabled={isGenerating}
+          key={template.type}
+          onClick={() => handleAddNode(template)}
+          size="icon"
+          title={template.label}
+          variant="ghost"
+        >
+          <template.icon className="size-4" />
+        </Button>
+      ))}
+    </Panel>
   );
 }
