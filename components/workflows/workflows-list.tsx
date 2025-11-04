@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
 import { getRelativeTime } from "@/lib/utils/time";
 import { type SavedWorkflow, workflowApi } from "@/lib/workflow-api";
-import { Spinner } from "../ui/spinner";
 
 interface WorkflowsListProps {
   limit?: number;
@@ -102,10 +101,6 @@ export function WorkflowsList({
       setDeleting(false);
     }
   };
-
-  if (loading) {
-    return <Spinner />;
-  }
 
   return (
     <>
