@@ -317,7 +317,7 @@ export function WorkflowCanvas() {
         onPaneClick={onPaneClick}
       >
         <Controls />
-        <MiniMap className="!bg-secondary" />
+        <MiniMap />
       </Canvas>
 
       {menu && (

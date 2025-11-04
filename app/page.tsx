@@ -1,9 +1,16 @@
 import { Provider } from "jotai";
+import type { Metadata } from "next";
 import { Canvas } from "@/components/ai-elements/canvas";
 import { Panel } from "@/components/ai-elements/panel";
 import { Recents } from "@/components/workflows/recents";
 import { UserMenu } from "@/components/workflows/user-menu";
 import { WorkflowIndexPrompt } from "@/components/workflows/workflow-index-prompt";
+
+export const metadata: Metadata = {
+  title: "Home | Workflow Builder",
+  description:
+    "Create a new workflow or continue working on your existing workflows.",
+};
 
 const Home = () => (
   <Provider>
