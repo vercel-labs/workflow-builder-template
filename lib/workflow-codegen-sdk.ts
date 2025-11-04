@@ -18,6 +18,13 @@ function escapeString(str: string): string {
 }
 
 /**
+ * Check if a string contains template variables
+ */
+function hasTemplateVariables(str: string): boolean {
+  return /\{\{[^}]+\}\}/.test(str);
+}
+
+/**
  * Generate workflow SDK code from workflow definition
  * This generates proper "use workflow" and "use step" code
  */
@@ -47,10 +54,24 @@ export function generateWorkflowSDKCode(
   // Always import sleep and FatalError
   imports.add("import { sleep, FatalError } from 'workflow';");
 
-  function generateStepFunction(node: WorkflowNode): string {
-    const stepName = sanitizeStepName(node.data.label || node.id);
+  // Add template processing utilities
+  const needsTemplateProcessing = nodes.some((node) => {
+    const config = node.data.config || {};
+    return Object.values(config).some(
+      (val) => typeof val === 'string' && hasTemplateVariables(val)
+    );
+  });
+
+  if (needsTemplateProcessing) {
+    imports.add('// Template processing utilities are included below');
+  }
+
+  function generateStepFunction(node: WorkflowNode, uniqueStepName?: string): string {
+    // Use provided unique step name or generate one
     const config = node.data.config || {};
     const actionType = config.actionType as string;
+    const label = node.data.label || actionType || 'UnnamedStep';
+    const stepName = uniqueStepName || sanitizeStepName(label);
 
     let stepBody = '';
 
@@ -58,41 +79,61 @@ export function generateWorkflowSDKCode(
       case 'action':
         if (actionType === 'Send Email') {
           imports.add("import { Resend } from 'resend';");
-          const escapedEmailTo = escapeString((config.emailTo as string) || 'user@example.com');
-          const escapedSubject = escapeString((config.emailSubject as string) || 'Notification');
-          const escapedBody = escapeString((config.emailBody as string) || 'No content');
+          const emailTo = (config.emailTo as string) || 'user@example.com';
+          const emailSubject = (config.emailSubject as string) || 'Notification';
+          const emailBody = (config.emailBody as string) || 'No content';
+
+          const escapedEmailTo = escapeString(emailTo);
+          const escapedSubject = escapeString(emailSubject);
+          const escapedBody = escapeString(emailBody);
+
           stepBody = `  const resend = new Resend(process.env.RESEND_API_KEY);
+  
+  // Process templates in email fields
+  const processedEmailTo = processTemplate(\`${escapedEmailTo}\`, input.outputs || {});
+  const processedEmailSubject = processTemplate(\`${escapedSubject}\`, input.outputs || {});
+  const processedEmailBody = processTemplate(\`${escapedBody}\`, input.outputs || {});
   
   const result = await resend.emails.send({
     from: '${config.resendFromEmail || 'onboarding@resend.dev'}',
-    to: \`\${input.emailTo || \`${escapedEmailTo}\`}\`,
-    subject: \`\${input.emailSubject || \`${escapedSubject}\`}\`,
-    text: \`\${input.emailBody || \`${escapedBody}\`}\`,
+    to: (input.emailTo as string) || processedEmailTo,
+    subject: (input.emailSubject as string) || processedEmailSubject,
+    text: (input.emailBody as string) || processedEmailBody,
   });
   
   console.log('Email sent:', result);
   return result;`;
         } else if (actionType === 'Send Slack Message') {
           imports.add("import { WebClient } from '@slack/web-api';");
-          const escapedSlackMessage = escapeString((config.slackMessage as string) || 'No message');
+          const slackMessage = (config.slackMessage as string) || 'No message';
+          const escapedSlackMessage = escapeString(slackMessage);
           stepBody = `  const slack = new WebClient(process.env.SLACK_API_KEY);
+  
+  // Process template in Slack message
+  const processedSlackMessage = processTemplate(\`${escapedSlackMessage}\`, input.outputs || {});
   
   const result = await slack.chat.postMessage({
     channel: '${config.slackChannel || '#general'}',
-    text: \`\${input.slackMessage || \`${escapedSlackMessage}\`}\`,
+    text: (input.slackMessage as string) || processedSlackMessage,
   });
   
   console.log('Slack message sent:', result);
   return result;`;
         } else if (actionType === 'Create Ticket') {
           imports.add("import { LinearClient } from '@linear/sdk';");
-          const escapedTitle = escapeString((config.ticketTitle as string) || 'New Issue');
-          const escapedDescription = escapeString((config.ticketDescription as string) || '');
+          const ticketTitle = (config.ticketTitle as string) || 'New Issue';
+          const ticketDescription = (config.ticketDescription as string) || '';
+          const escapedTitle = escapeString(ticketTitle);
+          const escapedDescription = escapeString(ticketDescription);
           stepBody = `  const linear = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });
   
+  // Process templates in ticket fields
+  const processedTicketTitle = processTemplate(\`${escapedTitle}\`, input.outputs || {});
+  const processedTicketDescription = processTemplate(\`${escapedDescription}\`, input.outputs || {});
+  
   const issue = await linear.issueCreate({
-    title: \`\${input.ticketTitle || \`${escapedTitle}\`}\`,
-    description: \`\${input.ticketDescription || \`${escapedDescription}\`}\`,
+    title: (input.ticketTitle as string) || processedTicketTitle,
+    description: (input.ticketDescription as string) || processedTicketDescription,
     teamId: process.env.LINEAR_TEAM_ID!,
   });
   
@@ -103,22 +144,32 @@ export function generateWorkflowSDKCode(
           const modelId = (config.aiModel as string) || 'gpt-4o-mini';
           const provider =
             modelId.startsWith('gpt-') || modelId.startsWith('o1-') ? 'openai' : 'anthropic';
-          const escapedPrompt = escapeString((config.aiPrompt as string) || '');
-          stepBody = `  const { text } = await generateText({
+          const aiPrompt = (config.aiPrompt as string) || '';
+          const escapedPrompt = escapeString(aiPrompt);
+          stepBody = `  // Process template in AI prompt
+  const aiPrompt = processTemplate(\`${escapedPrompt}\`, input.outputs || {});
+  const finalPrompt = (input.aiPrompt as string) || aiPrompt;
+  
+  const { text } = await generateText({
     model: '${provider}/${modelId}',
-    prompt: \`\${input.aiPrompt || \`${escapedPrompt}\`}\`,
+    prompt: finalPrompt,
   });
   
   console.log('Text generated:', text);
   return { text };`;
         } else if (actionType === 'Generate Image') {
           imports.add("import OpenAI from 'openai';");
-          const escapedImagePrompt = escapeString((config.imagePrompt as string) || '');
+          const imagePrompt = (config.imagePrompt as string) || '';
+          const escapedImagePrompt = escapeString(imagePrompt);
           stepBody = `  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  
+  // Process template in image prompt
+  const imagePrompt = processTemplate(\`${escapedImagePrompt}\`, input.outputs || {});
+  const finalPrompt = (input.imagePrompt as string) || imagePrompt;
   
   const response = await openai.images.generate({
     model: '${config.imageModel || 'dall-e-3'}',
-    prompt: \`\${input.imagePrompt || \`${escapedImagePrompt}\`}\`,
+    prompt: finalPrompt,
     n: 1,
     response_format: 'b64_json',
   });
@@ -158,17 +209,35 @@ export function generateWorkflowSDKCode(
   return input;`;
     }
 
-    return `async function ${stepName}(input: Record<string, unknown>) {
+    return `async function ${stepName}(input: Record<string, unknown> & { outputs?: Record<string, { label: string; data: unknown }> }) {
   "use step";
   
 ${stepBody}
 }`;
   }
 
-  // Generate all step functions
+  // Generate all step functions with unique names
+  const stepNameCounts = new Map<string, number>();
+  const nodeToStepName = new Map<string, string>();
+
   for (const node of nodes) {
     if (node.data.type === 'action' || node.data.type === 'transform') {
-      stepFunctions.push(generateStepFunction(node));
+      const config = node.data.config || {};
+      const actionType = config.actionType as string;
+      const baseLabel = node.data.label || actionType || 'UnnamedStep';
+      const baseName = sanitizeStepName(baseLabel);
+
+      // Track how many times we've seen this base name
+      const count = stepNameCounts.get(baseName) || 0;
+      stepNameCounts.set(baseName, count + 1);
+
+      // Append number if we've seen this name before
+      const uniqueName = count > 0 ? `${baseName}${count + 1}` : baseName;
+
+      // Store mapping for later use in workflow body generation
+      nodeToStepName.set(node.id, uniqueName);
+
+      stepFunctions.push(generateStepFunction(node, uniqueName));
     }
   }
 
@@ -193,13 +262,22 @@ ${stepBody}
       case 'trigger':
         lines.push(`${indent}// Triggered`);
         lines.push(`${indent}let ${varName} = input;`);
+        lines.push(
+          `${indent}outputs['${sanitizeVarName(node.id)}'] = { label: '${node.data.label}', data: ${varName} };`
+        );
         break;
 
       case 'action':
       case 'transform':
-        const stepName = sanitizeStepName(node.data.label || node.id);
-        lines.push(`${indent}// ${node.data.label}`);
-        lines.push(`${indent}const ${varName} = await ${stepName}(input);`);
+        const nodeConfig = node.data.config || {};
+        const nodeActionType = nodeConfig.actionType as string;
+        const nodeLabel = node.data.label || nodeActionType || 'UnnamedStep';
+        const stepFnName = nodeToStepName.get(nodeId) || sanitizeStepName(nodeLabel);
+        lines.push(`${indent}// ${nodeLabel}`);
+        lines.push(`${indent}const ${varName} = await ${stepFnName}({ ...input, outputs });`);
+        lines.push(
+          `${indent}outputs['${sanitizeVarName(node.id)}'] = { label: '${nodeLabel}', data: ${varName} };`
+        );
         break;
 
       case 'condition':
@@ -242,6 +320,11 @@ ${stepBody}
     workflowBody.push('  console.log("No trigger nodes found");');
     workflowBody.push('  return { error: "No trigger nodes" };');
   } else {
+    // Initialize outputs tracking
+    workflowBody.push('  // Track outputs from each node for template processing');
+    workflowBody.push('  const outputs: Record<string, { label: string; data: unknown }> = {};');
+    workflowBody.push('');
+
     for (const trigger of triggerNodes) {
       workflowBody.push(...generateWorkflowBody(trigger.id));
     }
@@ -261,9 +344,71 @@ ${stepBody}
 ${workflowBody.join('\n')}
 }`;
 
+  // Add template processing utilities if needed
+  const templateUtilities = needsTemplateProcessing
+    ? `
+// Template processing utilities
+function processTemplate(template: string, outputs: Record<string, { label: string; data: unknown }>): string {
+  if (!template || typeof template !== 'string') {
+    return template;
+  }
+
+  const pattern = /\\{\\{([^}]+)\\}\\}/g;
+
+  return template.replace(pattern, (match, expression) => {
+    const trimmed = expression.trim();
+    const isNodeIdRef = trimmed.startsWith('$');
+
+    if (isNodeIdRef) {
+      const withoutDollar = trimmed.substring(1);
+      const parts = withoutDollar.split('.');
+      const nodeId = parts[0].trim();
+      const nodeOutput = outputs[nodeId.replace(/-/g, '_')];
+
+      if (!nodeOutput) {
+        console.warn(\`Node "\${nodeId}" not found in outputs\`);
+        return match;
+      }
+
+      if (parts.length === 1) {
+        return formatValue(nodeOutput.data);
+      }
+
+      let current: any = nodeOutput.data;
+      for (let i = 1; i < parts.length; i++) {
+        current = current?.[parts[i].trim()];
+        if (current === undefined || current === null) {
+          return match;
+        }
+      }
+
+      return formatValue(current);
+    }
+
+    return match;
+  });
+}
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(formatValue).join(', ');
+  if (typeof value === 'object') {
+    const obj = value as any;
+    if (obj.title) return String(obj.title);
+    if (obj.name) return String(obj.name);
+    if (obj.id) return String(obj.id);
+    return JSON.stringify(value, null, 2);
+  }
+  return String(value);
+}
+`
+    : '';
+
   // Combine everything
   const code = `${Array.from(imports).join('\n')}
-
+${templateUtilities}
 ${stepFunctions.join('\n\n')}
 
 ${mainFunction}
@@ -280,11 +425,35 @@ function sanitizeFunctionName(name: string): string {
 }
 
 function sanitizeStepName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    .replace(/^[0-9]/, '_$&')
-    .replace(/_+/g, '_')
-    .toLowerCase();
+  // Create a more readable function name from the label
+  // e.g., "Find Issues" -> "findIssuesStep", "Generate Email Text" -> "generateEmailTextStep"
+  const result = name
+    .split(/\s+/) // Split by whitespace
+    .filter((word) => word.length > 0) // Remove empty strings
+    .map((word, index) => {
+      // Remove non-alphanumeric characters
+      const cleaned = word.replace(/[^a-zA-Z0-9]/g, '');
+      if (!cleaned) return '';
+
+      // Capitalize first letter of each word except the first
+      if (index === 0) {
+        return cleaned.toLowerCase();
+      }
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+    })
+    .filter((word) => word.length > 0) // Remove empty results
+    .join('');
+
+  // Ensure we have a valid identifier
+  if (!result || result.length === 0) {
+    return 'unnamedStep';
+  }
+
+  // Prefix with underscore if starts with number
+  const sanitized = result.replace(/^[0-9]/, '_$&');
+
+  // Add "Step" suffix to avoid conflicts with imports (e.g., generateText from 'ai')
+  return `${sanitized}Step`;
 }
 
 function sanitizeVarName(id: string): string {

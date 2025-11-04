@@ -516,7 +516,7 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
                 : 'Run on production'
           }
         >
-          {isExecuting || isDeploying ? (
+          {isExecuting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Play className="h-4 w-4" />
