@@ -4,6 +4,7 @@ import { HistoryIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { getRelativeTime } from "@/lib/utils/time";
 import { type SavedWorkflow, workflowApi } from "@/lib/workflow-api";
 import { Skeleton } from "../ui/skeleton";
@@ -62,7 +63,10 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
     <div className="grid w-full gap-1">
       {displayedWorkflows.map((workflow) => (
         <Link
-          className="flex w-full items-center justify-between gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs"
+          className={cn(
+            "flex w-full items-center justify-between gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs transition-colors",
+            "hover:bg-accent hover:text-accent-foreground"
+          )}
           href={`/workflows/${workflow.id}`}
           key={workflow.id}
         >

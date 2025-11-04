@@ -14,7 +14,7 @@ const Home = () => (
         </Panel>
         <WorkflowIndexPrompt />
         <Panel
-          className="w-full max-w-md border-none bg-transparent p-0"
+          className="w-full max-w-sm border-none bg-transparent p-0"
           position="bottom-center"
         >
           <Recents limit={3} />
