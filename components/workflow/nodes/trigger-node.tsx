@@ -28,25 +28,8 @@ export const TriggerNode = memo(({ data, selected }: NodeProps) => {
         {nodeData.description && <NodeDescription>{nodeData.description}</NodeDescription>}
       </NodeHeader>
       <NodeContent>
-        <div className="space-y-2">
-          <div className="text-muted-foreground text-xs">
-            Trigger Type: {(nodeData.config?.triggerType as string) || 'Manual'}
-          </div>
-          {nodeData.status && (
-            <div
-              className={`text-xs font-medium ${
-                nodeData.status === 'success'
-                  ? 'text-green-600'
-                  : nodeData.status === 'error'
-                    ? 'text-red-600'
-                    : nodeData.status === 'running'
-                      ? 'text-blue-600'
-                      : 'text-muted-foreground'
-              }`}
-            >
-              Status: {nodeData.status}
-            </div>
-          )}
+        <div className="text-muted-foreground text-xs">
+          Trigger Type: {(nodeData.config?.triggerType as string) || 'Manual'}
         </div>
       </NodeContent>
     </Node>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useAtom, useSetAtom } from 'jotai';
 import {
   ReactFlow,
@@ -12,6 +12,7 @@ import {
   type OnConnect,
   BackgroundVariant,
   useReactFlow,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -23,6 +24,7 @@ import {
   selectedNodeAtom,
   isGeneratingAtom,
   addNodeAtom,
+  currentWorkflowIdAtom,
   type WorkflowNode,
   type WorkflowNodeType,
 } from '@/lib/workflow-store';
@@ -68,11 +70,12 @@ export function WorkflowCanvas() {
   const [nodes] = useAtom(nodesAtom);
   const [edges, setEdges] = useAtom(edgesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
+  const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const onNodesChange = useSetAtom(onNodesChangeAtom);
   const onEdgesChange = useSetAtom(onEdgesChangeAtom);
   const setSelectedNode = useSetAtom(selectedNodeAtom);
   const addNode = useSetAtom(addNodeAtom);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, setViewport } = useReactFlow();
 
   const [menu, setMenu] = useState<{
     id: string;
@@ -82,6 +85,45 @@ export function WorkflowCanvas() {
   } | null>(null);
   const connectingNodeId = useRef<string | null>(null);
   const menuJustOpened = useRef(false);
+  const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(undefined);
+  const viewportInitialized = useRef(false);
+
+  // Load saved viewport when workflow changes
+  useEffect(() => {
+    if (!currentWorkflowId) return;
+
+    const saved = localStorage.getItem(`workflow-viewport-${currentWorkflowId}`);
+    if (saved) {
+      try {
+        const viewport = JSON.parse(saved) as Viewport;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDefaultViewport(viewport);
+        // Set viewport after a brief delay to ensure ReactFlow is ready
+        setTimeout(() => {
+          setViewport(viewport, { duration: 0 });
+          viewportInitialized.current = true;
+        }, 100);
+      } catch (error) {
+        console.error('Failed to load viewport:', error);
+        viewportInitialized.current = true;
+      }
+    } else {
+      setDefaultViewport(undefined);
+      // Allow saving viewport after fitView completes
+      setTimeout(() => {
+        viewportInitialized.current = true;
+      }, 500);
+    }
+  }, [currentWorkflowId, setViewport]);
+
+  // Save viewport changes
+  const onMoveEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+      if (!currentWorkflowId || !viewportInitialized.current) return;
+      localStorage.setItem(`workflow-viewport-${currentWorkflowId}`, JSON.stringify(viewport));
+    },
+    [currentWorkflowId]
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const nodeTypes = useMemo<Record<string, React.ComponentType<any>>>(
@@ -236,9 +278,11 @@ export function WorkflowCanvas() {
         onConnectEnd={isGenerating ? undefined : onConnectEnd}
         onNodeClick={isGenerating ? undefined : onNodeClick}
         onPaneClick={onPaneClick}
+        onMoveEnd={onMoveEnd}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
-        fitView
+        defaultViewport={defaultViewport}
+        fitView={!defaultViewport}
         className="bg-background"
         nodesDraggable={!isGenerating}
         nodesConnectable={!isGenerating}

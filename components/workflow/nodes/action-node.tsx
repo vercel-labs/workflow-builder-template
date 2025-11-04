@@ -37,21 +37,6 @@ export const ActionNode = memo(({ data, selected }: NodeProps) => {
               URL: {nodeData.config?.endpoint as string}
             </div>
           )}
-          {nodeData.status && (
-            <div
-              className={`text-xs font-medium ${
-                nodeData.status === 'success'
-                  ? 'text-green-600'
-                  : nodeData.status === 'error'
-                    ? 'text-red-600'
-                    : nodeData.status === 'running'
-                      ? 'text-blue-600'
-                      : 'text-muted-foreground'
-              }`}
-            >
-              Status: {nodeData.status}
-            </div>
-          )}
         </div>
       </NodeContent>
     </Node>

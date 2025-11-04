@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAtom } from 'jotai';
 import { nodesAtom, edgesAtom, selectedNodeAtom } from '@/lib/workflow-store';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -109,15 +108,9 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
   };
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">Available Outputs</CardTitle>
-        <p className="text-muted-foreground text-xs">
-          Use <code className="bg-muted rounded px-1 py-0.5">{'{{'}</code> syntax to reference
-          previous node outputs
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <div className="space-y-2">
+      <div className="text-sm font-medium">Available Outputs</div>
+      <div className="space-y-2">
         {upstreamNodes.map((node) => {
           const isExpanded = expandedNodes.has(node.id);
           const fields = getCommonFields(node);
@@ -185,35 +178,7 @@ export function AvailableOutputs({ onInsertTemplate }: AvailableOutputsProps) {
             </div>
           );
         })}
-
-        <div className="bg-muted/50 mt-3 rounded-lg p-2 text-xs">
-          <div className="font-medium">Examples:</div>
-          <ul className="text-muted-foreground mt-1 space-y-1">
-            <li>
-              <code className="bg-background rounded px-1 py-0.5">
-                {'{{'}
-                {upstreamNodes[0]?.data.label || 'Find Issues'}
-                {'}}'}
-              </code>{' '}
-              - Entire output
-            </li>
-            <li>
-              <code className="bg-background rounded px-1 py-0.5">
-                {'{{'}
-                {upstreamNodes[0]?.data.label || 'Find Issues'}.issues{'}}'}
-              </code>{' '}
-              - Specific field
-            </li>
-            <li>
-              <code className="bg-background rounded px-1 py-0.5">
-                {'{{'}
-                {upstreamNodes[0]?.data.label || 'Find Issues'}.issues[0].title{'}}'}
-              </code>{' '}
-              - Nested field
-            </li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

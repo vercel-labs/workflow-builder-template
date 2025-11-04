@@ -17,6 +17,7 @@ import {
   isGeneratingAtom,
   isExecutingAtom,
   updateNodeDataAtom,
+  selectedNodeAtom,
 } from '@/lib/workflow-store';
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { workflowApi } from '@/lib/workflow-api';
@@ -35,6 +36,7 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
   const setCurrentWorkflowId = useSetAtom(currentWorkflowIdAtom);
   const setCurrentWorkflowName = useSetAtom(currentWorkflowNameAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
+  const setSelectedNodeId = useSetAtom(selectedNodeAtom);
 
   useEffect(() => {
     const loadWorkflowData = async () => {
@@ -72,6 +74,12 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
           setEdges(workflowData.edges || []);
           setCurrentWorkflowName(workflowData.name || 'AI Generated Workflow');
 
+          // Sync selected node if any node is selected
+          const selectedNode = workflowData.nodes?.find((n: { selected?: boolean }) => n.selected);
+          if (selectedNode) {
+            setSelectedNodeId(selectedNode.id);
+          }
+
           // Save to database
           await workflowApi.update(workflowId, {
             name: workflowData.name,
@@ -94,6 +102,12 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
           setEdges(workflow.edges);
           setCurrentWorkflowId(workflow.id);
           setCurrentWorkflowName(workflow.name);
+
+          // Sync selected node if any node is selected
+          const selectedNode = workflow.nodes.find((n) => n.selected);
+          if (selectedNode) {
+            setSelectedNodeId(selectedNode.id);
+          }
         } catch (error) {
           console.error('Failed to load workflow:', error);
         } finally {
@@ -112,6 +126,7 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
     setEdges,
     setIsLoading,
     setIsGenerating,
+    setSelectedNodeId,
   ]);
 
   // Keyboard shortcuts
@@ -119,8 +134,12 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
     if (!currentWorkflowId || isGenerating) return;
     try {
       await workflowApi.update(currentWorkflowId, { nodes, edges });
+      const { toast } = await import('sonner');
+      toast.success('Workflow saved');
     } catch (error) {
       console.error('Failed to save workflow:', error);
+      const { toast } = await import('sonner');
+      toast.error('Failed to save workflow');
     }
   }, [currentWorkflowId, nodes, edges, isGenerating]);
 
@@ -170,20 +189,30 @@ function WorkflowEditor({ params }: { params: Promise<{ workflowId: string }> })
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+S or Ctrl+S to save
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      // Cmd+S or Ctrl+S to save (works everywhere, including inputs)
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
+        e.stopPropagation();
         handleSave();
+        return;
       }
-      // Cmd+Enter or Ctrl+Enter to run
+
+      // Cmd+Enter or Ctrl+Enter to run (skip if typing in input/textarea)
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault();
-        handleRun();
+        if (!isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleRun();
+        }
+        return;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [handleSave, handleRun]);
 
   if (isLoading) {

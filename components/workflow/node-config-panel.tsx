@@ -28,23 +28,23 @@ export function NodeConfigPanel() {
   const [isGenerating] = useAtom(isGeneratingAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
-  const [panelWidth, setPanelWidth] = useState(() => {
-    // Load saved width from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nodeConfigPanelWidth');
-      if (saved) {
-        const width = parseInt(saved, 10);
-        if (width >= MIN_WIDTH && width <= MAX_WIDTH) {
-          return width;
-        }
-      }
-    }
-    return DEFAULT_WIDTH;
-  });
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+
+  // Load saved width from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
+    const saved = localStorage.getItem('nodeConfigPanelWidth');
+    if (saved) {
+      const width = parseInt(saved, 10);
+      if (width >= MIN_WIDTH && width <= MAX_WIDTH) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPanelWidth(width);
+      }
+    }
+  }, []);
 
   // Handle resize
   useEffect(() => {
@@ -90,7 +90,7 @@ export function NodeConfigPanel() {
       <Card
         ref={panelRef}
         className="relative hidden h-full flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:flex"
-        style={{ width: panelWidth }}
+        style={{ width: `${panelWidth}px` }}
       >
         {/* Resize handle */}
         <div
