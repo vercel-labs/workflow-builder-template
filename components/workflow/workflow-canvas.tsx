@@ -36,6 +36,8 @@ import { ConditionNode } from './nodes/condition-node';
 import { TransformNode } from './nodes/transform-node';
 import { nanoid } from 'nanoid';
 import { Loader2, PlayCircle, Zap, GitBranch, Shuffle } from 'lucide-react';
+import { Node, NodeFooter, NodeContent, NodeDescription, NodeHeader, NodeTitle } from '../ai-elements/node';
+import { Edge } from '../ai-elements/edge';
 
 const nodeTemplates = [
   {
@@ -71,6 +73,11 @@ const nodeTemplates = [
     defaultConfig: { transformType: 'Map Data' },
   },
 ];
+
+const edgeTypes = {
+  animated: Edge.Animated,
+  temporary: Edge.Temporary,
+};
 
 export function WorkflowCanvas() {
   const [nodes] = useAtom(nodesAtom);
@@ -147,7 +154,7 @@ export function WorkflowCanvas() {
       const newEdge = {
         id: nanoid(),
         ...connection,
-        type: 'default',
+        type: 'animated',
       };
       setEdges([...edges, newEdge]);
     },
@@ -245,7 +252,7 @@ export function WorkflowCanvas() {
         id: nanoid(),
         source: menu.id,
         target: newNode.id,
-        type: 'default',
+        type: 'animated',
       };
       setEdges([...edges, newEdge]);
 
@@ -293,7 +300,7 @@ export function WorkflowCanvas() {
         nodesDraggable={!isGenerating}
         nodesConnectable={!isGenerating}
         elementsSelectable={!isGenerating}
-
+        edgeTypes={edgeTypes}
         connectionLineComponent={Connection}
       >
         <Controls />
