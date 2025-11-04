@@ -277,7 +277,13 @@ export function WorkflowToolbar({}: { workflowId?: string }) {
 
   return (
     <>
-      <AppHeader title={titleElement} showBackButton actions={actions} disableTitleLink />
+      <AppHeader
+        title={titleElement}
+        showBackButton
+        actions={actions}
+        disableTitleLink
+        useMobileTwoLineLayout
+      />
 
       {/* Clear Workflow Dialog */}
       <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
