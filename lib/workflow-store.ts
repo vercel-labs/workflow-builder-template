@@ -28,8 +28,6 @@ export const currentWorkflowNameAtom = atom<string>("Untitled");
 export const currentVercelProjectNameAtom = atom<string | null>(null);
 
 // UI state atoms
-export const propertiesPanelWidthAtom = atom<number>(320);
-export const propertiesPanelResizingAtom = atom<boolean>(false);
 export const propertiesPanelActiveTabAtom = atom<string>("runs");
 
 // Derived atoms for node/edge operations

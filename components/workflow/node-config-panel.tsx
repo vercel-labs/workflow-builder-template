@@ -14,7 +14,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,7 +97,7 @@ export const NodeConfigPanel = () => {
           className="absolute top-20 right-4 bottom-4 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex"
           ref={panelRef}
         >
-          <Tabs>
+          <Tabs defaultValue="properties">
             <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-3">
               <TabsTrigger
                 className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
@@ -171,62 +170,53 @@ export const NodeConfigPanel = () => {
       />
 
       {/* Properties panel - Mobile: Fixed sidebar, Desktop: Resizable sidebar */}
-      <Card
-        className="fixed top-0 right-0 bottom-0 z-50 flex h-full w-80 flex-col rounded-none border-t-0 border-r-0 border-b-0 border-l md:relative md:z-0"
+      <div
+        className="absolute top-20 right-4 bottom-4 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex"
         ref={panelRef}
-        style={{ width: `${panelWidth}px` }}
       >
-        {/* Resize handle - only visible on desktop */}
-        <div
-          className="absolute top-0 bottom-0 left-0 z-10 hidden w-1 cursor-col-resize hover:bg-blue-500 active:bg-blue-600 md:block"
-          onMouseDown={handleResizeStart}
-          style={{ cursor: isResizing ? "col-resize" : undefined }}
-        />
-        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
-          <Button
-            className={activeTab === "properties" ? "font-semibold" : ""}
-            onClick={() => setActiveTab("properties")}
-            variant="ghost"
-          >
-            Properties
-          </Button>
-          <Button
-            className={activeTab === "runs" ? "font-semibold" : ""}
-            onClick={() => setActiveTab("runs")}
-            variant="ghost"
-          >
-            Runs
-          </Button>
-          <div className="ml-auto">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="h-8 w-8" size="icon" variant="ghost">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {activeTab === "properties" && (
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteNodeAlert(true)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Node
-                  </DropdownMenuItem>
-                )}
-                {activeTab === "runs" && (
-                  <DropdownMenuItem
-                    onClick={() => setShowDeleteRunsAlert(true)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete All Runs
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto">
-          {activeTab === "properties" && (
+        <Tabs defaultValue="properties">
+          <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-3">
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="properties"
+            >
+              Properties
+            </TabsTrigger>
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="runs"
+            >
+              Runs
+            </TabsTrigger>
+            <div className="ml-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="h-8 w-8" size="icon" variant="ghost">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {activeTab === "properties" && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteNodeAlert(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Node
+                    </DropdownMenuItem>
+                  )}
+                  {activeTab === "runs" && (
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteRunsAlert(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete All Runs
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </TabsList>
+          <TabsContent className="p-3" value="properties">
             <div className="space-y-4">
               {selectedNode.data.type === "trigger" && (
                 <TriggerConfig
@@ -304,12 +294,12 @@ export const NodeConfigPanel = () => {
                 selectedNode.data.type === "condition" ||
                 selectedNode.data.type === "transform") && <AvailableOutputs />}
             </div>
-          )}
-          {activeTab === "runs" && (
+          </TabsContent>
+          <TabsContent className="p-3" value="runs">
             <WorkflowRuns isActive={activeTab === "runs"} />
-          )}
-        </CardContent>
-      </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* Delete Node Alert Dialog */}
       <AlertDialog
