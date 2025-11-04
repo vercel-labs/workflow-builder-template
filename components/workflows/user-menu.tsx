@@ -44,6 +44,15 @@ export function UserMenu() {
     return 'U';
   };
 
+  // Show Sign In button if user is not logged in
+  if (!session) {
+    return (
+      <Button variant="default" size="sm" onClick={() => router.push('/login')}>
+        Sign In
+      </Button>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -6,16 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, ArrowUp } from 'lucide-react';
 import { workflowApi } from '@/lib/workflow-api';
+import { useSession } from '@/lib/auth-client';
+import { toast } from 'sonner';
 
 export function WorkflowPrompt() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { data: session } = useSession();
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isGenerating) return;
+
+    // Check if user is logged in
+    if (!session) {
+      // Redirect to login page
+      router.push('/login');
+      return;
+    }
 
     setIsGenerating(true);
     try {
@@ -35,7 +45,7 @@ export function WorkflowPrompt() {
       router.push(`/workflows/${newWorkflow.id}?generating=true`);
     } catch (error) {
       console.error('Failed to create workflow:', error);
-      alert('Failed to create workflow. Please try again.');
+      toast.error('Failed to create workflow. Please try again.');
       setIsGenerating(false);
     }
   };

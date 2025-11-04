@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Clock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ import { workflowApi, type SavedWorkflow } from '@/lib/workflow-api';
 import { WorkflowPrompt } from './workflow-prompt';
 import { AppHeader } from '@/components/app-header';
 import { getRelativeTime } from '@/lib/utils/time';
+import { useSession } from '@/lib/auth-client';
+import { toast } from 'sonner';
 
 interface WorkflowsListProps {
   limit?: number;
@@ -36,12 +38,16 @@ export function WorkflowsList({
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
+  const { data: session } = useSession();
 
-  useEffect(() => {
-    loadWorkflows();
-  }, []);
+  const loadWorkflows = useCallback(async () => {
+    // Only load workflows if user is logged in
+    if (!session) {
+      setLoading(false);
+      setWorkflows([]);
+      return;
+    }
 
-  const loadWorkflows = async () => {
     try {
       setLoading(true);
       const data = await workflowApi.getAll();
@@ -53,11 +59,21 @@ export function WorkflowsList({
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
+
+  useEffect(() => {
+    loadWorkflows();
+  }, [loadWorkflows]);
 
   const displayedWorkflows = limit ? workflows.slice(0, limit) : workflows;
 
   const handleNewWorkflow = async () => {
+    // Check if user is logged in
+    if (!session) {
+      router.push('/login');
+      return;
+    }
+
     try {
       const newWorkflow = await workflowApi.create({
         name: 'Untitled',
@@ -68,7 +84,7 @@ export function WorkflowsList({
       router.push(`/workflows/${newWorkflow.id}`);
     } catch (error) {
       console.error('Failed to create workflow:', error);
-      alert('Failed to create workflow. Please try again.');
+      toast.error('Failed to create workflow. Please try again.');
     }
   };
 
@@ -239,11 +255,6 @@ export function WorkflowsList({
                           <span>{getRelativeTime(workflow.updatedAt)}</span>
                         </div>
                       </div>
-                      {workflow.description && (
-                        <div className="text-muted-foreground line-clamp-1 text-sm">
-                          {workflow.description}
-                        </div>
-                      )}
                     </button>
                   </div>
                 ))}
