@@ -91,61 +91,7 @@ export const NodeConfigPanel = () => {
   };
 
   if (!selectedNode) {
-    return (
-      <>
-        <div
-          className="absolute top-20 right-4 bottom-4 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex"
-          ref={panelRef}
-        >
-          <Tabs defaultValue="properties">
-            <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-3">
-              <TabsTrigger
-                className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                value="properties"
-              >
-                Properties
-              </TabsTrigger>
-              <TabsTrigger
-                className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                value="runs"
-              >
-                Runs
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent className="p-3" value="properties">
-              <div className="text-muted-foreground text-sm">
-                Select a node to configure
-              </div>
-            </TabsContent>
-            <TabsContent className="p-3" value="runs">
-              <WorkflowRuns isActive={activeTab === "runs"} />
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Delete All Runs Alert Dialog */}
-        <AlertDialog
-          onOpenChange={setShowDeleteRunsAlert}
-          open={showDeleteRunsAlert}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete All Runs</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete all workflow runs? This action
-                cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteAllRuns}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </>
-    );
+    return null;
   }
 
   const handleUpdateLabel = (label: string) => {

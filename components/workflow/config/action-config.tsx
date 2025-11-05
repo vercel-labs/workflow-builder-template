@@ -345,7 +345,9 @@ export function ActionConfig({
           </div>
           <div className="space-y-2">
             <Label htmlFor="httpBody">Body (JSON)</Label>
-            <div className="overflow-hidden rounded-md border">
+            <div
+              className={`overflow-hidden rounded-md border ${config?.httpMethod === "GET" ? "opacity-50" : ""}`}
+            >
               <Editor
                 defaultLanguage="json"
                 height="120px"
@@ -355,12 +357,18 @@ export function ActionConfig({
                   lineNumbers: "off",
                   scrollBeyondLastLine: false,
                   fontSize: 12,
-                  readOnly: disabled,
+                  readOnly: config?.httpMethod === "GET" || disabled,
+                  domReadOnly: config?.httpMethod === "GET" || disabled,
                 }}
                 theme="vs-dark"
                 value={(config?.httpBody as string) || "{}"}
               />
             </div>
+            {config?.httpMethod === "GET" && (
+              <p className="text-xs text-muted-foreground">
+                Body is disabled for GET requests
+              </p>
+            )}
           </div>
         </>
       )}

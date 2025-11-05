@@ -282,7 +282,20 @@ export function WorkflowCanvas() {
     }
 
     setMenu(null);
-  }, []);
+    setSelectedNode(null);
+  }, [setSelectedNode]);
+
+  const onSelectionChange = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ nodes }: { nodes: any[] }) => {
+      if (nodes.length === 0) {
+        setSelectedNode(null);
+      } else if (nodes.length === 1) {
+        setSelectedNode(nodes[0].id);
+      }
+    },
+    [setSelectedNode]
+  );
 
   return (
     <div className="relative h-full w-full">
@@ -315,14 +328,15 @@ export function WorkflowCanvas() {
         onNodeClick={isGenerating ? undefined : onNodeClick}
         onNodesChange={isGenerating ? undefined : onNodesChange}
         onPaneClick={onPaneClick}
+        onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
         <Controls />
-        <MiniMap />
+        <MiniMap bgColor="var(--sidebar)" nodeStrokeColor="var(--border)"  />
       </Canvas>
 
       {menu && (
         <div
-          className="fade-in-0 zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 min-w-[8rem] animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out"
+          className="fade-in-0 zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 min-w-32 animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out"
           style={{
             position: "absolute",
             top: menu.top,
