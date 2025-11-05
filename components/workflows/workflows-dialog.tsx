@@ -114,91 +114,83 @@ export const WorkflowsDialog = () => {
           <DialogHeader>
             <DialogTitle>All Workflows</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 p-8">
-            <div className="mx-auto w-full max-w-2xl">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h2 className="font-medium text-muted-foreground text-sm">
-                    {loading ? (
-                      <Spinner />
-                    ) : workflows.length === 0 ? (
-                      "No Workflows"
-                    ) : (
-                      "All Workflows"
-                    )}
-                  </h2>
-                  {workflows.length > 0 && !loading && (
-                    <Button
-                      onClick={handleSelectAll}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      {selectedIds.size === workflows.length
-                        ? "Deselect All"
-                        : "Select All"}
-                    </Button>
+          <div className="mx-auto w-full max-w-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h2 className="font-medium text-muted-foreground text-sm">
+                  {loading ? (
+                    <Spinner />
+                  ) : workflows.length === 0 ? (
+                    "No Workflows"
+                  ) : (
+                    "All Workflows"
                   )}
-                </div>
-                <div className="flex gap-2">
-                  {selectedIds.size > 0 && (
-                    <Button
-                      disabled={deleting}
-                      onClick={() => setShowDeleteDialog(true)}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      <Trash2 className="mr-2 h-3 w-3" />
-                      Delete {selectedIds.size}{" "}
-                      {selectedIds.size === 1 ? "Workflow" : "Workflows"}
-                    </Button>
-                  )}
-                </div>
+                </h2>
+                {workflows.length > 0 && !loading && (
+                  <Button onClick={handleSelectAll} size="sm" variant="ghost">
+                    {selectedIds.size === workflows.length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </Button>
+                )}
               </div>
+              <div className="flex gap-2">
+                {selectedIds.size > 0 && (
+                  <Button
+                    disabled={deleting}
+                    onClick={() => setShowDeleteDialog(true)}
+                    size="sm"
+                    variant="destructive"
+                  >
+                    <Trash2 className="mr-2 h-3 w-3" />
+                    Delete {selectedIds.size}{" "}
+                    {selectedIds.size === 1 ? "Workflow" : "Workflows"}
+                  </Button>
+                )}
+              </div>
+            </div>
 
-              <div>
-                {loading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-muted-foreground text-sm">
-                      Loading workflows...
-                    </div>
+            <div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-muted-foreground text-sm">
+                    Loading workflows...
                   </div>
-                ) : workflows.length > 0 ? (
-                  <div className="divide-y">
-                    {workflows.map((workflow) => (
-                      <div
-                        className="flex w-full items-center gap-3 px-4 py-4 transition-colors hover:bg-accent/50"
-                        key={workflow.id}
+                </div>
+              ) : workflows.length > 0 ? (
+                <div className="divide-y">
+                  {workflows.map((workflow) => (
+                    <div
+                      className="flex w-full items-center gap-3 px-4 py-4 transition-colors hover:bg-accent/50"
+                      key={workflow.id}
+                    >
+                      <input
+                        checked={selectedIds.has(workflow.id)}
+                        className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelect(workflow.id);
+                        }}
+                        type="checkbox"
+                      />
+                      <button
+                        className="flex min-w-0 flex-1 cursor-pointer flex-col text-left"
+                        onClick={() => handleOpenWorkflow(workflow.id)}
                       >
-                        <input
-                          checked={selectedIds.has(workflow.id)}
-                          className="h-4 w-4 cursor-pointer rounded border-gray-300"
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleToggleSelect(workflow.id);
-                          }}
-                          type="checkbox"
-                        />
-                        <button
-                          className="flex min-w-0 flex-1 cursor-pointer flex-col text-left"
-                          onClick={() => handleOpenWorkflow(workflow.id)}
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-4">
-                            <div className="min-w-0 truncate font-medium">
-                              {workflow.name}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
-                              <Clock className="h-3 w-3" />
-                              <span>
-                                {getRelativeTime(workflow.updatedAt)}
-                              </span>
-                            </div>
+                        <div className="mb-1 flex items-center justify-between gap-4">
+                          <div className="min-w-0 truncate font-medium">
+                            {workflow.name}
                           </div>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+                          <div className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+                            <Clock className="h-3 w-3" />
+                            <span>{getRelativeTime(workflow.updatedAt)}</span>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </DialogContent>
