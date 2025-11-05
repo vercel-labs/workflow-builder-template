@@ -386,16 +386,16 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
 
   return (
     <>
-      <Panel className="flex items-center gap-4 pr-4" position="top-left">
+      <Panel className="flex items-center gap-2 p-0.5 pr-3" position="top-left">
         <Button
           onClick={handleBack}
-          size="icon"
+          size="icon-sm"
           title="Back to workflows"
           variant="ghost"
         >
           <ArrowLeftIcon className="size-4" />
         </Button>
-        <p className="font-medium">{workflowName}</p>
+        <p className="font-medium text-sm">{workflowName}</p>
       </Panel>
 
       <Panel
