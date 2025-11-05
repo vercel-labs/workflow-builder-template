@@ -93,12 +93,10 @@ export default function SettingsPage() {
 
   const loadAccount = async () => {
     try {
-      const response = await fetch("/api/user/account");
-      if (response.ok) {
-        const data = await response.json();
-        setAccountName(data.name || "");
-        setAccountEmail(data.email || "");
-      }
+      const { get } = await import("@/app/actions/user/get");
+      const data = await get();
+      setAccountName(data.name || "");
+      setAccountEmail(data.email || "");
     } catch (error) {
       console.error("Failed to load account:", error);
     }
@@ -106,13 +104,11 @@ export default function SettingsPage() {
 
   const loadIntegrations = async () => {
     try {
-      const response = await fetch("/api/user/integrations");
-      if (response.ok) {
-        const data = await response.json();
-        setIntegrations(data);
-        setResendFromEmail(data.resendFromEmail || "");
-        setVercelTeamId(data.vercelTeamId || "");
-      }
+      const { get } = await import("@/app/actions/integration/get");
+      const data = await get();
+      setIntegrations(data);
+      setResendFromEmail(data.resendFromEmail || "");
+      setVercelTeamId(data.vercelTeamId || "");
     } catch (error) {
       console.error("Failed to load integrations:", error);
     }
@@ -120,11 +116,9 @@ export default function SettingsPage() {
 
   const loadDataSources = async () => {
     try {
-      const response = await fetch("/api/user/data-sources");
-      if (response.ok) {
-        const data = await response.json();
-        setDataSources(data.dataSources || []);
-      }
+      const { getAll } = await import("@/app/actions/data-source/get-all");
+      const data = await getAll();
+      setDataSources(data || []);
     } catch (error) {
       console.error("Failed to load data sources:", error);
     }
@@ -133,15 +127,9 @@ export default function SettingsPage() {
   const saveAccount = async () => {
     setSavingAccount(true);
     try {
-      const response = await fetch("/api/user/account", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: accountName, email: accountEmail }),
-      });
-
-      if (response.ok) {
-        await loadAccount();
-      }
+      const { update } = await import("@/app/actions/user/update");
+      await update({ name: accountName, email: accountEmail });
+      await loadAccount();
     } catch (error) {
       console.error("Failed to save account:", error);
     } finally {
@@ -168,19 +156,13 @@ export default function SettingsPage() {
       if (vercelApiToken) updates.vercelApiToken = vercelApiToken;
       if (vercelTeamId) updates.vercelTeamId = vercelTeamId;
 
-      const response = await fetch("/api/user/integrations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-
-      if (response.ok) {
-        await loadIntegrations();
-        setResendApiKey("");
-        setLinearApiKey("");
-        setSlackApiKey("");
-        setVercelApiToken("");
-      }
+      const { update } = await import("@/app/actions/integration/update");
+      await update(updates);
+      await loadIntegrations();
+      setResendApiKey("");
+      setLinearApiKey("");
+      setSlackApiKey("");
+      setVercelApiToken("");
     } catch (error) {
       console.error("Failed to save integrations:", error);
     } finally {
@@ -193,24 +175,18 @@ export default function SettingsPage() {
 
     setSavingSource(true);
     try {
-      const response = await fetch("/api/user/data-sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newSourceName,
-          type: "postgresql",
-          connectionString: newSourceConnectionString,
-          isDefault: newSourceIsDefault,
-        }),
+      const { create } = await import("@/app/actions/data-source/create");
+      await create({
+        name: newSourceName,
+        type: "postgresql",
+        connectionString: newSourceConnectionString,
+        isDefault: newSourceIsDefault,
       });
-
-      if (response.ok) {
-        await loadDataSources();
-        setNewSourceName("");
-        setNewSourceConnectionString("");
-        setNewSourceIsDefault(false);
-        setShowAddSource(false);
-      }
+      await loadDataSources();
+      setNewSourceName("");
+      setNewSourceConnectionString("");
+      setNewSourceIsDefault(false);
+      setShowAddSource(false);
     } catch (error) {
       console.error("Failed to add data source:", error);
     } finally {
@@ -220,14 +196,12 @@ export default function SettingsPage() {
 
   const deleteDataSource = async (id: string) => {
     try {
-      const response = await fetch(`/api/user/data-sources/${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        await loadDataSources();
-        setDeleteSourceId(null);
-      }
+      const { deleteDataSource } = await import(
+        "@/app/actions/data-source/delete"
+      );
+      await deleteDataSource(id);
+      await loadDataSources();
+      setDeleteSourceId(null);
     } catch (error) {
       console.error("Failed to delete data source:", error);
     }

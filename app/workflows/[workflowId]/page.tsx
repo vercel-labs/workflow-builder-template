@@ -66,18 +66,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
         setCurrentWorkflowName("AI Generated Workflow");
 
         try {
-          // Stream the AI response
-          const response = await fetch("/api/ai/generate-workflow", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: storedPrompt }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to generate workflow");
-          }
-
-          const workflowData = await response.json();
+          // Generate workflow using AI
+          const { generate } = await import("@/app/actions/ai/generate");
+          const workflowData = await generate(storedPrompt);
 
           // Update nodes and edges as they come in
           setNodes(workflowData.nodes || []);

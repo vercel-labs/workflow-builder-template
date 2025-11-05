@@ -46,10 +46,8 @@ export const NodeConfigPanel = () => {
   const deleteNode = useSetAtom(deleteNodeAtom);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const panelRef = useRef<HTMLDivElement>(null);
-
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
-
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 
   const handleDelete = () => {
@@ -60,23 +58,15 @@ export const NodeConfigPanel = () => {
   };
 
   const handleDeleteAllRuns = async () => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      return;
+    }
 
     try {
-      const response = await fetch(
-        `/api/workflows/${currentWorkflowId}/executions`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
+      const { deleteExecutions } = await import(
+        "@/app/actions/workflow/delete-executions"
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || errorData.error || "Failed to delete runs"
-        );
-      }
+      await deleteExecutions(currentWorkflowId);
 
       const { toast } = await import("sonner");
       toast.success("All runs deleted");

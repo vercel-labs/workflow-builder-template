@@ -55,15 +55,11 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     const loadExecutions = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `/api/workflows/${currentWorkflowId}/executions`
+        const { getExecutions } = await import(
+          "@/app/actions/workflow/get-executions"
         );
-        if (response.ok) {
-          const data = await response.json();
-          setExecutions(Array.isArray(data) ? data : []);
-        } else {
-          setExecutions([]);
-        }
+        const data = await getExecutions(currentWorkflowId);
+        setExecutions(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to load executions:", error);
         setExecutions([]);
@@ -81,13 +77,11 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
     const loadExecutions = async () => {
       try {
-        const response = await fetch(
-          `/api/workflows/${currentWorkflowId}/executions`
+        const { getExecutions } = await import(
+          "@/app/actions/workflow/get-executions"
         );
-        if (response.ok) {
-          const data = await response.json();
-          setExecutions(Array.isArray(data) ? data : []);
-        }
+        const data = await getExecutions(currentWorkflowId);
+        setExecutions(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to poll executions:", error);
       }
@@ -101,18 +95,14 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     if (logs[executionId]) return; // Already loaded
 
     try {
-      const response = await fetch(
-        `/api/workflows/executions/${executionId}/logs`
+      const { getExecutionLogs } = await import(
+        "@/app/actions/workflow/get-execution-logs"
       );
-      if (response.ok) {
-        const data = await response.json();
-        setLogs((prev) => ({
-          ...prev,
-          [executionId]: Array.isArray(data) ? data : [],
-        }));
-      } else {
-        setLogs((prev) => ({ ...prev, [executionId]: [] }));
-      }
+      const data = await getExecutionLogs(executionId);
+      setLogs((prev) => ({
+        ...prev,
+        [executionId]: Array.isArray(data.logs) ? data.logs : [],
+      }));
     } catch (error) {
       console.error("Failed to load execution logs:", error);
       setLogs((prev) => ({ ...prev, [executionId]: [] }));

@@ -67,14 +67,10 @@ export function WorkflowPrompt() {
 
     const loadVercelProjects = async () => {
       try {
-        const response = await fetch("/api/user/vercel-projects");
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Loaded Vercel projects:", data.projects);
-          setVercelProjects(data.projects || []);
-        } else {
-          console.error("Failed to fetch projects, status:", response.status);
-        }
+        const { getAll } = await import("@/app/actions/vercel-project/get-all");
+        const projects = await getAll();
+        console.log("Loaded Vercel projects:", projects);
+        setVercelProjects(projects || []);
       } catch (error) {
         console.error("Failed to load Vercel projects:", error);
       }
@@ -99,32 +95,22 @@ export function WorkflowPrompt() {
 
     setCreatingProject(true);
     try {
-      const response = await fetch("/api/user/vercel-projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newProjectName }),
-      });
+      const { create } = await import("@/app/actions/vercel-project/create");
+      const project = await create({ name: newProjectName });
+      console.log("Created project:", project);
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Created project:", data.project);
+      // Update the projects list
+      setVercelProjects((prev) => [...prev, project]);
 
-        // Update the projects list
-        setVercelProjects((prev) => [...prev, data.project]);
+      // Select the newly created project
+      setSelectedProjectId(project.id);
+      console.log("Selected project ID set to:", project.id);
 
-        // Select the newly created project
-        setSelectedProjectId(data.project.id);
-        console.log("Selected project ID set to:", data.project.id);
+      // Close dialog and clear form
+      setShowNewProjectDialog(false);
+      setNewProjectName("");
 
-        // Close dialog and clear form
-        setShowNewProjectDialog(false);
-        setNewProjectName("");
-
-        toast.success("Project created successfully");
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to create project");
-      }
+      toast.success("Project created successfully");
     } catch (error) {
       console.error("Failed to create project:", error);
       toast.error("Failed to create project");

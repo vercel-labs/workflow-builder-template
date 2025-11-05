@@ -166,22 +166,9 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
 
     try {
-      // Call the server API to execute the workflow
-      const response = await fetch(
-        `/api/workflows/${currentWorkflowId}/execute`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: {} }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to execute workflow");
-      }
-
-      const result = await response.json();
+      // Call the server action to execute the workflow
+      const { execute } = await import("@/app/actions/workflow/execute");
+      const result = await execute(currentWorkflowId, {});
 
       if (result.status === "error") {
         toast.error(result.error || "Workflow execution failed");
@@ -293,22 +280,11 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     toast.info("Starting deployment to Vercel...");
 
     try {
-      const response = await fetch(
-        `/api/workflows/${currentWorkflowId}/deploy`,
-        {
-          method: "POST",
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to deploy workflow");
-      }
-
-      const result = await response.json();
+      const { deploy } = await import("@/app/actions/workflow/deploy");
+      const result = await deploy(currentWorkflowId);
 
       if (result.success) {
-        setDeploymentUrl(result.deploymentUrl);
+        setDeploymentUrl(result.deploymentUrl || null);
         toast.success("Workflow deployed successfully!");
 
         if (result.deploymentUrl) {
@@ -344,8 +320,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   // Load deployment status on mount
   useEffect(() => {
     if (currentWorkflowId) {
-      fetch(`/api/workflows/${currentWorkflowId}/deployment-status`)
-        .then((res) => res.json())
+      import("@/app/actions/workflow/get-deployment-status")
+        .then(({ getDeploymentStatus }) => getDeploymentStatus(currentWorkflowId))
         .then((data) => {
           setDeploymentUrl(data.deploymentUrl || null);
         })
@@ -361,12 +337,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
 
     try {
-      const response = await fetch(`/api/workflows/${currentWorkflowId}/code`);
-      if (!response.ok) {
-        throw new Error("Failed to generate code");
-      }
-
-      const data = await response.json();
+      const { getCode } = await import("@/app/actions/workflow/get-code");
+      const data = await getCode(currentWorkflowId);
       setGeneratedCode(data.code);
       setShowCodeDialog(true);
     } catch (error) {
