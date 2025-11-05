@@ -10,25 +10,34 @@ import {
   NodeHeader,
   NodeTitle,
 } from "@/components/ai-elements/node";
+import { cn } from "@/lib/utils";
 import type { WorkflowNodeData } from "@/lib/workflow-store";
 
-export const ConditionNode = memo(({ data, selected }: NodeProps) => {
-  const nodeData = data as WorkflowNodeData;
-  if (!nodeData) return null;
+type ConditionNodeProps = NodeProps & {
+  data?: WorkflowNodeData;
+};
 
-  const condition = (nodeData.config?.condition as string) || "If true";
-  const displayTitle = nodeData.label || condition;
-  const displayDescription = nodeData.description || "Condition";
+export const ConditionNode = memo(({ data, selected }: ConditionNodeProps) => {
+  if (!data) {
+    return null;
+  }
+
+  const condition = (data.config?.condition as string) || "If true";
+  const displayTitle = data.label || condition;
+  const displayDescription = data.description || "Condition";
   const hasContent = !!condition;
 
   return (
     <Node
-      className={selected ? "rounded-md ring-2 ring-primary" : ""}
+      className={cn(
+        "shadow-none",
+        selected && "rounded-md ring-2 ring-primary"
+      )}
       handles={{ target: true, source: true }}
     >
-      <NodeHeader className={hasContent ? "" : "rounded-b-md border-b-0"}>
+      <NodeHeader>
         <div className="flex items-center gap-2">
-          <GitBranch className="h-4 w-4" />
+          <GitBranch className="size-4" />
           <NodeTitle>{displayTitle}</NodeTitle>
         </div>
         {displayDescription && (

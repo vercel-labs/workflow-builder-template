@@ -10,6 +10,7 @@ import {
   NodeHeader,
   NodeTitle,
 } from "@/components/ai-elements/node";
+import { cn } from "@/lib/utils";
 import type { WorkflowNodeData } from "@/lib/workflow-store";
 
 // Helper to get integration name from action type
@@ -27,29 +28,37 @@ const getIntegrationFromActionType = (actionType: string): string => {
   return integrationMap[actionType] || "System";
 };
 
-export const ActionNode = memo(({ data, selected }: NodeProps) => {
-  const nodeData = data as WorkflowNodeData;
-  if (!nodeData) return null;
+type ActionNodeProps = NodeProps & {
+  data?: WorkflowNodeData;
+};
 
-  const actionType = (nodeData.config?.actionType as string) || "HTTP Request";
-  const displayTitle = nodeData.label || actionType;
+export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
+  if (!data) {
+    return null;
+  }
+
+  const actionType = (data.config?.actionType as string) || "HTTP Request";
+  const displayTitle = data.label || actionType;
   const displayDescription =
-    nodeData.description || getIntegrationFromActionType(actionType);
+    data.description || getIntegrationFromActionType(actionType);
 
   // Only show URL for action types that actually use endpoints
   const shouldShowUrl =
     actionType === "HTTP Request" || actionType === "Database Query";
-  const endpoint = nodeData.config?.endpoint as string | undefined;
+  const endpoint = data.config?.endpoint as string | undefined;
   const hasContent = shouldShowUrl && endpoint;
 
   return (
     <Node
-      className={selected ? "rounded-md ring-2 ring-primary" : ""}
+      className={cn(
+        "shadow-none",
+        selected && "rounded-md ring-2 ring-primary"
+      )}
       handles={{ target: true, source: true }}
     >
-      <NodeHeader className={hasContent ? "" : "rounded-b-md border-b-0"}>
+      <NodeHeader>
         <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4" />
+          <Zap className="size-4" />
           <NodeTitle>{displayTitle}</NodeTitle>
         </div>
         {displayDescription && (

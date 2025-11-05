@@ -10,25 +10,34 @@ import {
   NodeHeader,
   NodeTitle,
 } from "@/components/ai-elements/node";
+import { cn } from "@/lib/utils";
 import type { WorkflowNodeData } from "@/lib/workflow-store";
 
-export const TriggerNode = memo(({ data, selected }: NodeProps) => {
-  const nodeData = data as WorkflowNodeData;
-  if (!nodeData) return null;
+type TriggerNodeProps = NodeProps & {
+  data?: WorkflowNodeData;
+};
 
-  const triggerType = (nodeData.config?.triggerType as string) || "Manual";
-  const displayTitle = nodeData.label || triggerType;
-  const displayDescription = nodeData.description || "Trigger";
+export const TriggerNode = memo(({ data, selected }: TriggerNodeProps) => {
+  if (!data) {
+    return null;
+  }
+
+  const triggerType = (data.config?.triggerType as string) || "Manual";
+  const displayTitle = data.label || triggerType;
+  const displayDescription = data.description || "Trigger";
   const hasContent = !!triggerType;
 
   return (
     <Node
-      className={selected ? "rounded-md ring-2 ring-primary" : ""}
+      className={cn(
+        "shadow-none",
+        selected && "rounded-md ring-2 ring-primary"
+      )}
       handles={{ target: false, source: true }}
     >
-      <NodeHeader className={hasContent ? "" : "rounded-b-md border-b-0"}>
+      <NodeHeader>
         <div className="flex items-center gap-2">
-          <PlayCircle className="h-4 w-4" />
+          <PlayCircle className="size-4" />
           <NodeTitle>{displayTitle}</NodeTitle>
         </div>
         {displayDescription && (
