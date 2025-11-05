@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "../ui/checkbox";
 
 interface DataSource {
   id: string;
@@ -51,12 +52,14 @@ export function DataSourcesSettings({
 }: DataSourcesSettingsProps) {
   return (
     <>
-      <Card className="border-0 shadow-none py-0">
+      <Card className="border-0 py-0 shadow-none">
         <CardHeader className="px-0">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Data Sources</CardTitle>
-              <CardDescription>Manage your database connections</CardDescription>
+              <CardDescription>
+                Manage your database connections
+              </CardDescription>
             </div>
             <Button onClick={() => onShowAddSource(true)} size="sm">
               <Plus className="mr-2 h-4 w-4" />
@@ -107,17 +110,18 @@ export function DataSourcesSettings({
       </Card>
 
       {showAddSource && (
-        <Card className="border-0 shadow-none py-0">
-          <CardHeader className="px-0">
+        <Card className="border-0 bg-secondary shadow-none">
+          <CardHeader>
             <CardTitle>Add Data Source</CardTitle>
             <CardDescription>
               Configure a new database connection
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 px-0">
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="sourceName">Name</Label>
               <Input
+                className="bg-background"
                 id="sourceName"
                 onChange={(e) => onNewSourceNameChange(e.target.value)}
                 placeholder="Production Database"
@@ -128,7 +132,7 @@ export function DataSourcesSettings({
             <div className="space-y-2">
               <Label htmlFor="sourceType">Type</Label>
               <Input
-                className="bg-muted"
+                className="bg-background"
                 disabled
                 id="sourceType"
                 value="PostgreSQL"
@@ -141,6 +145,7 @@ export function DataSourcesSettings({
             <div className="space-y-2">
               <Label htmlFor="sourceConnectionString">Connection String</Label>
               <Input
+                className="bg-background"
                 id="sourceConnectionString"
                 onChange={(e) =>
                   onNewSourceConnectionStringChange(e.target.value)
@@ -155,12 +160,11 @@ export function DataSourcesSettings({
             </div>
 
             <div className="flex items-center space-x-2">
-              <input
+              <Checkbox
                 checked={newSourceIsDefault}
-                className="h-4 w-4 cursor-pointer rounded border-gray-300"
+                className="bg-background"
                 id="sourceIsDefault"
-                onChange={(e) => onNewSourceIsDefaultChange(e.target.checked)}
-                type="checkbox"
+                onCheckedChange={onNewSourceIsDefaultChange}
               />
               <Label
                 className="cursor-pointer font-normal"
