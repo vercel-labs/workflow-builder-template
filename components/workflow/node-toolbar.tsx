@@ -10,6 +10,7 @@ import {
   type WorkflowNode,
   type WorkflowNodeType,
 } from "@/lib/workflow-store";
+import { ButtonGroup } from "../ui/button-group";
 
 const nodeTemplates = [
   {
@@ -77,7 +78,7 @@ export function NodeToolbar() {
   };
 
   return (
-    <div className="flex items-center gap-1 rounded-md border bg-background">
+    <ButtonGroup>
       {nodeTemplates.map((template) => (
         <Button
           disabled={isGenerating}
@@ -85,11 +86,11 @@ export function NodeToolbar() {
           onClick={() => handleAddNode(template)}
           size="icon"
           title={template.label}
-          variant="ghost"
+          variant="outline"
         >
           <template.icon className="size-4" />
         </Button>
       ))}
-    </div>
+    </ButtonGroup>
   );
 }
