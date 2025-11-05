@@ -3,12 +3,25 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp } from "@/lib/auth-client";
 
-export default function LoginPage() {
-  const [isSignUp, setIsSignUp] = useState(false);
+type AuthDialogProps = {
+  defaultMode?: "signin" | "signup";
+};
+
+export const AuthDialog = ({ defaultMode = "signin" }: AuthDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -22,7 +35,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (isSignUp) {
+      if (mode === "signup") {
         await signUp.email({
           email,
           password,
@@ -34,6 +47,7 @@ export default function LoginPage() {
           password,
         });
       }
+      setOpen(false);
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
@@ -42,16 +56,32 @@ export default function LoginPage() {
     }
   };
 
+  const toggleMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
+    setError("");
+  };
+
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div>
-          <h1 className="text-center font-bold text-3xl">
-            {isSignUp ? "Create Account" : "Sign In"}
-          </h1>
-        </div>
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          {isSignUp && (
+    <Dialog onOpenChange={setOpen} open={open}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="default">
+          Sign In
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "signin" ? "Sign In" : "Create Account"}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === "signin"
+              ? "Sign in to your account to continue"
+              : "Create a new account to get started"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {mode === "signup" && (
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -86,23 +116,24 @@ export default function LoginPage() {
               value={password}
             />
           </div>
-          {error && <div className="text-red-600 text-sm">{error}</div>}
+          {error && <div className="text-destructive text-sm">{error}</div>}
           <Button className="w-full" disabled={loading} type="submit">
-            {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+            {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
           </Button>
         </form>
+
         <div className="flex justify-center">
           <button
             className="text-muted-foreground text-sm hover:text-foreground"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={toggleMode}
             type="button"
           >
-            {isSignUp
-              ? "Already have an account? Sign in"
-              : "Don't have an account? Sign up"}
+            {mode === "signin"
+              ? "Don't have an account? Sign up"
+              : "Already have an account? Sign in"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
-}
+};

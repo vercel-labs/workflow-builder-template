@@ -1,9 +1,9 @@
 "use client";
 
 import { LogOut, Moon, Settings, Sun } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState } from "react";
+import { AuthDialog } from "@/components/auth/auth-dialog";
 import { SettingsDialog } from "@/components/settings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "@/lib/auth-client";
 
-export function UserMenu() {
+export const UserMenu = () => {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
-  const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -49,11 +48,7 @@ export function UserMenu() {
 
   // Show Sign In button if user is not logged in
   if (!session) {
-    return (
-      <Button onClick={() => router.push("/login")} size="sm" variant="default">
-        Sign In
-      </Button>
-    );
+    return <AuthDialog />;
   }
 
   return (
@@ -110,4 +105,4 @@ export function UserMenu() {
       <SettingsDialog onOpenChange={setSettingsOpen} open={settingsOpen} />
     </DropdownMenu>
   );
-}
+};
