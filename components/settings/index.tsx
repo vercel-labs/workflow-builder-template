@@ -26,6 +26,13 @@ import { LinearSettings } from "./linear-settings";
 import { ResendSettings } from "./resend-settings";
 import { SlackSettings } from "./slack-settings";
 import { VercelSettings } from "./vercel-settings";
+import { get as getUser } from "@/app/actions/user/get";
+import { update as updateUser } from "@/app/actions/user/update";
+import { get as getIntegrations } from "@/app/actions/integration/get";
+import { update as updateIntegrations } from "@/app/actions/integration/update";
+import { getAll as getAllDataSources } from "@/app/actions/data-source/get-all";
+import { create as createDataSource } from "@/app/actions/data-source/create";
+import { deleteDataSource } from "@/app/actions/data-source/delete";
 
 interface Integrations {
   resendApiKey: string | null;
@@ -102,8 +109,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const loadAccount = async () => {
     try {
-      const { get } = await import("@/app/actions/user/get");
-      const data = await get();
+      const data = await getUser();
       setAccountName(data.name || "");
       setAccountEmail(data.email || "");
     } catch (error) {
@@ -113,8 +119,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const loadIntegrations = async () => {
     try {
-      const { get } = await import("@/app/actions/integration/get");
-      const data = await get();
+      const data = await getIntegrations();
       setIntegrations(data);
       setResendFromEmail(data.resendFromEmail || "");
       setVercelTeamId(data.vercelTeamId || "");
@@ -125,8 +130,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const loadDataSources = async () => {
     try {
-      const { getAll } = await import("@/app/actions/data-source/get-all");
-      const data = await getAll();
+      const data = await getAllDataSources();
       setDataSources(data || []);
     } catch (error) {
       console.error("Failed to load data sources:", error);
@@ -136,8 +140,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const saveAccount = async () => {
     setSavingAccount(true);
     try {
-      const { update } = await import("@/app/actions/user/update");
-      await update({ name: accountName, email: accountEmail });
+      await updateUser({ name: accountName, email: accountEmail });
       await loadAccount();
     } catch (error) {
       console.error("Failed to save account:", error);
@@ -165,8 +168,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       if (vercelApiToken) updates.vercelApiToken = vercelApiToken;
       if (vercelTeamId) updates.vercelTeamId = vercelTeamId;
 
-      const { update } = await import("@/app/actions/integration/update");
-      await update(updates);
+      await updateIntegrations(updates);
       await loadIntegrations();
       setResendApiKey("");
       setLinearApiKey("");
@@ -184,8 +186,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
     setSavingSource(true);
     try {
-      const { create } = await import("@/app/actions/data-source/create");
-      await create({
+      await createDataSource({
         name: newSourceName,
         type: "postgresql",
         connectionString: newSourceConnectionString,
@@ -203,11 +204,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   };
 
-  const deleteDataSource = async (id: string) => {
+  const handleDeleteDataSource = async (id: string) => {
     try {
-      const { deleteDataSource } = await import(
-        "@/app/actions/data-source/delete"
-      );
       await deleteDataSource(id);
       await loadDataSources();
       setDeleteSourceId(null);
@@ -322,7 +320,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => deleteSourceId && deleteDataSource(deleteSourceId)}
+              onClick={() => deleteSourceId && handleDeleteDataSource(deleteSourceId)}
             >
               Delete
             </AlertDialogAction>

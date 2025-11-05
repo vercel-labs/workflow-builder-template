@@ -10,6 +10,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getExecutions } from "@/app/actions/workflow/get-executions";
+import { getExecutionLogs } from "@/app/actions/workflow/get-execution-logs";
 import { getRelativeTime } from "@/lib/utils/time";
 import { currentWorkflowIdAtom } from "@/lib/workflow-store";
 
@@ -55,9 +57,6 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     const loadExecutions = async () => {
       try {
         setLoading(true);
-        const { getExecutions } = await import(
-          "@/app/actions/workflow/get-executions"
-        );
         const data = await getExecutions(currentWorkflowId);
         setExecutions(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -77,9 +76,6 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
     const loadExecutions = async () => {
       try {
-        const { getExecutions } = await import(
-          "@/app/actions/workflow/get-executions"
-        );
         const data = await getExecutions(currentWorkflowId);
         setExecutions(Array.isArray(data) ? data : []);
       } catch (error) {
@@ -95,9 +91,6 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
     if (logs[executionId]) return; // Already loaded
 
     try {
-      const { getExecutionLogs } = await import(
-        "@/app/actions/workflow/get-execution-logs"
-      );
       const data = await getExecutionLogs(executionId);
       setLogs((prev) => ({
         ...prev,

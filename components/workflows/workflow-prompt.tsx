@@ -5,6 +5,8 @@ import { Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getAll as getAllVercelProjects } from "@/app/actions/vercel-project/get-all";
+import { create as createVercelProject } from "@/app/actions/vercel-project/create";
 import {
   PromptInput,
   PromptInputBody,
@@ -67,8 +69,7 @@ export function WorkflowPrompt() {
 
     const loadVercelProjects = async () => {
       try {
-        const { getAll } = await import("@/app/actions/vercel-project/get-all");
-        const projects = await getAll();
+        const projects = await getAllVercelProjects();
         console.log("Loaded Vercel projects:", projects);
         setVercelProjects(projects || []);
       } catch (error) {
@@ -95,8 +96,7 @@ export function WorkflowPrompt() {
 
     setCreatingProject(true);
     try {
-      const { create } = await import("@/app/actions/vercel-project/create");
-      const project = await create({ name: newProjectName });
+      const project = await createVercelProject({ name: newProjectName });
       console.log("Created project:", project);
 
       // Update the projects list

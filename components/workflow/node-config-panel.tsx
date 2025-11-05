@@ -3,6 +3,8 @@
 import { useAtom, useSetAtom } from "jotai";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
+import { deleteExecutions } from "@/app/actions/workflow/delete-executions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,17 +65,11 @@ export const NodeConfigPanel = () => {
     }
 
     try {
-      const { deleteExecutions } = await import(
-        "@/app/actions/workflow/delete-executions"
-      );
       await deleteExecutions(currentWorkflowId);
-
-      const { toast } = await import("sonner");
       toast.success("All runs deleted");
       setShowDeleteRunsAlert(false);
     } catch (error) {
       console.error("Failed to delete runs:", error);
-      const { toast } = await import("sonner");
       const errorMessage =
         error instanceof Error ? error.message : "Failed to delete runs";
       toast.error(errorMessage);

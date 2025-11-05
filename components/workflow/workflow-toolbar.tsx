@@ -22,6 +22,10 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { execute } from "@/app/actions/workflow/execute";
+import { deploy } from "@/app/actions/workflow/deploy";
+import { getDeploymentStatus } from "@/app/actions/workflow/get-deployment-status";
+import { getCode } from "@/app/actions/workflow/get-code";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -168,7 +172,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
 
     try {
       // Call the server action to execute the workflow
-      const { execute } = await import("@/app/actions/workflow/execute");
       const result = await execute(currentWorkflowId, {});
 
       if (result.status === "error") {
@@ -281,7 +284,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     toast.info("Starting deployment to Vercel...");
 
     try {
-      const { deploy } = await import("@/app/actions/workflow/deploy");
       const result = await deploy(currentWorkflowId);
 
       if (result.success) {
@@ -321,10 +323,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   // Load deployment status on mount
   useEffect(() => {
     if (currentWorkflowId) {
-      import("@/app/actions/workflow/get-deployment-status")
-        .then(({ getDeploymentStatus }) =>
-          getDeploymentStatus(currentWorkflowId)
-        )
+      getDeploymentStatus(currentWorkflowId)
         .then((data) => {
           setDeploymentUrl(data.deploymentUrl || null);
         })
@@ -340,7 +339,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
 
     try {
-      const { getCode } = await import("@/app/actions/workflow/get-code");
       const data = await getCode(currentWorkflowId);
       setGeneratedCode(data.code);
       setShowCodeDialog(true);

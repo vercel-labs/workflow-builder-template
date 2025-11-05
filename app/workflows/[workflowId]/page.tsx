@@ -4,6 +4,8 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { Provider, useAtom, useSetAtom } from "jotai";
 import { useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect } from "react";
+import { toast } from "sonner";
+import { generate } from "@/app/actions/ai/generate";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { NodeConfigPanel } from "@/components/workflow/node-config-panel";
 import { WorkflowCanvas } from "@/components/workflow/workflow-canvas";
@@ -66,7 +68,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
         try {
           // Generate workflow using AI
-          const { generate } = await import("@/app/actions/ai/generate");
           const workflowData = await generate(storedPrompt);
 
           // Update nodes and edges as they come in
@@ -138,11 +139,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     if (!currentWorkflowId || isGenerating) return;
     try {
       await workflowApi.update(currentWorkflowId, { nodes, edges });
-      const { toast } = await import("sonner");
       toast.success("Workflow saved");
     } catch (error) {
       console.error("Failed to save workflow:", error);
-      const { toast } = await import("sonner");
       toast.error("Failed to save workflow");
     }
   }, [currentWorkflowId, nodes, edges, isGenerating]);
