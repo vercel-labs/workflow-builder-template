@@ -676,9 +676,13 @@ class ServerWorkflowExecutor {
             const httpHeaders = processedConfig?.httpHeaders
               ? JSON.parse((processedConfig.httpHeaders as string) || "{}")
               : {};
-            const httpBody = processedConfig?.httpBody
+            let httpBody = processedConfig?.httpBody
               ? JSON.parse((processedConfig.httpBody as string) || "{}")
               : this.context.input;
+
+            if (httpMethod === "GET") {
+              httpBody = undefined;
+            }
 
             const apiResult = await callApi({
               url: endpoint || "https://api.example.com/endpoint",
