@@ -1,12 +1,11 @@
-"use server";
-
+/**
+ * Shared utilities for workflow server actions
+ */
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
-
-const CURRENT_WORKFLOW_NAME = "__current__";
 
 // Get session helper
 export async function getSession() {
@@ -36,5 +35,3 @@ export async function verifyWorkflowOwnership(
 
   return workflow;
 }
-
-export { CURRENT_WORKFLOW_NAME };

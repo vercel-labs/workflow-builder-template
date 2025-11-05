@@ -1,7 +1,8 @@
 /**
  * Mask connection string for security
+ * This is a utility function used by server actions
  */
-export const maskConnectionString = (connStr: string): string => {
+export function maskConnectionString(connStr: string): string {
   // Mask password in connection string
   try {
     const url = new URL(connStr);
@@ -19,4 +20,4 @@ export const maskConnectionString = (connStr: string): string => {
 
     return `${connStr.slice(0, 5)}****${connStr.slice(-5)}`;
   }
-};
+}
