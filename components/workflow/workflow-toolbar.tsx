@@ -22,12 +22,12 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { execute } from "@/app/actions/workflow/execute";
 import { deploy } from "@/app/actions/workflow/deploy";
-import { getDeploymentStatus } from "@/app/actions/workflow/get-deployment-status";
+import { execute } from "@/app/actions/workflow/execute";
 import { getCode } from "@/app/actions/workflow/get-code";
+import { getDeploymentStatus } from "@/app/actions/workflow/get-deployment-status";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import {
   Dialog,
   DialogContent,
@@ -73,6 +73,7 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { UserMenu } from "../workflows/user-menu";
 import { NodeToolbar } from "./node-toolbar";
+import { WorkflowSettings } from "./workflow-settings";
 
 type WorkflowToolbarProps = {
   workflowId?: string;
@@ -363,17 +364,25 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         className="flex items-center gap-2 rounded-none border-none bg-transparent p-0.5 pr-3"
         position="top-left"
       >
-        <div className="flex items-center gap-2 rounded-md border bg-background py-0.5 pr-3">
+        <ButtonGroup>
           <Button
             onClick={handleBack}
-            size="icon-sm"
+            size="icon"
             title="Back to workflows"
-            variant="ghost"
+            variant="outline"
           >
             <ArrowLeftIcon className="size-4" />
           </Button>
-          <p className="font-medium text-sm">{workflowName}</p>
-        </div>
+          <ButtonGroupText>
+            <p className="font-medium text-sm">{workflowName}</p>
+          </ButtonGroupText>
+          {currentWorkflowId && (
+            <WorkflowSettings
+              workflowId={currentWorkflowId}
+              workflowName={workflowName}
+            />
+          )}
+        </ButtonGroup>
         <NodeToolbar />
       </Panel>
 
