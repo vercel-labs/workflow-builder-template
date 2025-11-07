@@ -191,7 +191,7 @@ export const WorkflowsDialog = () => {
                     size="sm"
                     variant="destructive"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="size-4" />
                     Delete ({selectedIds.size})
                   </Button>
                 )}

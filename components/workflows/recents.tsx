@@ -48,7 +48,7 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
 
   if (loading) {
     return (
-      <div className="grid w-full gap-1">
+      <div className="grid w-full gap-1 px-4">
         {new Array(limit).fill(0).map((_, index) => (
           <Skeleton className="h-[30px] w-full rounded-full" key={index} />
         ))}
@@ -62,7 +62,7 @@ export const Recents = ({ limit }: RecentsProps = {}) => {
   }
 
   return (
-    <div className="grid w-full gap-1">
+    <div className="grid w-full gap-1 px-4">
       {displayedWorkflows.map((workflow) => (
         <Link
           className={cn(

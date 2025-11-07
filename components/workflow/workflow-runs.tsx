@@ -10,12 +10,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getExecutions } from "@/app/actions/workflow/get-executions";
 import { getExecutionLogs } from "@/app/actions/workflow/get-execution-logs";
+import { getExecutions } from "@/app/actions/workflow/get-executions";
 import { getRelativeTime } from "@/lib/utils/time";
 import { currentWorkflowIdAtom } from "@/lib/workflow-store";
+import { Spinner } from "../ui/spinner";
 
-interface ExecutionLog {
+type ExecutionLog = {
   id: string;
   nodeId: string;
   nodeName: string;
@@ -25,9 +26,9 @@ interface ExecutionLog {
   completedAt: Date | null;
   duration: string | null;
   error: string | null;
-}
+};
 
-interface WorkflowExecution {
+type WorkflowExecution = {
   id: string;
   workflowId: string;
   status: "pending" | "running" | "success" | "error" | "cancelled";
@@ -35,11 +36,11 @@ interface WorkflowExecution {
   completedAt: Date | null;
   duration: string | null;
   error: string | null;
-}
+};
 
-interface WorkflowRunsProps {
+type WorkflowRunsProps = {
   isActive?: boolean;
-}
+};
 
 export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
@@ -72,7 +73,9 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
   // Poll for new executions when tab is active
   useEffect(() => {
-    if (!(isActive && currentWorkflowId)) return;
+    if (!(isActive && currentWorkflowId)) {
+      return;
+    }
 
     const loadExecutions = async () => {
       try {
@@ -88,7 +91,9 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
   }, [isActive, currentWorkflowId]);
 
   const loadExecutionLogs = async (executionId: string) => {
-    if (logs[executionId]) return; // Already loaded
+    if (logs[executionId]) {
+      return;
+    }
 
     try {
       const data = await getExecutionLogs(executionId);
@@ -128,8 +133,8 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-muted-foreground text-xs">Loading runs...</div>
+      <div className="flex items-center justify-center">
+        <Spinner />
       </div>
     );
   }

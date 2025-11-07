@@ -331,7 +331,7 @@ export function WorkflowCanvas() {
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
         <Controls />
-        <MiniMap bgColor="var(--sidebar)" nodeStrokeColor="var(--border)"  />
+        <MiniMap bgColor="var(--sidebar)" nodeStrokeColor="var(--border)" />
       </Canvas>
 
       {menu && (
@@ -354,7 +354,7 @@ export function WorkflowCanvas() {
                     className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                     onClick={() => onAddNodeFromMenu(template)}
                   >
-                    <Icon className="mr-2 h-4 w-4" />
+                    <Icon className="size-4" />
                     {template.displayLabel}
                   </div>
                   {index < filteredArray.length - 1 && (

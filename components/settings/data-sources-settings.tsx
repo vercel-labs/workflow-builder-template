@@ -62,7 +62,7 @@ export function DataSourcesSettings({
               </CardDescription>
             </div>
             <Button onClick={() => onShowAddSource(true)} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="size-4" />
               Add Source
             </Button>
           </div>

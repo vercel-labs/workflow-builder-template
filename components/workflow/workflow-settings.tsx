@@ -124,7 +124,7 @@ export const WorkflowSettings = ({
                   onClick={() => setShowDeleteDialog(true)}
                   variant="destructive"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className="size-4" />
                   Delete Project
                 </Button>
               </div>

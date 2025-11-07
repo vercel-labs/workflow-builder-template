@@ -361,7 +361,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   return (
     <>
       <Panel
-        className="flex items-center gap-2 rounded-none border-none bg-transparent p-0.5 pr-3"
+        className="flex flex-col-reverse gap-2 rounded-none border-none bg-transparent p-0.5 pr-3 sm:flex-row sm:items-center"
         position="top-left"
       >
         <ButtonGroup>
@@ -387,7 +387,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
       </Panel>
 
       <Panel
-        className="flex items-center gap-2 border-none bg-transparent p-0"
+        className="flex flex-col-reverse items-end gap-2 border-none bg-transparent p-0 sm:flex-row sm:items-center"
         position="top-right"
       >
         <ButtonGroup>
