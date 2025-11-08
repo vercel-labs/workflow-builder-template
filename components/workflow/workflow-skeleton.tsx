@@ -89,7 +89,7 @@ const WorkflowSkeletonContent = () => {
 
   return (
     <div className="relative h-full w-full">
-      <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-[2px]">
+      <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/15 backdrop-blur-sm">
         <div className="text-center">
           <Skeleton className="mx-auto mb-2 h-6 w-48" />
           <Skeleton className="mx-auto h-4 w-32" />

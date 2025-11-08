@@ -97,31 +97,40 @@ export function WorkflowCanvas() {
   const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(
     undefined
   );
+  const [viewportReady, setViewportReady] = useState(false);
   const viewportInitialized = useRef(false);
 
   // Load saved viewport when workflow changes
   useEffect(() => {
-    if (!currentWorkflowId) return;
+    if (!currentWorkflowId) {
+      setViewportReady(false);
+      return;
+    }
 
+    setViewportReady(false);
     const saved = localStorage.getItem(
       `workflow-viewport-${currentWorkflowId}`
     );
     if (saved) {
       try {
         const viewport = JSON.parse(saved) as Viewport;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDefaultViewport(viewport);
+        // Mark viewport as ready immediately to prevent flash
+        setViewportReady(true);
         // Set viewport after a brief delay to ensure ReactFlow is ready
         setTimeout(() => {
           setViewport(viewport, { duration: 0 });
           viewportInitialized.current = true;
-        }, 100);
+        }, 50);
       } catch (error) {
         console.error("Failed to load viewport:", error);
+        setDefaultViewport(undefined);
+        setViewportReady(true);
         viewportInitialized.current = true;
       }
     } else {
       setDefaultViewport(undefined);
+      setViewportReady(true);
       // Allow saving viewport after fitView completes
       setTimeout(() => {
         viewportInitialized.current = true;
@@ -306,6 +315,9 @@ export function WorkflowCanvas() {
             <div className="font-semibold text-lg">Generating workflow...</div>
           </div>
         </div>
+      )}
+      {!viewportReady && (
+        <div className="absolute inset-0 z-40 bg-secondary transition-opacity duration-100" />
       )}
       <Canvas
         className="bg-background"

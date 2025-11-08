@@ -159,7 +159,7 @@ export function WorkflowPrompt() {
     <div className="mx-auto w-full max-w-lg">
       <PromptInputProvider>
         <PromptInput
-          className="bg-background"
+          className="rounded-lg bg-background"
           globalDrop
           multiple
           onSubmit={(message, event) => handleGenerate(event)}
