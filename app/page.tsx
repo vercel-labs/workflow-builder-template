@@ -81,10 +81,7 @@ const Home = () => {
         // If the workflow has a project, we need to load it to get the name
         if (newWorkflow.vercelProjectId) {
           const fullWorkflow = await workflowApi.getById(newWorkflow.id);
-          console.log('[Home] fullWorkflow:', fullWorkflow);
-          console.log('[Home] fullWorkflow.vercelProject:', fullWorkflow.vercelProject);
           if (fullWorkflow.vercelProject) {
-            console.log('[Home] Setting project name to:', fullWorkflow.vercelProject.name);
             setCurrentVercelProjectName(fullWorkflow.vercelProject.name);
           }
         }
