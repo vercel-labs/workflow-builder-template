@@ -1,5 +1,5 @@
 {
-  "id": "4ba18fd2-f1a8-4557-89b8-b58dbd5c844e",
+  "id": "41084618-6d3a-49de-8af9-c8d12a06028d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -93,8 +93,12 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -167,8 +171,12 @@
           "name": "data_sources_user_id_user_id_fk",
           "tableFrom": "data_sources",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -228,8 +236,12 @@
           "name": "projects_user_id_user_id_fk",
           "tableFrom": "projects",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -299,8 +311,12 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -310,7 +326,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -370,30 +388,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
-        },
-        "resend_api_key": {
-          "name": "resend_api_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "resend_from_email": {
-          "name": "resend_from_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "linear_api_key": {
-          "name": "linear_api_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "slack_api_key": {
-          "name": "slack_api_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -403,7 +397,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -543,8 +539,12 @@
           "name": "workflow_execution_logs_execution_id_workflow_executions_id_fk",
           "tableFrom": "workflow_execution_logs",
           "tableTo": "workflow_executions",
-          "columnsFrom": ["execution_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "execution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -627,8 +627,12 @@
           "name": "workflow_executions_workflow_id_workflows_id_fk",
           "tableFrom": "workflow_executions",
           "tableTo": "workflows",
-          "columnsFrom": ["workflow_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "workflow_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -636,8 +640,12 @@
           "name": "workflow_executions_user_id_user_id_fk",
           "tableFrom": "workflow_executions",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -734,8 +742,12 @@
           "name": "workflows_userId_user_id_fk",
           "tableFrom": "workflows",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -743,8 +755,12 @@
           "name": "workflows_vercel_project_id_projects_id_fk",
           "tableFrom": "workflows",
           "tableTo": "projects",
-          "columnsFrom": ["vercel_project_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "vercel_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

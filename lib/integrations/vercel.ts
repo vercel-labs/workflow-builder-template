@@ -409,3 +409,138 @@ export async function getEnvironmentVariables(
     };
   }
 }
+
+export interface CreateEnvironmentVariableParams {
+  projectId: string;
+  apiToken: string;
+  teamId?: string;
+  key: string;
+  value: string;
+  target?: Array<"production" | "preview" | "development">;
+  type?: "plain" | "secret" | "encrypted";
+}
+
+/**
+ * Create or update an environment variable for a project
+ */
+export async function setEnvironmentVariable(
+  params: CreateEnvironmentVariableParams
+): Promise<{
+  status: "success" | "error";
+  env?: {
+    id: string;
+    key: string;
+    value: string;
+    type: "plain" | "secret" | "encrypted" | "system";
+    target: Array<"production" | "preview" | "development">;
+  };
+  error?: string;
+}> {
+  try {
+    if (!params.apiToken) {
+      return {
+        status: "error",
+        error: "Vercel API token not configured",
+      };
+    }
+
+    // Check if the environment variable already exists
+    const existingEnvs = await getEnvironmentVariables({
+      projectId: params.projectId,
+      apiToken: params.apiToken,
+      teamId: params.teamId,
+    });
+
+    if (existingEnvs.status === "success" && existingEnvs.envs) {
+      const existing = existingEnvs.envs.find((env) => env.key === params.key);
+      
+      // If it exists, delete it first
+      if (existing) {
+        await vercelRequest(
+          `/v9/projects/${params.projectId}/env/${existing.id}`,
+          params.apiToken,
+          {
+            method: "DELETE",
+          },
+          params.teamId
+        );
+      }
+    }
+
+    // Create the new environment variable
+    const env = await vercelRequest<{
+      id: string;
+      key: string;
+      value: string;
+      type: "plain" | "secret" | "encrypted" | "system";
+      target: Array<"production" | "preview" | "development">;
+    }>(
+      `/v10/projects/${params.projectId}/env`,
+      params.apiToken,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          key: params.key,
+          value: params.value,
+          target: params.target || ["production", "preview", "development"],
+          type: params.type || "encrypted",
+        }),
+      },
+      params.teamId
+    );
+
+    return {
+      status: "success",
+      env,
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export interface DeleteEnvironmentVariableParams {
+  projectId: string;
+  apiToken: string;
+  teamId?: string;
+  envId: string;
+}
+
+/**
+ * Delete an environment variable from a project
+ */
+export async function deleteEnvironmentVariable(
+  params: DeleteEnvironmentVariableParams
+): Promise<{
+  status: "success" | "error";
+  error?: string;
+}> {
+  try {
+    if (!params.apiToken) {
+      return {
+        status: "error",
+        error: "Vercel API token not configured",
+      };
+    }
+
+    await vercelRequest(
+      `/v9/projects/${params.projectId}/env/${params.envId}`,
+      params.apiToken,
+      {
+        method: "DELETE",
+      },
+      params.teamId
+    );
+
+    return {
+      status: "success",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}

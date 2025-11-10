@@ -135,19 +135,58 @@ class ServerWorkflowExecutor {
       const projectData = await db.query.projects.findFirst({
         where: eq(projects.id, this.context.projectId),
         columns: {
-          resendApiKey: true,
-          resendFromEmail: true,
-          linearApiKey: true,
-          slackApiKey: true,
+          vercelProjectId: true,
+          userId: true,
         },
       });
 
-      if (projectData) {
+      if (!projectData) {
+        console.error("Project not found");
+        return;
+      }
+
+      // Get user's Vercel API token
+      const userData = await db.query.user.findFirst({
+        where: eq(user.id, projectData.userId),
+        columns: {
+          vercelApiToken: true,
+          vercelTeamId: true,
+        },
+      });
+
+      if (!userData?.vercelApiToken) {
+        console.error("Vercel API token not configured");
+        return;
+      }
+
+      // Fetch environment variables from Vercel
+      const { getEnvironmentVariables } = await import("./integrations/vercel");
+      const envResult = await getEnvironmentVariables({
+        projectId: projectData.vercelProjectId,
+        apiToken: userData.vercelApiToken,
+        teamId: userData.vercelTeamId || undefined,
+      });
+
+      if (envResult.status === "success" && envResult.envs) {
+        // Extract integration keys from environment variables
+        const resendApiKey =
+          envResult.envs.find((env) => env.key === "RESEND_API_KEY")?.value ||
+          null;
+        const resendFromEmail =
+          envResult.envs.find((env) => env.key === "RESEND_FROM_EMAIL")?.value ||
+          null;
+        const linearApiKey =
+          envResult.envs.find((env) => env.key === "LINEAR_API_KEY")?.value ||
+          null;
+        const slackApiKey =
+          envResult.envs.find((env) => env.key === "SLACK_API_KEY")?.value ||
+          null;
+
         this.projectIntegrations = {
-          resendApiKey: projectData.resendApiKey,
-          resendFromEmail: projectData.resendFromEmail,
-          linearApiKey: projectData.linearApiKey,
-          slackApiKey: projectData.slackApiKey,
+          resendApiKey,
+          resendFromEmail,
+          linearApiKey,
+          slackApiKey,
         };
       }
     } catch (error) {

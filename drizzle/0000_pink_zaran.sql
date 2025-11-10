@@ -55,10 +55,6 @@ CREATE TABLE "user" (
 	"createdAt" timestamp NOT NULL,
 	"updatedAt" timestamp NOT NULL,
 	"isAnonymous" boolean DEFAULT false,
-	"resend_api_key" text,
-	"resend_from_email" text,
-	"linear_api_key" text,
-	"slack_api_key" text,
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint

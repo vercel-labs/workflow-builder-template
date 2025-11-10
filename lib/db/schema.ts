@@ -71,11 +71,6 @@ export const projects = pgTable("projects", {
     .references(() => user.id),
   vercelProjectId: text("vercel_project_id").notNull(),
   name: text("name").notNull(),
-  // Project-level integrations
-  resendApiKey: text("resend_api_key"),
-  resendFromEmail: text("resend_from_email"),
-  linearApiKey: text("linear_api_key"),
-  slackApiKey: text("slack_api_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
