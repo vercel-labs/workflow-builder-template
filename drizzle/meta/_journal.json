@@ -8,6 +8,13 @@
       "when": 1762804376880,
       "tag": "0000_smooth_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1762811344111,
+      "tag": "0001_daily_polaris",
+      "breakpoints": true
     }
   ]
 }

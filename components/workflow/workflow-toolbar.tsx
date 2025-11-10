@@ -81,6 +81,8 @@ import {
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 import { Panel } from "../ai-elements/panel";
+import { ProjectIntegrationsDialog } from "../settings/project-integrations-dialog";
+import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
 import { NodeToolbar } from "./node-toolbar";
 
@@ -149,6 +151,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     name: string;
   } | null>(null);
   const [projectWorkflowCount, setProjectWorkflowCount] = useState(0);
+  const [showProjectIntegrationsDialog, setShowProjectIntegrationsDialog] =
+    useState(false);
 
   const handleExecute = async (mode: "test" | "production" = runMode) => {
     if (!currentWorkflowId) {
@@ -577,7 +581,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         className="flex flex-col-reverse gap-2 rounded-none border-none bg-transparent p-0.5 pr-3 sm:flex-row sm:items-center"
         position="top-left"
       >
-        <ButtonGroup>
+        <ButtonGroup className="h-9">
           {session && (
             <DropdownMenu onOpenChange={(open) => open && loadProjects()}>
               <ButtonGroupText asChild>
@@ -601,6 +605,12 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                       ?.name || "Project"}
                   </DropdownMenuLabel>
                 )}
+                <DropdownMenuItem
+                  disabled={!selectedProjectFilter}
+                  onClick={() => setShowProjectIntegrationsDialog(true)}
+                >
+                  <span>Integrations</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!selectedProjectFilter}
                   onClick={() => {
@@ -670,6 +680,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
           <DropdownMenu onOpenChange={(open) => open && loadWorkflows()}>
             <ButtonGroupText asChild>
               <DropdownMenuTrigger className="cursor-pointer">
+                <WorkflowIcon className="size-4" />
                 <p className="font-medium text-sm">
                   {workflowId ? workflowName : "New Workflow"}
                 </p>
@@ -685,6 +696,34 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 {!workflowId && <Check className="size-4 shrink-0" />}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {currentWorkflowId && (
+                <DropdownMenuLabel className="text-muted-foreground text-xs uppercase">
+                  {workflowName}
+                </DropdownMenuLabel>
+              )}
+              <DropdownMenuItem
+                disabled={!currentWorkflowId}
+                onClick={() => setShowRenameDialog(true)}
+              >
+                <span>Rename</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!currentWorkflowId}
+                onClick={() => setShowChangeProjectDialog(true)}
+              >
+                <span>Move</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                disabled={!currentWorkflowId}
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <span>Delete</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-muted-foreground text-xs uppercase">
+                Recent Workflows
+              </DropdownMenuLabel>
               {filteredWorkflows.length === 0 ? (
                 <DropdownMenuItem disabled>No workflows found</DropdownMenuItem>
               ) : (
@@ -701,34 +740,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                   </DropdownMenuItem>
                 ))
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="icon" variant="outline">
-                <MoreVertical className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                disabled={!currentWorkflowId}
-                onClick={() => setShowRenameDialog(true)}
-              >
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!currentWorkflowId}
-                onClick={() => setShowChangeProjectDialog(true)}
-              >
-                Move
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                disabled={!currentWorkflowId}
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                Delete
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </ButtonGroup>
@@ -1234,6 +1245,17 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Project Integrations Dialog */}
+      <ProjectIntegrationsDialog
+        open={showProjectIntegrationsDialog}
+        onOpenChange={setShowProjectIntegrationsDialog}
+        projectId={selectedProjectFilter}
+        projectName={
+          vercelProjects.find((p) => p.id === selectedProjectFilter)?.name ||
+          null
+        }
+      />
     </>
   );
 };
