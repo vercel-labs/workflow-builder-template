@@ -532,19 +532,21 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
           <DropdownMenu onOpenChange={(open) => open && loadWorkflows()}>
             <ButtonGroupText asChild>
               <DropdownMenuTrigger className="cursor-pointer">
-                <p className="font-medium text-sm">{workflowName}</p>
+                <p className="font-medium text-sm">
+                  {workflowId ? workflowName : "New Workflow"}
+                </p>
                 <ChevronDown className="size-3 opacity-50" />
               </DropdownMenuTrigger>
             </ButtonGroupText>
             <DropdownMenuContent align="start" className="w-64">
-              {workflowId && (
-                <>
-                  <DropdownMenuItem onClick={handleNewWorkflow}>
-                    <span>New Workflow</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
+              <DropdownMenuItem
+                className="flex items-center justify-between"
+                onClick={handleNewWorkflow}
+              >
+                <span>New Workflow</span>
+                {!workflowId && <Check className="size-4 shrink-0" />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               {filteredWorkflows.length === 0 ? (
                 <DropdownMenuItem disabled>No workflows found</DropdownMenuItem>
               ) : (

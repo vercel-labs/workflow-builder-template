@@ -42,10 +42,20 @@ export async function create(
     }
   }
 
+  // Generate "Untitled N" name if the provided name is "Untitled Workflow"
+  let workflowName = data.name;
+  if (data.name === "Untitled Workflow") {
+    const userWorkflows = await db.query.workflows.findMany({
+      where: eq(workflows.userId, session.user.id),
+    });
+    const count = userWorkflows.length + 1;
+    workflowName = `Untitled ${count}`;
+  }
+
   const [newWorkflow] = await db
     .insert(workflows)
     .values({
-      name: data.name,
+      name: workflowName,
       description: data.description,
       nodes: data.nodes,
       edges: data.edges,
