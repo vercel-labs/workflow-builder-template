@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
 
-// Get session helper
+// Get session helper (requires authentication)
 export async function getSession() {
   const session = await auth.api.getSession({
     headers: await headers(),

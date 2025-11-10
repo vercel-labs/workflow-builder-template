@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { NodeConfigPanel } from "@/components/workflow/node-config-panel";
 import { WorkflowCanvas } from "@/components/workflow/workflow-canvas";
 import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
+import { authClient, useSession } from "@/lib/auth-client";
 import { workflowApi } from "@/lib/workflow-api";
 import {
   currentVercelProjectNameAtom,
@@ -23,6 +24,7 @@ import {
 
 const Home = () => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isExecuting, setIsExecuting] = useAtom(isExecutingAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
   const [nodes] = useAtom(nodesAtom);
@@ -56,6 +58,14 @@ const Home = () => {
 
       try {
         setIsLoading(true);
+        
+        // If no session, create anonymous session first
+        if (!session) {
+          await authClient.signIn.anonymous();
+          // Wait a moment for session to be established
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         // Create workflow with the first node
         const newWorkflow = await workflowApi.create({
           name: "Untitled",
@@ -73,7 +83,7 @@ const Home = () => {
     };
 
     createWorkflowAndRedirect();
-  }, [nodes, edges, router, setIsLoading]);
+  }, [nodes, edges, router, session, setIsLoading]);
 
   // Keyboard shortcuts
   const handleSave = useCallback(async () => {

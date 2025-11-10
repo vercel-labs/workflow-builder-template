@@ -2,7 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { user, vercelProjects, workflows } from "@/lib/db/schema";
+import { vercelProjects, workflows } from "@/lib/db/schema";
 import { deployWorkflowToVercel } from "@/lib/vercel-deployment";
 import { getSession, verifyWorkflowOwnership } from "./utils";
 
@@ -18,19 +18,12 @@ export async function deploy(id: string): Promise<{
   const session = await getSession();
   const workflow = await verifyWorkflowOwnership(id, session.user.id);
 
-  // Get user's Vercel credentials
-  const userData = await db.query.user.findFirst({
-    where: eq(user.id, session.user.id),
-    columns: {
-      vercelApiToken: true,
-      vercelTeamId: true,
-    },
-  });
+  // Get app-level Vercel credentials
+  const vercelApiToken = process.env.VERCEL_API_TOKEN;
+  const vercelTeamId = process.env.VERCEL_TEAM_ID;
 
-  if (!userData?.vercelApiToken) {
-    throw new Error(
-      "Vercel API token not configured. Please configure in settings."
-    );
+  if (!vercelApiToken) {
+    throw new Error("Vercel API token not configured");
   }
 
   // Check if workflow is linked to a Vercel project
@@ -40,7 +33,7 @@ export async function deploy(id: string): Promise<{
     );
   }
 
-  // Get the actual Vercel project to verify it's a real Vercel project
+  // Get the actual Vercel project
   const vercelProject = await db.query.vercelProjects.findFirst({
     where: eq(vercelProjects.id, workflow.vercelProjectId),
   });
@@ -48,14 +41,6 @@ export async function deploy(id: string): Promise<{
   if (!vercelProject) {
     throw new Error(
       "Linked Vercel project not found. Please link this workflow to a valid project."
-    );
-  }
-
-  // Check if it's a local (fake) project
-  if (vercelProject.vercelProjectId.startsWith("local-")) {
-    throw new Error(
-      "This workflow is linked to a local project that does not exist on Vercel. " +
-        "Please configure your Vercel API token in settings, then create a new Vercel project or link to an existing one."
     );
   }
 
@@ -86,8 +71,8 @@ export async function deploy(id: string): Promise<{
       nodes: w.nodes,
       edges: w.edges,
     })),
-    vercelToken: userData.vercelApiToken,
-    vercelTeamId: userData.vercelTeamId || undefined,
+    vercelToken: vercelApiToken,
+    vercelTeamId: vercelTeamId,
     vercelProjectId: vercelProject.vercelProjectId, // Use the actual Vercel project ID
   });
 

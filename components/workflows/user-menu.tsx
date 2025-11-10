@@ -2,8 +2,7 @@
 
 import { LogOut, Moon, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useRef, useState } from "react";
-import { get as getUser } from "@/app/actions/user/get";
+import { useState } from "react";
 import { AuthDialog } from "@/components/auth/dialog";
 import { SettingsDialog } from "@/components/settings";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,26 +26,6 @@ export const UserMenu = () => {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  const hasCheckedRef = useRef(false);
-
-  useEffect(() => {
-    const checkAnonymousStatus = async () => {
-      // Only check once when session becomes available
-      if (!session?.user || hasCheckedRef.current) return;
-      hasCheckedRef.current = true;
-
-      try {
-        const userData = await getUser();
-        setIsAnonymous(userData.isAnonymous ?? false);
-      } catch (error) {
-        console.error("Failed to check anonymous status:", error);
-        setIsAnonymous(false);
-      }
-    };
-
-    checkAnonymousStatus();
-  }, [session]);
 
   const handleLogout = async () => {
     await signOut();
@@ -64,22 +43,31 @@ export const UserMenu = () => {
     if (session?.user?.email) {
       return session.user.email.slice(0, 2).toUpperCase();
     }
-    return "G";
+    return "U";
   };
 
-  // Show Sign In button if user is not logged in
-  if (!session) {
-    return <AuthDialog />;
-  }
+  // Check if user is anonymous
+  // Better Auth anonymous plugin creates users with name "Anonymous" and temp- email
+  const isAnonymous = 
+    !session?.user ||
+    session.user.name === "Anonymous" ||
+    session.user.email?.startsWith("temp-");
 
-  // Show special UI for anonymous users
+  // Show Sign In and Sign Up buttons if user is anonymous or not logged in
   if (isAnonymous) {
     return (
-      <AuthDialog defaultMode="signup">
-        <Button size="sm" variant="default">
-          Sign Up
-        </Button>
-      </AuthDialog>
+      <div className="flex items-center gap-2">
+        <AuthDialog defaultMode="signin">
+          <Button size="sm" variant="outline">
+            Sign In
+          </Button>
+        </AuthDialog>
+        <AuthDialog defaultMode="signup">
+          <Button size="sm" variant="default">
+            Sign Up
+          </Button>
+        </AuthDialog>
+      </div>
     );
   }
 

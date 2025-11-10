@@ -7,15 +7,13 @@ import { db } from "@/lib/db";
 import { user } from "@/lib/db/schema";
 
 /**
- * Update user's integration settings
+ * Update user's integration settings (Vercel is now app-level, not user-level)
  */
 export async function update(data: {
   resendApiKey?: string | null;
   resendFromEmail?: string | null;
   linearApiKey?: string | null;
   slackApiKey?: string | null;
-  vercelApiToken?: string | null;
-  vercelTeamId?: string | null;
 }): Promise<void> {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -30,8 +28,6 @@ export async function update(data: {
     resendFromEmail?: string | null;
     linearApiKey?: string | null;
     slackApiKey?: string | null;
-    vercelApiToken?: string | null;
-    vercelTeamId?: string | null;
   } = {};
 
   if (data.resendApiKey !== undefined) {
@@ -48,14 +44,6 @@ export async function update(data: {
 
   if (data.slackApiKey !== undefined) {
     updates.slackApiKey = data.slackApiKey || null;
-  }
-
-  if (data.vercelApiToken !== undefined) {
-    updates.vercelApiToken = data.vercelApiToken || null;
-  }
-
-  if (data.vercelTeamId !== undefined) {
-    updates.vercelTeamId = data.vercelTeamId || null;
   }
 
   await db.update(user).set(updates).where(eq(user.id, session.user.id));

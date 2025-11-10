@@ -1,12 +1,15 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { workflows } from "@/lib/db/schema";
+import { vercelProjects, workflows } from "@/lib/db/schema";
+import { create as createVercelProject } from "../vercel-project/create";
 import type { SavedWorkflow, WorkflowData } from "./types";
 import { getSession } from "./utils";
 
 /**
  * Create a new workflow
+ * Automatically creates a default project if user has none
  */
 export async function create(
   data: Omit<WorkflowData, "id">
@@ -17,6 +20,25 @@ export async function create(
     throw new Error("Name, nodes, and edges are required");
   }
 
+  let projectId = data.vercelProjectId;
+
+  // If no project specified, check if user has any projects
+  if (!projectId) {
+    const userProjects = await db.query.vercelProjects.findMany({
+      where: eq(vercelProjects.userId, session.user.id),
+      limit: 1,
+    });
+
+    // If user has no projects, create a default one
+    if (userProjects.length === 0) {
+      const defaultProject = await createVercelProject({
+        name: "default", // Display name (actual Vercel name will be workflow-builder-{projectId})
+      });
+
+      projectId = defaultProject.id;
+    }
+  }
+
   const [newWorkflow] = await db
     .insert(workflows)
     .values({
@@ -25,7 +47,7 @@ export async function create(
       nodes: data.nodes,
       edges: data.edges,
       userId: session.user.id,
-      vercelProjectId: data.vercelProjectId || null,
+      vercelProjectId: projectId || null,
     })
     .returning();
 

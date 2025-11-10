@@ -42,8 +42,6 @@ export async function get() {
       resendFromEmail: true,
       linearApiKey: true,
       slackApiKey: true,
-      vercelApiToken: true,
-      vercelTeamId: true,
     },
   });
 
@@ -56,11 +54,8 @@ export async function get() {
     resendFromEmail: userData.resendFromEmail,
     linearApiKey: maskApiKey(userData.linearApiKey),
     slackApiKey: maskApiKey(userData.slackApiKey),
-    vercelApiToken: maskApiKey(userData.vercelApiToken),
-    vercelTeamId: userData.vercelTeamId,
     hasResendKey: !!userData.resendApiKey,
     hasLinearKey: !!userData.linearApiKey,
     hasSlackKey: !!userData.slackApiKey,
-    hasVercelToken: !!userData.vercelApiToken,
   };
 }

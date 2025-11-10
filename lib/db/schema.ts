@@ -19,13 +19,11 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updatedAt").notNull(),
   // Anonymous user tracking
   isAnonymous: boolean("isAnonymous").default(false),
-  // User-level integrations
+  // User-level integrations (Vercel is now app-level)
   resendApiKey: text("resend_api_key"),
   resendFromEmail: text("resend_from_email"),
   linearApiKey: text("linear_api_key"),
   slackApiKey: text("slack_api_key"),
-  vercelApiToken: text("vercel_api_token"),
-  vercelTeamId: text("vercel_team_id"),
 });
 
 export const session = pgTable("session", {

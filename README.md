@@ -31,6 +31,10 @@ DATABASE_URL=postgresql://user:password@localhost:5432/v8_workflow
 BETTER_AUTH_SECRET=your-secret-key
 BETTER_AUTH_URL=http://localhost:3000
 
+# Vercel (App-level - all projects created with workflow-builder- prefix)
+VERCEL_API_TOKEN=your-vercel-api-token
+VERCEL_TEAM_ID=team_xxxxxxxxxxxxx  # Optional, for team projects
+
 # Resend (Email)
 RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=onboarding@yourdomain.com

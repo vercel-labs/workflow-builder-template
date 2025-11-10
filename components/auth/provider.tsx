@@ -1,10 +1,9 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef } from "react";
-import { authClient, useSession } from "@/lib/auth-client";
+import { type ReactNode } from "react";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Temporarily disable session checking to fix infinite render loop
-  // TODO: Fix anonymous auth configuration
+  // No automatic session creation - let users browse anonymously
+  // Anonymous sessions will be created on-demand when needed
   return <>{children}</>;
 }

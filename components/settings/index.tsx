@@ -32,19 +32,15 @@ import { DataSourcesSettings } from "./data-sources-settings";
 import { LinearSettings } from "./linear-settings";
 import { ResendSettings } from "./resend-settings";
 import { SlackSettings } from "./slack-settings";
-import { VercelSettings } from "./vercel-settings";
 
 interface Integrations {
   resendApiKey: string | null;
   resendFromEmail: string | null;
   linearApiKey: string | null;
   slackApiKey: string | null;
-  vercelApiToken: string | null;
-  vercelTeamId: string | null;
   hasResendKey: boolean;
   hasLinearKey: boolean;
   hasSlackKey: boolean;
-  hasVercelToken: boolean;
 }
 
 interface DataSource {
@@ -77,8 +73,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [resendFromEmail, setResendFromEmail] = useState("");
   const [linearApiKey, setLinearApiKey] = useState("");
   const [slackApiKey, setSlackApiKey] = useState("");
-  const [vercelApiToken, setVercelApiToken] = useState("");
-  const [vercelTeamId, setVercelTeamId] = useState("");
   const [savingIntegrations, setSavingIntegrations] = useState(false);
 
   // Data sources state
@@ -122,7 +116,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       const data = await getIntegrations();
       setIntegrations(data);
       setResendFromEmail(data.resendFromEmail || "");
-      setVercelTeamId(data.vercelTeamId || "");
     } catch (error) {
       console.error("Failed to load integrations:", error);
     }
@@ -157,23 +150,18 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         resendFromEmail?: string;
         linearApiKey?: string;
         slackApiKey?: string;
-        vercelApiToken?: string;
-        vercelTeamId?: string;
       } = {};
 
       if (resendApiKey) updates.resendApiKey = resendApiKey;
       if (resendFromEmail) updates.resendFromEmail = resendFromEmail;
       if (linearApiKey) updates.linearApiKey = linearApiKey;
       if (slackApiKey) updates.slackApiKey = slackApiKey;
-      if (vercelApiToken) updates.vercelApiToken = vercelApiToken;
-      if (vercelTeamId) updates.vercelTeamId = vercelTeamId;
 
       await updateIntegrations(updates);
       await loadIntegrations();
       setResendApiKey("");
       setLinearApiKey("");
       setSlackApiKey("");
-      setVercelApiToken("");
     } catch (error) {
       console.error("Failed to save integrations:", error);
     } finally {
@@ -262,13 +250,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     apiKey={slackApiKey}
                     hasKey={integrations?.hasSlackKey}
                     onApiKeyChange={setSlackApiKey}
-                  />
-                  <VercelSettings
-                    apiToken={vercelApiToken}
-                    hasToken={integrations?.hasVercelToken}
-                    onApiTokenChange={setVercelApiToken}
-                    onTeamIdChange={setVercelTeamId}
-                    teamId={vercelTeamId}
                   />
                   <div className="flex justify-end pt-4">
                     <Button

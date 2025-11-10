@@ -4,11 +4,12 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { user, vercelProjects } from "@/lib/db/schema";
+import { vercelProjects } from "@/lib/db/schema";
 import { listProjects } from "@/lib/integrations/vercel";
 
 /**
- * Get all Vercel projects for the current user (syncs with Vercel API)
+ * Get all Vercel projects for the current user
+ * (uses app-level credentials, filters by userId and workflow-builder- prefix)
  */
 export async function getAll() {
   const session = await auth.api.getSession({
@@ -19,63 +20,61 @@ export async function getAll() {
     throw new Error("Unauthorized");
   }
 
-  const userData = await db.query.user.findFirst({
-    where: eq(user.id, session.user.id),
-    columns: {
-      vercelApiToken: true,
-      vercelTeamId: true,
-    },
-  });
+  // Get app-level Vercel credentials from env vars
+  const vercelApiToken = process.env.VERCEL_API_TOKEN;
+  const vercelTeamId = process.env.VERCEL_TEAM_ID;
 
-  if (!userData?.vercelApiToken) {
+  if (!vercelApiToken) {
     throw new Error("Vercel API token not configured");
   }
 
-  // Fetch projects from Vercel API
+  // Fetch all projects from Vercel API
   const result = await listProjects({
-    apiToken: userData.vercelApiToken,
-    teamId: userData.vercelTeamId || undefined,
+    apiToken: vercelApiToken,
+    teamId: vercelTeamId,
   });
 
   if (result.status === "error") {
     throw new Error(result.error);
   }
 
-  // Sync projects with local database
+  // Sync only workflow-builder- prefixed projects with local database
   if (result.projects) {
     for (const project of result.projects) {
-      // Check if project already exists
+      // Only sync projects with workflow-builder- prefix
+      if (!project.name.startsWith("workflow-builder-")) {
+        continue;
+      }
+
+      // Check if project already exists in database
       const existingProject = await db.query.vercelProjects.findFirst({
         where: eq(vercelProjects.vercelProjectId, project.id),
       });
+
+      // Extract display name (remove prefix)
+      const displayName = project.name.replace(/^workflow-builder-/, "");
 
       if (existingProject) {
         // Update existing project
         await db
           .update(vercelProjects)
           .set({
-            name: project.name,
+            name: displayName,
             framework: project.framework || null,
             updatedAt: new Date(),
           })
           .where(eq(vercelProjects.id, existingProject.id));
-      } else {
-        // Insert new project
-        await db.insert(vercelProjects).values({
-          userId: session.user.id,
-          vercelProjectId: project.id,
-          name: project.name,
-          framework: project.framework || null,
-        });
       }
+      // Note: We don't auto-create projects here - they should be created via the create action
+      // which associates them with the creating user
     }
   }
 
-  // Fetch updated projects from local database
-  const localProjects = await db.query.vercelProjects.findMany({
+  // Return only projects created by this user
+  const userProjects = await db.query.vercelProjects.findMany({
     where: eq(vercelProjects.userId, session.user.id),
     orderBy: (projects, { desc }) => [desc(projects.createdAt)],
   });
 
-  return localProjects;
+  return userProjects;
 }

@@ -1,14 +1,19 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
+import { customAlphabet } from "nanoid";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { user, vercelProjects } from "@/lib/db/schema";
+import { vercelProjects } from "@/lib/db/schema";
 import { createProject } from "@/lib/integrations/vercel";
 
+const nanoid = customAlphabet(
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  21
+);
+
 /**
- * Create a new Vercel project
+ * Create a new Vercel project (uses app-level Vercel credentials)
  */
 export async function create(data: { name: string; framework?: string }) {
   const session = await auth.api.getSession({
@@ -23,49 +28,45 @@ export async function create(data: { name: string; framework?: string }) {
     throw new Error("Project name is required");
   }
 
-  const userData = await db.query.user.findFirst({
-    where: eq(user.id, session.user.id),
-    columns: {
-      vercelApiToken: true,
-      vercelTeamId: true,
-    },
-  });
+  // Get app-level Vercel credentials from env vars
+  const vercelApiToken = process.env.VERCEL_API_TOKEN;
+  const vercelTeamId = process.env.VERCEL_TEAM_ID;
 
-  let vercelProjectId: string;
-  let actualFramework: string | null = data.framework || null;
-
-  // If user has Vercel API token configured, create a real project on Vercel
-  if (userData?.vercelApiToken) {
-    const result = await createProject({
-      name: data.name.trim(),
-      apiToken: userData.vercelApiToken,
-      teamId: userData.vercelTeamId || undefined,
-      framework: data.framework || undefined,
-    });
-
-    if (result.status === "error") {
-      throw new Error(result.error);
-    }
-
-    if (!result.project) {
-      throw new Error("Failed to create project on Vercel");
-    }
-
-    vercelProjectId = result.project.id;
-    actualFramework = result.project.framework;
-  } else {
-    // Create a local project entry only (no Vercel API token)
-    vercelProjectId = `local-${Date.now()}`;
+  if (!vercelApiToken) {
+    throw new Error("Vercel API token not configured");
   }
 
-  // Store in local database
+  // Generate project ID first
+  const projectId = nanoid();
+
+  // Use project ID in the Vercel project name
+  const prefixedName = `workflow-builder-${projectId}`;
+
+  // Create project on Vercel using app-level credentials
+  const result = await createProject({
+    name: prefixedName,
+    apiToken: vercelApiToken,
+    teamId: vercelTeamId,
+    framework: data.framework || undefined,
+  });
+
+  if (result.status === "error") {
+    throw new Error(result.error);
+  }
+
+  if (!result.project) {
+    throw new Error("Failed to create project on Vercel");
+  }
+
+  // Store in local database with the same ID
   const [newProject] = await db
     .insert(vercelProjects)
     .values({
+      id: projectId,
       userId: session.user.id,
-      name: data.name.trim(),
-      vercelProjectId,
-      framework: actualFramework,
+      name: data.name.trim(), // Store display name without prefix
+      vercelProjectId: result.project.id,
+      framework: result.project.framework,
     })
     .returning();
 
