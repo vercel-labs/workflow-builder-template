@@ -21,7 +21,7 @@ export const WorkflowIndexPrompt = () => {
 
     try {
       const newWorkflow = await workflowApi.create({
-        name: "Untitled",
+        name: "Untitled Workflow",
         description: "",
         nodes: [],
         edges: [],

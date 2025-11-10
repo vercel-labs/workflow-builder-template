@@ -4,10 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { vercelProjects } from "@/lib/db/schema";
+import { projects } from "@/lib/db/schema";
 
 /**
- * Delete a Vercel project
+ * Delete a project
  */
 export async function deleteVercelProject(id: string): Promise<void> {
   const session = await auth.api.getSession({
@@ -19,8 +19,8 @@ export async function deleteVercelProject(id: string): Promise<void> {
   }
 
   await db
-    .delete(vercelProjects)
+    .delete(projects)
     .where(
-      and(eq(vercelProjects.id, id), eq(vercelProjects.userId, session.user.id))
+      and(eq(projects.id, id), eq(projects.userId, session.user.id))
     );
 }

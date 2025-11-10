@@ -1,5 +1,5 @@
 {
-  "id": "5bed9934-dc1f-4a8d-bdb3-f31bd54046e3",
+  "id": "4ba18fd2-f1a8-4557-89b8-b58dbd5c844e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -93,8 +93,12 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -167,8 +171,77 @@
           "name": "data_sources_user_id_user_id_fk",
           "tableFrom": "data_sources",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.projects": {
+      "name": "projects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vercel_project_id": {
+          "name": "vercel_project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "projects_user_id_user_id_fk": {
+          "name": "projects_user_id_user_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -238,8 +311,12 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -249,7 +326,9 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": ["token"]
+          "columns": [
+            "token"
+          ]
         }
       },
       "policies": {},
@@ -270,19 +349,20 @@
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "email": {
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "emailVerified": {
           "name": "emailVerified",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": false
         },
         "image": {
           "name": "image",
@@ -301,6 +381,13 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "isAnonymous": {
+          "name": "isAnonymous",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
         },
         "resend_api_key": {
           "name": "resend_api_key",
@@ -334,7 +421,9 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -474,8 +563,12 @@
           "name": "workflow_execution_logs_execution_id_workflow_executions_id_fk",
           "tableFrom": "workflow_execution_logs",
           "tableTo": "workflow_executions",
-          "columnsFrom": ["execution_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "execution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -558,8 +651,12 @@
           "name": "workflow_executions_workflow_id_workflows_id_fk",
           "tableFrom": "workflow_executions",
           "tableTo": "workflows",
-          "columnsFrom": ["workflow_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "workflow_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -567,8 +664,12 @@
           "name": "workflow_executions_user_id_user_id_fk",
           "tableFrom": "workflow_executions",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -607,6 +708,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "vercel_project_id": {
+          "name": "vercel_project_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "nodes": {
           "name": "nodes",
           "type": "jsonb",
@@ -618,6 +725,25 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
+        },
+        "deployment_status": {
+          "name": "deployment_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'none'"
+        },
+        "deployment_url": {
+          "name": "deployment_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_deployed_at": {
+          "name": "last_deployed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -640,8 +766,25 @@
           "name": "workflows_userId_user_id_fk",
           "tableFrom": "workflows",
           "tableTo": "user",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workflows_vercel_project_id_projects_id_fk": {
+          "name": "workflows_vercel_project_id_projects_id_fk",
+          "tableFrom": "workflows",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "vercel_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

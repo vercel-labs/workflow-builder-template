@@ -66,8 +66,8 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updatedAt"),
 });
 
-// Vercel Projects table
-export const vercelProjects = pgTable("vercel_projects", {
+// Projects table
+export const projects = pgTable("projects", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => nanoid()),
@@ -76,7 +76,6 @@ export const vercelProjects = pgTable("vercel_projects", {
     .references(() => user.id),
   vercelProjectId: text("vercel_project_id").notNull(),
   name: text("name").notNull(),
-  framework: text("framework"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -92,7 +91,7 @@ export const workflows = pgTable("workflows", {
     .notNull()
     .references(() => user.id),
   vercelProjectId: text("vercel_project_id").references(
-    () => vercelProjects.id
+    () => projects.id
   ),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nodes: jsonb("nodes").notNull().$type<Array<any>>(),
@@ -173,14 +172,14 @@ export const dataSources = pgTable("data_sources", {
 
 // Relations
 export const workflowsRelations = relations(workflows, ({ one }) => ({
-  vercelProject: one(vercelProjects, {
+  vercelProject: one(projects, {
     fields: [workflows.vercelProjectId],
-    references: [vercelProjects.id],
+    references: [projects.id],
   }),
 }));
 
-export const vercelProjectsRelations = relations(
-  vercelProjects,
+export const projectsRelations = relations(
+  projects,
   ({ many }) => ({
     workflows: many(workflows),
   })
@@ -188,8 +187,8 @@ export const vercelProjectsRelations = relations(
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;
-export type VercelProject = typeof vercelProjects.$inferSelect;
-export type NewVercelProject = typeof vercelProjects.$inferInsert;
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;

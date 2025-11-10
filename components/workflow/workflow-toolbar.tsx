@@ -87,7 +87,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const clearWorkflow = useSetAtom(clearWorkflowAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
-  const [workflowName] = useAtom(currentWorkflowNameAtom);
+  const [workflowName, setCurrentWorkflowName] = useAtom(currentWorkflowNameAtom);
   const [vercelProjectName, setVercelProjectName] = useAtom(
     currentVercelProjectNameAtom
   );
@@ -269,6 +269,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         name: newWorkflowName,
       });
       setShowRenameDialog(false);
+      // Update the current workflow name
+      setCurrentWorkflowName(newWorkflowName);
       toast.success("Workflow renamed successfully");
       // Reload workflows to update the list
       const workflows = await workflowApi.getAll();
@@ -371,7 +373,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
   }, [currentWorkflowId]);
 
-  // Load workflows fresh when dropdown opens (no caching)
+  // Load workflows
   const loadWorkflows = async () => {
     try {
       const workflows = await workflowApi.getAll();
@@ -381,7 +383,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
   };
 
-  // Load vercel projects fresh when dropdown opens (no caching)
+  // Load vercel projects
   const loadProjects = async () => {
     try {
       const projects = await getAllVercelProjects();
@@ -391,26 +393,39 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
   };
 
+  // Load projects and workflows on mount
+  useEffect(() => {
+    loadProjects();
+    loadWorkflows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Sync newWorkflowName when workflowName changes
   useEffect(() => {
     setNewWorkflowName(workflowName);
   }, [workflowName]);
 
-  // Set initial project filter based on current workflow's project
+  // Set initial project filter based on current workflow's project, or auto-select first project
   useEffect(() => {
-    if (vercelProjectName && vercelProjects.length > 0) {
+    if (vercelProjects.length === 0) return;
+
+    // If current workflow has a project, select that
+    if (vercelProjectName) {
       const project = vercelProjects.find((p) => p.name === vercelProjectName);
       if (project) {
         setSelectedProjectFilter(project.id);
+        return;
       }
     }
+
+    // Auto-select first project
+    setSelectedProjectFilter(vercelProjects[0].id);
   }, [vercelProjectName, vercelProjects]);
 
   // Filter workflows based on selected project
-  const filteredWorkflows =
-    selectedProjectFilter === null
-      ? allWorkflows.filter((w) => !w.vercelProjectId)
-      : allWorkflows.filter((w) => w.vercelProjectId === selectedProjectFilter);
+  const filteredWorkflows = selectedProjectFilter
+    ? allWorkflows.filter((w) => w.vercelProjectId === selectedProjectFilter)
+    : allWorkflows;
 
   const handleViewCode = async () => {
     if (!currentWorkflowId) {
@@ -443,24 +458,13 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
             <ButtonGroupText asChild>
               <DropdownMenuTrigger className="cursor-pointer">
                 <p className="font-medium text-sm">
-                  {selectedProjectFilter === null
-                    ? "No project"
-                    : vercelProjects.find((p) => p.id === selectedProjectFilter)
-                        ?.name || "No project"}
+                  {vercelProjects.find((p) => p.id === selectedProjectFilter)
+                    ?.name || "Select project"}
                 </p>
                 <ChevronDown className="size-3 opacity-50" />
               </DropdownMenuTrigger>
             </ButtonGroupText>
             <DropdownMenuContent align="start" className="w-64">
-              <DropdownMenuItem
-                className="flex items-center justify-between"
-                onClick={() => handleProjectFilterChange(null)}
-              >
-                <span>No project</span>
-                {selectedProjectFilter === null && (
-                  <Check className="size-4 shrink-0" />
-                )}
-              </DropdownMenuItem>
               {vercelProjects.map((project) => (
                 <DropdownMenuItem
                   className="flex items-center justify-between"

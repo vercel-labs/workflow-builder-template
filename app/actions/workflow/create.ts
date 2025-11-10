@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { vercelProjects, workflows } from "@/lib/db/schema";
+import { projects, workflows } from "@/lib/db/schema";
 import { create as createVercelProject } from "../vercel-project/create";
 import type { SavedWorkflow, WorkflowData } from "./types";
 import { getSession } from "./utils";
@@ -24,15 +24,15 @@ export async function create(
 
   // If no project specified, check if user has any projects
   if (!projectId) {
-    const userProjects = await db.query.vercelProjects.findMany({
-      where: eq(vercelProjects.userId, session.user.id),
+    const userProjects = await db.query.projects.findMany({
+      where: eq(projects.userId, session.user.id),
       limit: 1,
     });
 
     // If user has no projects, create a default one
     if (userProjects.length === 0) {
       const defaultProject = await createVercelProject({
-        name: "default", // Display name (actual Vercel name will be workflow-builder-{projectId})
+        name: "Untitled Project", // Display name (actual Vercel name will be workflow-builder-{projectId})
       });
 
       projectId = defaultProject.id;

@@ -68,7 +68,7 @@ const Home = () => {
         
         // Create workflow with the first node
         const newWorkflow = await workflowApi.create({
-          name: "Untitled",
+          name: "Untitled Workflow",
           description: "",
           nodes,
           edges,

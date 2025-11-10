@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { vercelProjects } from "@/lib/db/schema";
+import { projects } from "@/lib/db/schema";
 import { listProjects } from "@/lib/integrations/vercel";
 
 /**
@@ -47,8 +47,8 @@ export async function getAll() {
       }
 
       // Check if project already exists in database
-      const existingProject = await db.query.vercelProjects.findFirst({
-        where: eq(vercelProjects.vercelProjectId, project.id),
+      const existingProject = await db.query.projects.findFirst({
+        where: eq(projects.vercelProjectId, project.id),
       });
 
       // Extract display name (remove prefix)
@@ -57,13 +57,12 @@ export async function getAll() {
       if (existingProject) {
         // Update existing project
         await db
-          .update(vercelProjects)
+          .update(projects)
           .set({
             name: displayName,
-            framework: project.framework || null,
             updatedAt: new Date(),
           })
-          .where(eq(vercelProjects.id, existingProject.id));
+          .where(eq(projects.id, existingProject.id));
       }
       // Note: We don't auto-create projects here - they should be created via the create action
       // which associates them with the creating user
@@ -71,9 +70,9 @@ export async function getAll() {
   }
 
   // Return only projects created by this user
-  const userProjects = await db.query.vercelProjects.findMany({
-    where: eq(vercelProjects.userId, session.user.id),
-    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+  const userProjects = await db.query.projects.findMany({
+    where: eq(projects.userId, session.user.id),
+    orderBy: (p, { desc }) => [desc(p.createdAt)],
   });
 
   return userProjects;

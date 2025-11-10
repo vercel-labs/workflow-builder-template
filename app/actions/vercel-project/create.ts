@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { customAlphabet } from "nanoid";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { vercelProjects } from "@/lib/db/schema";
+import { projects } from "@/lib/db/schema";
 import { createProject } from "@/lib/integrations/vercel";
 
 const nanoid = customAlphabet(
@@ -15,7 +15,7 @@ const nanoid = customAlphabet(
 /**
  * Create a new Vercel project (uses app-level Vercel credentials)
  */
-export async function create(data: { name: string; framework?: string }) {
+export async function create(data: { name: string }) {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -36,10 +36,10 @@ export async function create(data: { name: string; framework?: string }) {
     throw new Error("Vercel API token not configured");
   }
 
-  // Generate project ID first
-  const projectId = nanoid();
+  // Generate project ID first (lowercase for Vercel compatibility)
+  const projectId = nanoid().toLowerCase();
 
-  // Use project ID in the Vercel project name
+  // Use project ID in the Vercel project name (must be lowercase)
   const prefixedName = `workflow-builder-${projectId}`;
 
   // Create project on Vercel using app-level credentials
@@ -47,7 +47,6 @@ export async function create(data: { name: string; framework?: string }) {
     name: prefixedName,
     apiToken: vercelApiToken,
     teamId: vercelTeamId,
-    framework: data.framework || undefined,
   });
 
   if (result.status === "error") {
@@ -60,13 +59,12 @@ export async function create(data: { name: string; framework?: string }) {
 
   // Store in local database with the same ID
   const [newProject] = await db
-    .insert(vercelProjects)
+    .insert(projects)
     .values({
       id: projectId,
       userId: session.user.id,
       name: data.name.trim(), // Store display name without prefix
       vercelProjectId: result.project.id,
-      framework: result.project.framework,
     })
     .returning();
 

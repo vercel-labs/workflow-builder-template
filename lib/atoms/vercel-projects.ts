@@ -6,7 +6,7 @@ export interface VercelProject {
   vercelProjectId: string;
 }
 
-// Atoms for Vercel project state
+// Atoms for project state
 // No caching - projects and workflows load fresh each time
 export const vercelProjectsAtom = atom<VercelProject[]>([]);
 export const selectedProjectIdAtom = atom<string>("none");

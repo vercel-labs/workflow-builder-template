@@ -2,7 +2,7 @@
 
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { vercelProjects, workflows } from "@/lib/db/schema";
+import { projects, workflows } from "@/lib/db/schema";
 import { deployWorkflowToVercel } from "@/lib/vercel-deployment";
 import { getSession, verifyWorkflowOwnership } from "./utils";
 
@@ -34,8 +34,8 @@ export async function deploy(id: string): Promise<{
   }
 
   // Get the actual Vercel project
-  const vercelProject = await db.query.vercelProjects.findFirst({
-    where: eq(vercelProjects.id, workflow.vercelProjectId),
+  const vercelProject = await db.query.projects.findFirst({
+    where: eq(projects.id, workflow.vercelProjectId),
   });
 
   if (!vercelProject) {
