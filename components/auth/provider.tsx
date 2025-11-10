@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   // No automatic session creation - let users browse anonymously

@@ -21,6 +21,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { create as createVercelProject } from "@/app/actions/vercel-project/create";
+import { getAll as getAllVercelProjects } from "@/app/actions/vercel-project/get-all";
 import { deploy } from "@/app/actions/workflow/deploy";
 import { execute } from "@/app/actions/workflow/execute";
 import { getCode } from "@/app/actions/workflow/get-code";
@@ -57,8 +59,6 @@ import {
   showNewProjectDialogAtom,
   vercelProjectsAtom,
 } from "@/lib/atoms/vercel-projects";
-import { create as createVercelProject } from "@/app/actions/vercel-project/create";
-import { getAll as getAllVercelProjects } from "@/app/actions/vercel-project/get-all";
 import { workflowApi } from "@/lib/workflow-api";
 import {
   canRedoAtom,
@@ -94,7 +94,9 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const clearWorkflow = useSetAtom(clearWorkflowAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
-  const [workflowName, setCurrentWorkflowName] = useAtom(currentWorkflowNameAtom);
+  const [workflowName, setCurrentWorkflowName] = useAtom(
+    currentWorkflowNameAtom
+  );
   const [vercelProjectName, setVercelProjectName] = useAtom(
     currentVercelProjectNameAtom
   );
@@ -568,7 +570,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 disabled={!currentWorkflowId}
                 onClick={() => setShowRenameDialog(true)}
               >

@@ -15,7 +15,7 @@ export async function getAll() {
   });
 
   if (!session?.user) {
-    throw new Error("Unauthorized");
+    return [];
   }
 
   // Return only projects created by this user

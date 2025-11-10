@@ -90,9 +90,7 @@ export const workflows = pgTable("workflows", {
   userId: text("userId")
     .notNull()
     .references(() => user.id),
-  vercelProjectId: text("vercel_project_id").references(
-    () => projects.id
-  ),
+  vercelProjectId: text("vercel_project_id").references(() => projects.id),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nodes: jsonb("nodes").notNull().$type<Array<any>>(),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -178,12 +176,9 @@ export const workflowsRelations = relations(workflows, ({ one }) => ({
   }),
 }));
 
-export const projectsRelations = relations(
-  projects,
-  ({ many }) => ({
-    workflows: many(workflows),
-  })
-);
+export const projectsRelations = relations(projects, ({ many }) => ({
+  workflows: many(workflows),
+}));
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;

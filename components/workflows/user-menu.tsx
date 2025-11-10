@@ -48,7 +48,7 @@ export const UserMenu = () => {
 
   // Check if user is anonymous
   // Better Auth anonymous plugin creates users with name "Anonymous" and temp- email
-  const isAnonymous = 
+  const isAnonymous =
     !session?.user ||
     session.user.name === "Anonymous" ||
     session.user.email?.startsWith("temp-");

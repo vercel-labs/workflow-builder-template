@@ -3,7 +3,7 @@
 import { useAtom } from "jotai";
 import { Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { create as createVercelProject } from "@/app/actions/vercel-project/create";
 import { getAll as getAllVercelProjects } from "@/app/actions/vercel-project/get-all";
@@ -66,7 +66,7 @@ export function WorkflowPrompt() {
   // Load Vercel projects fresh when dropdown opens (no caching on mount)
   const loadVercelProjects = async () => {
     if (!session) return;
-    
+
     try {
       const projects = await getAllVercelProjects();
       console.log("Loaded Vercel projects:", projects);

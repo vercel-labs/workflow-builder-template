@@ -58,14 +58,14 @@ const Home = () => {
 
       try {
         setIsLoading(true);
-        
+
         // If no session, create anonymous session first
         if (!session) {
           await authClient.signIn.anonymous();
           // Wait a moment for session to be established
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        
+
         // Create workflow with the first node
         const newWorkflow = await workflowApi.create({
           name: "Untitled Workflow",
@@ -73,11 +73,11 @@ const Home = () => {
           nodes,
           edges,
         });
-        
+
         // Set the workflow ID and name
         setCurrentWorkflowId(newWorkflow.id);
         setCurrentWorkflowName(newWorkflow.name);
-        
+
         // If the workflow has a project, we need to load it to get the name
         if (newWorkflow.vercelProjectId) {
           const fullWorkflow = await workflowApi.getById(newWorkflow.id);
@@ -85,7 +85,7 @@ const Home = () => {
             setCurrentVercelProjectName(fullWorkflow.vercelProject.name);
           }
         }
-        
+
         // Redirect to the workflow page
         router.replace(`/workflows/${newWorkflow.id}?skipLoad=true`);
       } catch (error) {

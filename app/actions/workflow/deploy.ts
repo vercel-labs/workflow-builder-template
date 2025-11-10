@@ -72,7 +72,7 @@ export async function deploy(id: string): Promise<{
       edges: w.edges,
     })),
     vercelToken: vercelApiToken,
-    vercelTeamId: vercelTeamId,
+    vercelTeamId,
     vercelProjectId: vercelProject.vercelProjectId, // Use the actual Vercel project ID
   });
 
