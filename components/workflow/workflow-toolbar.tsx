@@ -100,6 +100,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const [canUndo] = useAtom(canUndoAtom);
   const [canRedo] = useAtom(canRedoAtom);
   const [vercelProjects, setVercelProjects] = useAtom(vercelProjectsAtom);
+  
+  console.log('[Toolbar] Render - vercelProjects:', vercelProjects);
 
   // Component-local state for change project dialog (doesn't need to be shared)
   const [showChangeProjectDialog, setShowChangeProjectDialog] = useState(false);
@@ -387,6 +389,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const loadProjects = async () => {
     try {
       const projects = await getAllVercelProjects();
+      console.log('[Toolbar] loadProjects - raw projects:', projects);
+      console.log('[Toolbar] loadProjects - first project:', projects?.[0]);
       setVercelProjects(projects || []);
     } catch (error) {
       console.error("Failed to load Vercel projects:", error);
@@ -407,18 +411,24 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
 
   // Set initial project filter based on current workflow's project, or auto-select first project
   useEffect(() => {
+    console.log('[Toolbar] Project filter effect - vercelProjects:', vercelProjects);
+    console.log('[Toolbar] Project filter effect - vercelProjectName:', vercelProjectName);
+    
     if (vercelProjects.length === 0) return;
 
     // If current workflow has a project, select that
     if (vercelProjectName) {
       const project = vercelProjects.find((p) => p.name === vercelProjectName);
+      console.log('[Toolbar] Found project by name:', project);
       if (project) {
+        console.log('[Toolbar] Setting filter to:', project.id);
         setSelectedProjectFilter(project.id);
         return;
       }
     }
 
     // Auto-select first project
+    console.log('[Toolbar] Auto-selecting first project:', vercelProjects[0]);
     setSelectedProjectFilter(vercelProjects[0].id);
   }, [vercelProjectName, vercelProjects]);
 
@@ -458,8 +468,14 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
             <ButtonGroupText asChild>
               <DropdownMenuTrigger className="cursor-pointer">
                 <p className="font-medium text-sm">
-                  {vercelProjects.find((p) => p.id === selectedProjectFilter)
-                    ?.name || "Select project"}
+                  {(() => {
+                    const foundProject = vercelProjects.find((p) => p.id === selectedProjectFilter);
+                    const displayName = foundProject?.name || "Select project";
+                    console.log('[Toolbar] Dropdown display - selectedProjectFilter:', selectedProjectFilter);
+                    console.log('[Toolbar] Dropdown display - foundProject:', foundProject);
+                    console.log('[Toolbar] Dropdown display - displayName:', displayName);
+                    return displayName;
+                  })()}
                 </p>
                 <ChevronDown className="size-3 opacity-50" />
               </DropdownMenuTrigger>

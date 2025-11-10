@@ -36,6 +36,9 @@ export async function create(
       });
 
       projectId = defaultProject.id;
+    } else if (!projectId) {
+      // Use the first existing project if no project specified
+      projectId = userProjects[0].id;
     }
   }
 
@@ -47,7 +50,7 @@ export async function create(
       nodes: data.nodes,
       edges: data.edges,
       userId: session.user.id,
-      vercelProjectId: projectId || null,
+      vercelProjectId: projectId,
     })
     .returning();
 
