@@ -32,7 +32,7 @@ export const TriggerNode = memo(({ data, selected }: TriggerNodeProps) => {
       className={cn(
         "shadow-none",
         selected &&
-          "rounded ring ring-primary/50 transition-all duration-150 ease-out"
+          "rounded-md ring ring-primary/50 transition-all duration-150 ease-out"
       )}
       handles={{ target: false, source: true }}
     >
