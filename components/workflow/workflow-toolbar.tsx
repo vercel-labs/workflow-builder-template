@@ -552,8 +552,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   useEffect(() => {
     loadProjects();
     loadWorkflows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadProjects, loadWorkflows]);
+  }, []);
 
   // Sync newWorkflowName when workflowName changes
   useEffect(() => {

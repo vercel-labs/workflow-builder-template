@@ -75,7 +75,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       loadAll();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loadAll]);
+  }, [open]);
 
   const loadAccount = async () => {
     try {
