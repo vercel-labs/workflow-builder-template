@@ -16,6 +16,14 @@ type TemplateAutocompleteProps = {
   filter?: string;
 };
 
+type SchemaField = {
+  name: string;
+  type: "string" | "number" | "boolean" | "array" | "object";
+  itemType?: "string" | "number" | "boolean" | "object";
+  fields?: SchemaField[];
+  description?: string;
+};
+
 // Helper to get a display name for a node
 const getNodeDisplayName = (node: WorkflowNode): string => {
   if (node.data.label) {
@@ -41,6 +49,49 @@ const getNodeDisplayName = (node: WorkflowNode): string => {
   }
 
   return "Node";
+};
+
+// Convert schema fields to field descriptions
+const schemaToFields = (
+  schema: SchemaField[],
+  prefix = ""
+): Array<{ field: string; description: string }> => {
+  const fields: Array<{ field: string; description: string }> = [];
+
+  for (const schemaField of schema) {
+    const fieldPath = prefix
+      ? `${prefix}.${schemaField.name}`
+      : schemaField.name;
+    const typeLabel =
+      schemaField.type === "array"
+        ? `${schemaField.itemType}[]`
+        : schemaField.type;
+    const description = schemaField.description || `${typeLabel}`;
+
+    fields.push({ field: fieldPath, description });
+
+    // Add nested fields for objects
+    if (
+      schemaField.type === "object" &&
+      schemaField.fields &&
+      schemaField.fields.length > 0
+    ) {
+      fields.push(...schemaToFields(schemaField.fields, fieldPath));
+    }
+
+    // Add nested fields for array items that are objects
+    if (
+      schemaField.type === "array" &&
+      schemaField.itemType === "object" &&
+      schemaField.fields &&
+      schemaField.fields.length > 0
+    ) {
+      const arrayItemPath = `${fieldPath}[0]`;
+      fields.push(...schemaToFields(schemaField.fields, arrayItemPath));
+    }
+  }
+
+  return fields;
 };
 
 // Get common fields based on node action type
@@ -73,6 +124,22 @@ const getCommonFields = (node: WorkflowNode) => {
     ];
   }
   if (actionType === "Generate Text") {
+    const aiFormat = node.data.config?.aiFormat as string | undefined;
+    const aiSchema = node.data.config?.aiSchema as string | undefined;
+
+    // If format is object and schema is defined, show schema fields
+    if (aiFormat === "object" && aiSchema) {
+      try {
+        const schema = JSON.parse(aiSchema) as SchemaField[];
+        if (schema.length > 0) {
+          return schemaToFields(schema);
+        }
+      } catch {
+        // If schema parsing fails, fall through to default fields
+      }
+    }
+
+    // Default fields for text format or when no schema
     return [
       { field: "text", description: "Generated text" },
       { field: "model", description: "Model used" },

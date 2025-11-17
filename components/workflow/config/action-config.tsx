@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { getAll as getAllDataSources } from "@/app/actions/data-source/get-all";
 import { ProjectIntegrationsDialog } from "@/components/settings/project-integrations-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
 import {
@@ -201,10 +200,10 @@ export function ActionConfig({
         <>
           <div className="space-y-2">
             <Label htmlFor="slackChannel">Channel</Label>
-            <Input
+            <TemplateBadgeInput
               disabled={disabled}
               id="slackChannel"
-              onChange={(e) => onUpdateConfig("slackChannel", e.target.value)}
+              onChange={(value) => onUpdateConfig("slackChannel", value)}
               placeholder="#general or @username or {{NodeName.channel}}"
               value={(config?.slackChannel as string) || ""}
             />
@@ -274,23 +273,23 @@ export function ActionConfig({
         <>
           <div className="space-y-2">
             <Label htmlFor="linearAssigneeId">Assignee (User ID)</Label>
-            <Input
+            <TemplateBadgeInput
               disabled={disabled}
               id="linearAssigneeId"
-              onChange={(e) =>
-                onUpdateConfig("linearAssigneeId", e.target.value)
+              onChange={(value) =>
+                onUpdateConfig("linearAssigneeId", value)
               }
-              placeholder="user-id-123"
+              placeholder="user-id-123 or {{NodeName.userId}}"
               value={(config?.linearAssigneeId as string) || ""}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="linearTeamId">Team ID (optional)</Label>
-            <Input
+            <TemplateBadgeInput
               disabled={disabled}
               id="linearTeamId"
-              onChange={(e) => onUpdateConfig("linearTeamId", e.target.value)}
-              placeholder="team-id-456"
+              onChange={(value) => onUpdateConfig("linearTeamId", value)}
+              placeholder="team-id-456 or {{NodeName.teamId}}"
               value={(config?.linearTeamId as string) || ""}
             />
           </div>
@@ -316,11 +315,11 @@ export function ActionConfig({
           </div>
           <div className="space-y-2">
             <Label htmlFor="linearLabel">Label (optional)</Label>
-            <Input
+            <TemplateBadgeInput
               disabled={disabled}
               id="linearLabel"
-              onChange={(e) => onUpdateConfig("linearLabel", e.target.value)}
-              placeholder="bug, feature, etc."
+              onChange={(value) => onUpdateConfig("linearLabel", value)}
+              placeholder="bug, feature, etc. or {{NodeName.label}}"
               value={(config?.linearLabel as string) || ""}
             />
           </div>
@@ -408,11 +407,11 @@ export function ActionConfig({
           </div>
           <div className="space-y-2">
             <Label htmlFor="endpoint">URL</Label>
-            <Input
+            <TemplateBadgeInput
               disabled={disabled}
               id="endpoint"
-              onChange={(e) => onUpdateConfig("endpoint", e.target.value)}
-              placeholder="https://api.example.com/endpoint"
+              onChange={(value) => onUpdateConfig("endpoint", value)}
+              placeholder="https://api.example.com/endpoint or {{NodeName.url}}"
               value={(config?.endpoint as string) || ""}
             />
           </div>

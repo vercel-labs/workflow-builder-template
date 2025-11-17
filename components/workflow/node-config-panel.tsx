@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
 import {
   currentWorkflowIdAtom,
   deleteNodeAtom,
@@ -271,11 +272,11 @@ const PanelInner = () => {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="condition">Condition Expression</Label>
-                  <Input
+                  <TemplateBadgeInput
                     disabled={isGenerating}
                     id="condition"
-                    onChange={(e) =>
-                      handleUpdateConfig("condition", e.target.value)
+                    onChange={(value) =>
+                      handleUpdateConfig("condition", value)
                     }
                     placeholder="e.g., 5 > 3, status === 200, {{PreviousNode.value}} > 100"
                     value={
@@ -284,11 +285,7 @@ const PanelInner = () => {
                   />
                   <p className="text-muted-foreground text-xs">
                     Enter a JavaScript expression that evaluates to true or
-                    false. You can use template syntax like{" "}
-                    <code className="rounded bg-muted px-1">
-                      {"{{NodeName.field}}"}
-                    </code>{" "}
-                    to reference previous node outputs.
+                    false. You can use @ to reference previous node outputs.
                   </p>
                 </div>
               </>
@@ -297,13 +294,13 @@ const PanelInner = () => {
             {selectedNode.data.type === "transform" && (
               <div className="space-y-2">
                 <Label htmlFor="transformType">Transform Type</Label>
-                <Input
+                <TemplateBadgeInput
                   disabled={isGenerating}
                   id="transformType"
-                  onChange={(e) =>
-                    handleUpdateConfig("transformType", e.target.value)
+                  onChange={(value) =>
+                    handleUpdateConfig("transformType", value)
                   }
-                  placeholder="e.g., Map Data, Filter, Aggregate"
+                  placeholder="e.g., Map Data, Filter, Aggregate or {{NodeName.type}}"
                   value={
                     (selectedNode.data.config?.transformType as string) || ""
                   }
