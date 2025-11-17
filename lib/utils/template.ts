@@ -43,7 +43,9 @@ export function processTemplate(
       const colonIndex = withoutAt.indexOf(":");
 
       if (colonIndex === -1) {
-        console.warn(`[Template] Invalid format: "${trimmed}". Expected @nodeId:DisplayName`);
+        console.warn(
+          `[Template] Invalid format: "${trimmed}". Expected @nodeId:DisplayName`
+        );
         return match;
       }
 
@@ -60,7 +62,9 @@ export function processTemplate(
         if (nodeOutput) {
           return formatValue(nodeOutput.data);
         }
-        console.warn(`[Template] Node with ID "${nodeId}" not found in outputs`);
+        console.warn(
+          `[Template] Node with ID "${nodeId}" not found in outputs`
+        );
         return match;
       }
 
@@ -375,9 +379,10 @@ export function formatTemplateForDisplay(template: string): string {
   }
 
   // Match {{@nodeId:DisplayName...}} patterns and show only DisplayName part
-  return template.replace(/\{\{@[^:]+:([^}]+)\}\}/g, (match, rest) => {
-    return `{{${rest}}}`;
-  });
+  return template.replace(
+    /\{\{@[^:]+:([^}]+)\}\}/g,
+    (match, rest) => `{{${rest}}}`
+  );
 }
 
 /**

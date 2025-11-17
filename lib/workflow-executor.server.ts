@@ -9,7 +9,6 @@ import type { SchemaField } from "../components/workflow/config/schema-builder";
 import { db } from "./db";
 import { projects, workflowExecutionLogs } from "./db/schema";
 import { callApi } from "./integrations/api";
-import { queryData } from "./integrations/database";
 import { createTicket, findIssues } from "./integrations/linear";
 import { sendEmail } from "./integrations/resend";
 import { sendSlackMessage } from "./integrations/slack";
@@ -749,6 +748,96 @@ class ServerWorkflowExecutor {
                     : "Failed to generate image",
               };
             }
+          } else if (actionType === "Execute Code") {
+            console.log("[Executor] ===== EXECUTE CODE ACTION =====");
+            console.log(
+              "[Executor] processedConfig.code:",
+              processedConfig?.code
+            );
+            console.log(
+              "[Executor] processedConfig.codeLanguage:",
+              processedConfig?.codeLanguage
+            );
+
+            try {
+              const code = (processedConfig?.code as string) || "";
+              const codeLanguage =
+                (processedConfig?.codeLanguage as string) || "javascript";
+
+              console.log("[Executor] Using language:", codeLanguage);
+              console.log("[Executor] Code length:", code.length);
+
+              if (code.trim() === "") {
+                result = {
+                  success: false,
+                  error: "Code is required for Execute Code action",
+                };
+              } else {
+                // Create a sandboxed environment with access to node outputs
+                const AsyncFunction = (async () => {}).constructor;
+
+                // Create a safe context with outputs from previous nodes
+                const safeContext = {
+                  outputs: this.nodeOutputs,
+                  console: {
+                    log: (...args: unknown[]) => {
+                      console.log("[UserCode]", ...args);
+                    },
+                    error: (...args: unknown[]) => {
+                      console.error("[UserCode]", ...args);
+                    },
+                    warn: (...args: unknown[]) => {
+                      console.warn("[UserCode]", ...args);
+                    },
+                  },
+                };
+
+                console.log("[Executor] Executing user code...");
+
+                // Wrap the user code in an async function
+                const userFunction = new (
+                  AsyncFunction as new (
+                    ...args: string[]
+                  ) => (...args: unknown[]) => Promise<unknown>
+                )(
+                  "outputs",
+                  "console",
+                  `
+                  "use strict";
+                  ${code}
+                `
+                );
+
+                // Execute the code with the safe context
+                const executionResult = await userFunction(
+                  safeContext.outputs,
+                  safeContext.console
+                );
+
+                console.log(
+                  "[Executor] Code execution completed successfully:",
+                  executionResult
+                );
+
+                result = {
+                  success: true,
+                  data: executionResult,
+                };
+              }
+            } catch (error) {
+              console.error("[Executor] Execute Code error:", error);
+              console.error("[Executor] Error details:", {
+                message: error instanceof Error ? error.message : "Unknown",
+                stack: error instanceof Error ? error.stack : undefined,
+              });
+              result = {
+                success: false,
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to execute code",
+              };
+            }
           } else if (actionType === "HTTP Request" || endpoint) {
             const httpMethod =
               (processedConfig?.httpMethod as string) || "POST";
@@ -787,7 +876,7 @@ class ServerWorkflowExecutor {
 
         case "condition": {
           const condition = processedConfig?.condition as string;
-          
+
           if (!condition || condition.trim() === "") {
             result = {
               success: false,
@@ -810,9 +899,9 @@ class ServerWorkflowExecutor {
             // - Numbers (0 = false, non-zero = true)
             // - Comparison operators (==, ===, !=, !==, >, <, >=, <=)
             // - Logical operators (&&, ||, !)
-            
+
             const trimmed = condition.trim();
-            
+
             // Check for boolean literals
             if (trimmed === "true") {
               conditionResult = true;
@@ -826,11 +915,14 @@ class ServerWorkflowExecutor {
                 // Create a safe evaluation function
                 // Only allow reading from context, no assignments
                 const evalFn = new Function(
-                  '"use strict"; return (' + condition + ");",
+                  '"use strict"; return (' + condition + ");"
                 );
                 conditionResult = Boolean(evalFn());
               } catch (evalError) {
-                console.error("[Executor] Condition evaluation error:", evalError);
+                console.error(
+                  "[Executor] Condition evaluation error:",
+                  evalError
+                );
                 result = {
                   success: false,
                   error: `Invalid condition expression: ${evalError instanceof Error ? evalError.message : "Unknown error"}`,
@@ -918,11 +1010,11 @@ class ServerWorkflowExecutor {
     // If successful, execute next nodes
     if (result.success) {
       const nextNodes = this.getNextNodes(nodeId);
-      
+
       // For condition nodes, check if we should continue execution
       if (node.data.type === "condition") {
         const conditionResult = (result.data as { result?: boolean })?.result;
-        
+
         // Only continue if condition evaluates to true
         if (conditionResult === true) {
           for (const nextNodeId of nextNodes) {

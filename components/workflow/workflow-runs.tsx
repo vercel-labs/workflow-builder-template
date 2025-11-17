@@ -250,27 +250,29 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
                           {isLogExpanded && (
                             <div className="border-t bg-muted/20 p-2">
                               <div className="space-y-2">
-                                {log.input && (
-                                  <div>
-                                    <div className="mb-1 font-semibold text-xs">
-                                      Input
+                                {log.input !== null &&
+                                  log.input !== undefined && (
+                                    <div>
+                                      <div className="mb-1 font-semibold text-xs">
+                                        Input
+                                      </div>
+                                      <pre className="overflow-auto rounded bg-background p-2 text-xs">
+                                        {JSON.stringify(log.input, null, 2)}
+                                      </pre>
                                     </div>
-                                    <pre className="overflow-auto rounded bg-background p-2 text-xs">
-                                      {JSON.stringify(log.input, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                                {log.output && (
-                                  <div>
-                                    <div className="mb-1 font-semibold text-xs">
-                                      Output
+                                  )}
+                                {log.output !== null &&
+                                  log.output !== undefined && (
+                                    <div>
+                                      <div className="mb-1 font-semibold text-xs">
+                                        Output
+                                      </div>
+                                      <pre className="overflow-auto rounded bg-background p-2 text-xs">
+                                        {JSON.stringify(log.output, null, 2)}
+                                      </pre>
                                     </div>
-                                    <pre className="overflow-auto rounded bg-background p-2 text-xs">
-                                      {JSON.stringify(log.output, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                                {!log.input && !log.output && !log.error && (
+                                  )}
+                                {!(log.input || log.output || log.error) && (
                                   <div className="text-muted-foreground text-xs">
                                     No data recorded
                                   </div>

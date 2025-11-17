@@ -279,7 +279,9 @@ const PanelInner = () => {
                       handleUpdateConfig("condition", e.target.value)
                     }
                     placeholder="e.g., 5 > 3, status === 200, {{PreviousNode.value}} > 100"
-                    value={(selectedNode.data.config?.condition as string) || ""}
+                    value={
+                      (selectedNode.data.config?.condition as string) || ""
+                    }
                   />
                   <p className="text-muted-foreground text-xs">
                     Enter a JavaScript expression that evaluates to true or

@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { getAll as getAllDataSources } from "@/app/actions/data-source/get-all";
 import { ProjectIntegrationsDialog } from "@/components/settings/project-integrations-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
@@ -22,7 +21,6 @@ import {
 } from "@/components/ui/select";
 import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
 import { TemplateBadgeTextarea } from "@/components/ui/template-badge-textarea";
-import { Textarea } from "@/components/ui/textarea";
 import {
   currentVercelProjectIdAtom,
   currentVercelProjectNameAtom,
@@ -80,7 +78,6 @@ export function ActionConfig({
     }
   }, [config?.actionType]);
 
-
   const actionType = (config?.actionType as string) || "HTTP Request";
   const requiredIntegration = ACTION_INTEGRATION_MAP[actionType];
 
@@ -104,6 +101,7 @@ export function ActionConfig({
               </SelectLabel>
               <SelectItem value="HTTP Request">HTTP Request</SelectItem>
               <SelectItem value="Database Query">Database Query</SelectItem>
+              <SelectItem value="Execute Code">Execute Code</SelectItem>
             </SelectGroup>
             <SelectGroup>
               <SelectLabel className="flex items-center gap-2">
@@ -339,8 +337,8 @@ export function ActionConfig({
           ) : dataSources.length === 0 ? (
             <Alert>
               <AlertDescription>
-                No data sources configured. Please add a data source in
-                Settings to query databases.
+                No data sources configured. Please add a data source in Settings
+                to query databases.
               </AlertDescription>
             </Alert>
           ) : (
@@ -576,6 +574,60 @@ export function ActionConfig({
               rows={4}
               value={(config?.imagePrompt as string) || ""}
             />
+          </div>
+        </>
+      )}
+
+      {/* Execute Code fields */}
+      {config?.actionType === "Execute Code" && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="codeLanguage">Language</Label>
+            <Select
+              disabled={disabled}
+              onValueChange={(value) => onUpdateConfig("codeLanguage", value)}
+              value={(config?.codeLanguage as string) || "javascript"}
+            >
+              <SelectTrigger className="w-full" id="codeLanguage">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="javascript">JavaScript</SelectItem>
+                <SelectItem value="typescript">TypeScript</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="code">Code</Label>
+            <div className="overflow-hidden rounded-md border">
+              <Editor
+                defaultLanguage={
+                  (config?.codeLanguage as string) || "javascript"
+                }
+                height="300px"
+                onChange={(value) => onUpdateConfig("code", value || "")}
+                options={{
+                  minimap: { enabled: false },
+                  lineNumbers: "on",
+                  scrollBeyondLastLine: false,
+                  fontSize: 12,
+                  readOnly: disabled,
+                }}
+                theme="vs-dark"
+                value={(config?.code as string) || ""}
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Write your code here. Access previous node outputs using the{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                outputs
+              </code>{" "}
+              object (e.g.,{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                outputs.NodeName
+              </code>
+              ). Return a value to use it in subsequent nodes.
+            </p>
           </div>
         </>
       )}
