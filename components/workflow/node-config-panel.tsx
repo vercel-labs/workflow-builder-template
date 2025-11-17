@@ -31,7 +31,6 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { AvailableOutputs } from "./available-outputs";
 import { ActionConfig } from "./config/action-config";
 import { TriggerConfig } from "./config/trigger-config";
 import { WorkflowRuns } from "./workflow-runs";
@@ -332,11 +331,6 @@ const PanelInner = () => {
                 value={selectedNode.data.description || ""}
               />
             </div>
-
-            {/* Show available outputs from previous nodes */}
-            {(selectedNode.data.type === "action" ||
-              selectedNode.data.type === "condition" ||
-              selectedNode.data.type === "transform") && <AvailableOutputs />}
           </div>
           <div className="shrink-0 border-t p-4">
             <Button
