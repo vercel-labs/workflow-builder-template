@@ -102,7 +102,7 @@ const getEdgeParams = (
   };
 };
 
-const Animated = ({ id, source, target, markerEnd, style }: EdgeProps) => {
+const Animated = ({ id, source, target, style }: EdgeProps) => {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
 
@@ -126,7 +126,12 @@ const Animated = ({ id, source, target, markerEnd, style }: EdgeProps) => {
 
   return (
     <>
-      <BaseEdge id={id} markerEnd={markerEnd} path={edgePath} style={style} />
+      <BaseEdge 
+        id={id} 
+        markerEnd="url(#edge-arrow)" 
+        path={edgePath} 
+        style={style} 
+      />
       <circle fill="var(--primary)" r="4">
         <animateMotion dur="2s" path={edgePath} repeatCount="indefinite" />
       </circle>

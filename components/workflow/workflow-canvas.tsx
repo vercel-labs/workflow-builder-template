@@ -167,6 +167,23 @@ export function WorkflowCanvas() {
     []
   );
 
+  const isValidConnection = useCallback((connection: XYFlowConnection) => {
+    // Ensure we have both source and target
+    if (!connection.source || !connection.target) {
+      return false;
+    }
+
+    // Prevent self-connections
+    if (connection.source === connection.target) {
+      return false;
+    }
+
+    // Ensure connection is from source handle to target handle
+    // sourceHandle should be defined if connecting from a specific handle
+    // targetHandle should be defined if connecting to a specific handle
+    return true;
+  }, []);
+
   const onConnect: OnConnect = useCallback(
     (connection: XYFlowConnection) => {
       const newEdge = {
@@ -328,12 +345,13 @@ export function WorkflowCanvas() {
       <Canvas
         className="bg-background"
         connectionLineComponent={Connection}
-        connectionMode={ConnectionMode.Loose}
+        connectionMode={ConnectionMode.Strict}
         defaultViewport={defaultViewport}
         edges={edges}
         edgeTypes={edgeTypes}
         elementsSelectable={!isGenerating}
         fitView={!defaultViewport}
+        isValidConnection={isValidConnection}
         nodes={nodes}
         nodesConnectable={!isGenerating}
         nodesDraggable={!isGenerating}
@@ -348,6 +366,25 @@ export function WorkflowCanvas() {
         onPaneClick={onPaneClick}
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
+        <svg style={{ position: "absolute", width: 0, height: 0 }}>
+          <defs>
+            <marker
+              id="edge-arrow"
+              markerWidth="20"
+              markerHeight="20"
+              refX="10"
+              refY="6"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path
+                d="M 0 0 L 12 6 L 0 12 z"
+                fill="currentColor"
+                className="text-foreground"
+              />
+            </marker>
+          </defs>
+        </svg>
         <Controls />
         <MiniMap
           bgColor="var(--sidebar)"
