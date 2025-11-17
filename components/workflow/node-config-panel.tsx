@@ -448,7 +448,7 @@ export const NodeConfigPanel = () => {
         </Drawer>
       </div>
 
-      <div className="absolute top-20 right-4 bottom-4 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex">
+      <div className="absolute top-20 right-4 bottom-48 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex">
         <PanelInner />
       </div>
     </>

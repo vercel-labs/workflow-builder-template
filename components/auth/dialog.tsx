@@ -40,22 +40,34 @@ export const AuthDialog = ({
 
     try {
       if (mode === "signup") {
-        await signUp.email({
+        const signUpResponse = await signUp.email({
           email,
           password,
           name,
         });
+        if (signUpResponse.error) {
+          setError(signUpResponse.error.message || "Sign up failed");
+          return;
+        }
         // Automatically sign in after successful sign-up
-        await signIn.email({
+        const signInResponse = await signIn.email({
           email,
           password,
         });
+        if (signInResponse.error) {
+          setError(signInResponse.error.message || "Sign in failed");
+          return;
+        }
         toast.success("Account created and signed in successfully!");
       } else {
-        await signIn.email({
+        const response = await signIn.email({
           email,
           password,
         });
+        if (response.error) {
+          setError(response.error.message || "Sign in failed");
+          return;
+        }
         toast.success("Signed in successfully!");
       }
       setOpen(false);
