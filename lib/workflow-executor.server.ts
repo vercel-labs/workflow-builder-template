@@ -311,8 +311,6 @@ class ServerWorkflowExecutor {
         JSON.stringify(nodeConfig, null, 2)
       );
 
-      await this.startNodeExecution(node, nodeConfig);
-
       let result: ExecutionResult = { success: true };
 
       // Get actionType from original config (not processed) to avoid template corruption
@@ -352,6 +350,9 @@ class ServerWorkflowExecutor {
         "[Executor] Final processedConfig:",
         JSON.stringify(processedConfig, null, 2)
       );
+
+      // Start node execution logging with processed config
+      await this.startNodeExecution(node, processedConfig);
 
       switch (node.data.type) {
         case "trigger":
@@ -534,10 +535,10 @@ class ServerWorkflowExecutor {
                       };
                     }
                   } else {
-                    // No schema fields, return as-is
+                    // No schema fields, return the data directly
                     result = {
                       success: dbResult.status === "success",
-                      data: dbResult,
+                      data: dbResult.data,
                     };
                   }
                 } catch (schemaError) {
@@ -546,20 +547,35 @@ class ServerWorkflowExecutor {
                     error: `Schema validation error: ${schemaError instanceof Error ? schemaError.message : "Invalid data structure"}`,
                   };
                 }
-              } else {
-                // No schema or query failed
+              } else if (dbResult.status === "success") {
+                // No schema - return the data directly
                 result = {
-                  success: dbResult.status === "success",
-                  data: dbResult,
+                  success: true,
+                  data: dbResult.data,
                 };
-              }
-
-              if (dbResult.status === "error") {
-                result.error = dbResult.error;
+              } else {
+                // Query failed
+                result = {
+                  success: false,
+                  data: undefined,
+                  error: dbResult.error,
+                };
               }
             }
           } else if (actionType === "Generate Text") {
             console.log("[Executor] ===== GENERATE TEXT ACTION =====");
+            console.log(
+              "[Executor] Original aiPrompt (before processing):",
+              nodeConfig.aiPrompt
+            );
+            console.log(
+              "[Executor] Available node outputs:",
+              Object.entries(this.nodeOutputs).map(([id, output]) => ({
+                id,
+                label: output.label,
+                dataPreview: JSON.stringify(output.data).substring(0, 200),
+              }))
+            );
             console.log(
               "[Executor] processedConfig.aiModel:",
               processedConfig?.aiModel
@@ -577,7 +593,7 @@ class ServerWorkflowExecutor {
               const aiSchema = processedConfig?.aiSchema as string | undefined;
 
               console.log("[Executor] Using model ID:", modelId);
-              console.log("[Executor] Using prompt:", prompt);
+              console.log("[Executor] Processed prompt (after template processing):", prompt);
               console.log("[Executor] Format:", aiFormat);
 
               if (prompt) {

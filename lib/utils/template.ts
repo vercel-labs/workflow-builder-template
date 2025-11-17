@@ -176,7 +176,13 @@ function resolveFieldPath(data: unknown, fieldPath: string): unknown {
       const [, field, index] = arrayMatch;
       current = current?.[field]?.[Number.parseInt(index, 10)];
     } else {
-      current = current?.[trimmedPart];
+      // If current is an array and we're trying to access a field,
+      // map over the array and extract that field from each element
+      if (Array.isArray(current)) {
+        current = current.map((item) => item?.[trimmedPart]);
+      } else {
+        current = current?.[trimmedPart];
+      }
     }
 
     if (current === undefined || current === null) {
@@ -251,7 +257,13 @@ function resolveExpressionById(
       const [, field, index] = arrayMatch;
       current = current?.[field]?.[Number.parseInt(index, 10)];
     } else {
-      current = current?.[part];
+      // If current is an array and we're trying to access a field,
+      // map over the array and extract that field from each element
+      if (Array.isArray(current)) {
+        current = current.map((item) => item?.[part]);
+      } else {
+        current = current?.[part];
+      }
     }
 
     if (current === undefined || current === null) {
@@ -311,7 +323,13 @@ function resolveExpression(
       const [, field, index] = arrayMatch;
       current = current?.[field]?.[Number.parseInt(index, 10)];
     } else {
-      current = current?.[part];
+      // If current is an array and we're trying to access a field,
+      // map over the array and extract that field from each element
+      if (Array.isArray(current)) {
+        current = current.map((item) => item?.[part]);
+      } else {
+        current = current?.[part];
+      }
     }
 
     if (current === undefined || current === null) {

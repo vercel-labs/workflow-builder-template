@@ -1,7 +1,7 @@
 "use client";
 
 import type { NodeProps } from "@xyflow/react";
-import { Code, Database, Settings, Zap } from "lucide-react";
+import { Code, Database, Zap } from "lucide-react";
 import { memo } from "react";
 import {
   Node,
@@ -114,7 +114,7 @@ const getProviderLogo = (actionType: string) => {
       return <Database className="size-5 text-blue-300" />;
     case "Generate Text":
     case "Generate Image":
-      return <Settings className="size-5 text-purple-300" />;
+      return <IntegrationIcon integration="vercel" className="size-5" />;
     case "Execute Code":
       return <Code className="size-5 text-green-300" />;
     default:

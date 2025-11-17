@@ -128,7 +128,7 @@ export function ActionConfig({
             </SelectGroup>
             <SelectGroup>
               <SelectLabel className="flex items-center gap-2">
-                <Settings className="h-3 w-3" />
+                <IntegrationIcon integration="vercel" />
                 AI Gateway
               </SelectLabel>
               <SelectItem value="Generate Text">Generate Text</SelectItem>
