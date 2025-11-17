@@ -488,6 +488,7 @@ class ServerWorkflowExecutor {
           ) {
             const dbQuery = processedConfig?.dbQuery as string;
             const dataSourceId = processedConfig?.dataSourceId as string;
+            const dbSchema = processedConfig?.dbSchema as string | undefined;
 
             if (!dbQuery || dbQuery.trim() === "") {
               result = {
@@ -506,10 +507,53 @@ class ServerWorkflowExecutor {
               const dbResult = await executeQuery({
                 query: dbQuery,
               });
-              result = {
-                success: dbResult.status === "success",
-                data: dbResult,
-              };
+
+              // If schema is defined, validate and transform the result
+              if (dbSchema && dbResult.status === "success") {
+                try {
+                  const schemaFields = JSON.parse(dbSchema) as SchemaField[];
+                  if (schemaFields.length > 0) {
+                    const zodSchema = schemaFieldsToZod(schemaFields);
+                    
+                    // Validate the result against the schema
+                    // If data is an array, validate each item
+                    if (Array.isArray(dbResult.data)) {
+                      const validatedData = dbResult.data.map((row) =>
+                        zodSchema.parse(row)
+                      );
+                      result = {
+                        success: true,
+                        data: validatedData,
+                      };
+                    } else {
+                      // Single object result
+                      const validatedData = zodSchema.parse(dbResult.data);
+                      result = {
+                        success: true,
+                        data: validatedData,
+                      };
+                    }
+                  } else {
+                    // No schema fields, return as-is
+                    result = {
+                      success: dbResult.status === "success",
+                      data: dbResult,
+                    };
+                  }
+                } catch (schemaError) {
+                  result = {
+                    success: false,
+                    error: `Schema validation error: ${schemaError instanceof Error ? schemaError.message : "Invalid data structure"}`,
+                  };
+                }
+              } else {
+                // No schema or query failed
+                result = {
+                  success: dbResult.status === "success",
+                  data: dbResult,
+                };
+              }
+
               if (dbResult.status === "error") {
                 result.error = dbResult.error;
               }

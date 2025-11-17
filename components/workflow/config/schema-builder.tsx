@@ -77,7 +77,7 @@ export function SchemaBuilder({
       {schema.map((field, index) => (
         <div
           className="space-y-2 rounded-md border p-3"
-          key={field.name || `field-${level}-${index}`}
+          key={`field-${level}-${index}`}
         >
           <div className="flex gap-2">
             <div className="flex-1">

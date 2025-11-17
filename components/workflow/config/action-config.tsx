@@ -388,6 +388,20 @@ export function ActionConfig({
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>Schema (Optional)</Label>
+            <SchemaBuilder
+              disabled={disabled}
+              onChange={(schema) =>
+                onUpdateConfig("dbSchema", JSON.stringify(schema))
+              }
+              schema={
+                config?.dbSchema
+                  ? (JSON.parse(config.dbSchema as string) as SchemaField[])
+                  : []
+              }
+            />
+          </div>
         </>
       )}
 

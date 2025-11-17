@@ -3,7 +3,7 @@
 import { useAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { selectedNodeAtom } from "@/lib/workflow-store";
+import { nodesAtom, selectedNodeAtom } from "@/lib/workflow-store";
 import { TemplateAutocomplete } from "./template-autocomplete";
 
 export interface TemplateBadgeTextareaProps {
@@ -14,6 +14,42 @@ export interface TemplateBadgeTextareaProps {
   className?: string;
   id?: string;
   rows?: number;
+}
+
+// Helper to get display text from template by looking up current node label
+function getDisplayTextForTemplate(template: string, nodes: ReturnType<typeof useAtom<typeof nodesAtom>>[0]): string {
+  // Extract nodeId and field from template: {{@nodeId:OldLabel.field}}
+  const match = template.match(/\{\{@([^:]+):([^}]+)\}\}/);
+  if (!match) return template;
+  
+  const nodeId = match[1];
+  const rest = match[2]; // e.g., "OldLabel.field" or "OldLabel"
+  
+  // Find the current node
+  const node = nodes.find((n) => n.id === nodeId);
+  if (!node) {
+    // Node not found, return as-is
+    return rest;
+  }
+  
+  // Replace old label with current label
+  const currentLabel = node.data.label || "";
+  const dotIndex = rest.indexOf(".");
+  
+  if (dotIndex === -1) {
+    // No field, just the node: {{@nodeId:Label}}
+    return currentLabel || rest;
+  }
+  
+  // Has field: {{@nodeId:Label.field}}
+  const field = rest.substring(dotIndex + 1);
+  
+  // If currentLabel is empty, fall back to the original label from the template
+  if (!currentLabel) {
+    return rest;
+  }
+  
+  return `${currentLabel}.${field}`;
 }
 
 /**
@@ -34,6 +70,7 @@ export function TemplateBadgeTextarea({
   const [internalValue, setInternalValue] = useState(value);
   const shouldUpdateDisplay = useRef(true);
   const [selectedNodeId] = useAtom(selectedNodeAtom);
+  const [nodes] = useAtom(nodesAtom);
   
   // Autocomplete state
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -47,7 +84,14 @@ export function TemplateBadgeTextarea({
       setInternalValue(value);
       shouldUpdateDisplay.current = true;
     }
-  }, [value]);
+  }, [value, isFocused, internalValue]);
+
+  // Update display when nodes change (to reflect label updates)
+  useEffect(() => {
+    if (!isFocused && internalValue) {
+      shouldUpdateDisplay.current = true;
+    }
+  }, [nodes, isFocused, internalValue]);
 
   // Save cursor position
   const saveCursorPosition = (): { offset: number } | null => {
@@ -225,7 +269,8 @@ export function TemplateBadgeTextarea({
         "inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400 font-mono text-xs border border-blue-500/20 mx-0.5";
       badge.contentEditable = "false";
       badge.setAttribute("data-template", fullMatch);
-      badge.textContent = displayPart;
+      // Use current node label for display
+      badge.textContent = getDisplayTextForTemplate(fullMatch, nodes);
       container.appendChild(badge);
 
       lastIndex = pattern.lastIndex;
@@ -437,6 +482,9 @@ export function TemplateBadgeTextarea({
     const afterFilter = currentText.slice(atSignPosition + 1 + autocompleteFilter.length);
     const newText = beforeAt + template + afterFilter;
     
+    // Calculate where cursor should be after the template (right after the badge)
+    const targetCursorPosition = beforeAt.length + template.length;
+    
     console.log("[Textarea] Autocomplete select:", {
       currentText,
       atSignPosition,
@@ -444,25 +492,95 @@ export function TemplateBadgeTextarea({
       template,
       beforeAt,
       afterFilter,
-      newText
+      newText,
+      targetCursorPosition
     });
     
     setInternalValue(newText);
     onChange?.(newText);
     shouldUpdateDisplay.current = true;
     
-    // Force immediate display update
-    setTimeout(() => {
-      updateDisplay();
-    }, 0);
-    
     setShowAutocomplete(false);
     setAtSignPosition(null);
     
-    // Focus back on the textarea after a short delay to allow DOM to update
-    setTimeout(() => {
-      contentRef.current?.focus();
-    }, 10);
+    // Force immediate display update and restore cursor to correct position
+    requestAnimationFrame(() => {
+      updateDisplay();
+      
+      // After display updates, position cursor after the newly inserted badge
+      requestAnimationFrame(() => {
+        if (!contentRef.current) return;
+        
+        // Find the position to place cursor
+        let offset = 0;
+        const walker = document.createTreeWalker(
+          contentRef.current,
+          NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+          null
+        );
+        
+        let node;
+        let targetNode: Node | null = null;
+        
+        while ((node = walker.nextNode())) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const parent = node.parentElement;
+            let isInsideBadge = false;
+            while (parent && parent !== contentRef.current) {
+              if (parent.getAttribute("data-template")) {
+                isInsideBadge = true;
+                break;
+              }
+            }
+            
+            if (!isInsideBadge) {
+              const textLength = (node.textContent || "").length;
+              if (offset + textLength >= targetCursorPosition) {
+                // Found the target text node
+                targetNode = node;
+                const nodeOffset = targetCursorPosition - offset;
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.setStart(node, nodeOffset);
+                range.collapse(true);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+                console.log("[Textarea] Cursor positioned at offset", nodeOffset, "in text node");
+                break;
+              }
+              offset += textLength;
+            }
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as HTMLElement;
+            const template = element.getAttribute("data-template");
+            if (template) {
+              if (offset + template.length >= targetCursorPosition) {
+                // Cursor should be right after this badge
+                targetNode = element.nextSibling;
+                if (!targetNode) {
+                  // Create a text node after the badge
+                  targetNode = document.createTextNode("");
+                  element.parentNode?.appendChild(targetNode);
+                }
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.setStart(targetNode, 0);
+                range.collapse(true);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+                console.log("[Textarea] Cursor positioned after badge");
+                break;
+              }
+              offset += template.length;
+            } else if (element.tagName === "BR") {
+              offset += 1;
+            }
+          }
+        }
+        
+        contentRef.current.focus();
+      });
+    });
   };
 
   const handleFocus = () => {

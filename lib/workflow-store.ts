@@ -88,9 +88,42 @@ export const updateNodeDataAtom = atom(
   null,
   (get, set, { id, data }: { id: string; data: Partial<WorkflowNodeData> }) => {
     const currentNodes = get(nodesAtom);
-    const newNodes = currentNodes.map((node) =>
-      node.id === id ? { ...node, data: { ...node.data, ...data } } : node
-    );
+    
+    // Check if label is being updated
+    const oldNode = currentNodes.find((node) => node.id === id);
+    const oldLabel = oldNode?.data.label;
+    const newLabel = data.label;
+    const isLabelChange = newLabel !== undefined && oldLabel !== newLabel;
+    
+    const newNodes = currentNodes.map((node) => {
+      if (node.id === id) {
+        // Update the node itself
+        return { ...node, data: { ...node.data, ...data } };
+      }
+      
+      // If label changed, update all templates in other nodes that reference this node
+      if (isLabelChange && oldLabel) {
+        const updatedConfig = updateTemplatesInConfig(
+          node.data.config || {},
+          id,
+          oldLabel,
+          newLabel
+        );
+        
+        if (updatedConfig !== node.data.config) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              config: updatedConfig,
+            },
+          };
+        }
+      }
+      
+      return node;
+    });
+    
     set(nodesAtom, newNodes);
 
     // Mark as having unsaved changes (except for status updates during execution)
@@ -99,6 +132,57 @@ export const updateNodeDataAtom = atom(
     }
   }
 );
+
+// Helper function to update templates in a config object when a node label changes
+function updateTemplatesInConfig(
+  config: Record<string, unknown>,
+  nodeId: string,
+  oldLabel: string,
+  newLabel: string
+): Record<string, unknown> {
+  let hasChanges = false;
+  const updated: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(config)) {
+    if (typeof value === "string") {
+      // Update template references to this node
+      // Pattern: {{@nodeId:OldLabel}} or {{@nodeId:OldLabel.field}}
+      const pattern = new RegExp(
+        `\\{\\{@${escapeRegex(nodeId)}:${escapeRegex(oldLabel)}(\\.[^}]+)?\\}\\}`,
+        "g"
+      );
+      const newValue = value.replace(pattern, (match, fieldPart) => {
+        hasChanges = true;
+        return `{{@${nodeId}:${newLabel}${fieldPart || ""}}}`;
+      });
+      updated[key] = newValue;
+    } else if (
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      const nestedUpdated = updateTemplatesInConfig(
+        value as Record<string, unknown>,
+        nodeId,
+        oldLabel,
+        newLabel
+      );
+      if (nestedUpdated !== value) {
+        hasChanges = true;
+      }
+      updated[key] = nestedUpdated;
+    } else {
+      updated[key] = value;
+    }
+  }
+
+  return hasChanges ? updated : config;
+}
+
+// Helper to escape special regex characters
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export const deleteNodeAtom = atom(null, (get, set, nodeId: string) => {
   // Save current state to history before making changes

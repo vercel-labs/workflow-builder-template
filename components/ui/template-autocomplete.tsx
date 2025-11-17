@@ -123,6 +123,27 @@ const getCommonFields = (node: WorkflowNode) => {
       { field: "status", description: "HTTP status code" },
     ];
   }
+  if (actionType === "Database Query") {
+    const dbSchema = node.data.config?.dbSchema as string | undefined;
+
+    // If schema is defined, show schema fields
+    if (dbSchema) {
+      try {
+        const schema = JSON.parse(dbSchema) as SchemaField[];
+        if (schema.length > 0) {
+          return schemaToFields(schema);
+        }
+      } catch {
+        // If schema parsing fails, fall through to default fields
+      }
+    }
+
+    // Default fields when no schema
+    return [
+      { field: "rows", description: "Query result rows" },
+      { field: "count", description: "Number of rows" },
+    ];
+  }
   if (actionType === "Generate Text") {
     const aiFormat = node.data.config?.aiFormat as string | undefined;
     const aiSchema = node.data.config?.aiSchema as string | undefined;
