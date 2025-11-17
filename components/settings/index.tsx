@@ -74,8 +74,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     if (open) {
       loadAll();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, loadAll]);
 
   const loadAccount = async () => {
     try {
@@ -205,7 +204,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       </Dialog>
 
       <AlertDialog
-        onOpenChange={(open) => !open && setDeleteSourceId(null)}
+        onOpenChange={(isOpen) => !isOpen && setDeleteSourceId(null)}
         open={deleteSourceId !== null}
       >
         <AlertDialogContent>

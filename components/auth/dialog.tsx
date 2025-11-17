@@ -33,44 +33,73 @@ export const AuthDialog = ({
   const [loading, setLoading] = useState(false);
   const { data: session } = useSession();
 
+  const getDialogDescription = () => {
+    if (mode === "signin") {
+      return "Sign in to your account to continue";
+    }
+    if (session?.user) {
+      return "Create an account to save your work permanently";
+    }
+    return "Create a new account to get started";
+  };
+
+  const getButtonText = () => {
+    if (loading) {
+      return "Loading...";
+    }
+    return mode === "signin" ? "Sign In" : "Sign Up";
+  };
+
+  const handleSignUp = async () => {
+    const signUpResponse = await signUp.email({
+      email,
+      password,
+      name,
+    });
+    if (signUpResponse.error) {
+      setError(signUpResponse.error.message || "Sign up failed");
+      return false;
+    }
+
+    // Automatically sign in after successful sign-up
+    const signInResponse = await signIn.email({
+      email,
+      password,
+    });
+    if (signInResponse.error) {
+      setError(signInResponse.error.message || "Sign in failed");
+      return false;
+    }
+
+    toast.success("Account created and signed in successfully!");
+    return true;
+  };
+
+  const handleSignIn = async () => {
+    const response = await signIn.email({
+      email,
+      password,
+    });
+    if (response.error) {
+      setError(response.error.message || "Sign in failed");
+      return false;
+    }
+
+    toast.success("Signed in successfully!");
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      if (mode === "signup") {
-        const signUpResponse = await signUp.email({
-          email,
-          password,
-          name,
-        });
-        if (signUpResponse.error) {
-          setError(signUpResponse.error.message || "Sign up failed");
-          return;
-        }
-        // Automatically sign in after successful sign-up
-        const signInResponse = await signIn.email({
-          email,
-          password,
-        });
-        if (signInResponse.error) {
-          setError(signInResponse.error.message || "Sign in failed");
-          return;
-        }
-        toast.success("Account created and signed in successfully!");
-      } else {
-        const response = await signIn.email({
-          email,
-          password,
-        });
-        if (response.error) {
-          setError(response.error.message || "Sign in failed");
-          return;
-        }
-        toast.success("Signed in successfully!");
+      const success =
+        mode === "signup" ? await handleSignUp() : await handleSignIn();
+      if (success) {
+        setOpen(false);
       }
-      setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
@@ -97,13 +126,7 @@ export const AuthDialog = ({
           <DialogTitle>
             {mode === "signin" ? "Sign In" : "Create Account"}
           </DialogTitle>
-          <DialogDescription>
-            {mode === "signin"
-              ? "Sign in to your account to continue"
-              : session?.user
-                ? "Create an account to save your work permanently"
-                : "Create a new account to get started"}
-          </DialogDescription>
+          <DialogDescription>{getDialogDescription()}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -144,7 +167,7 @@ export const AuthDialog = ({
           </div>
           {error && <div className="text-destructive text-sm">{error}</div>}
           <Button className="w-full" disabled={loading} type="submit">
-            {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
+            {getButtonText()}
           </Button>
         </form>
 

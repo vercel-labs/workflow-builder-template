@@ -33,7 +33,7 @@ export async function saveCurrent(
     )
     .limit(1);
 
-  let savedWorkflow;
+  let savedWorkflow: typeof existingWorkflow;
 
   if (existingWorkflow) {
     // Update existing current workflow

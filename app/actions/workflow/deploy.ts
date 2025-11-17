@@ -33,9 +33,12 @@ export async function deploy(id: string): Promise<{
     );
   }
 
+  // Store vercelProjectId for type narrowing
+  const vercelProjectId = workflow.vercelProjectId;
+
   // Get the actual Vercel project
   const vercelProject = await db.query.projects.findFirst({
-    where: eq(projects.id, workflow.vercelProjectId),
+    where: eq(projects.id, vercelProjectId),
   });
 
   if (!vercelProject) {
@@ -47,7 +50,7 @@ export async function deploy(id: string): Promise<{
   // Get all workflows for this Vercel project
   const projectWorkflows = await db.query.workflows.findMany({
     where: and(
-      eq(workflows.vercelProjectId, workflow.vercelProjectId!),
+      eq(workflows.vercelProjectId, vercelProjectId),
       eq(workflows.userId, session.user.id)
     ),
   });
@@ -58,7 +61,7 @@ export async function deploy(id: string): Promise<{
     .set({ deploymentStatus: "deploying" })
     .where(
       and(
-        eq(workflows.vercelProjectId, workflow.vercelProjectId!),
+        eq(workflows.vercelProjectId, vercelProjectId),
         eq(workflows.userId, session.user.id)
       )
     );
@@ -86,7 +89,7 @@ export async function deploy(id: string): Promise<{
     })
     .where(
       and(
-        eq(workflows.vercelProjectId, workflow.vercelProjectId!),
+        eq(workflows.vercelProjectId, vercelProjectId),
         eq(workflows.userId, session.user.id)
       )
     );

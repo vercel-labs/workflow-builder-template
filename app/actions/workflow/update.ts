@@ -17,8 +17,14 @@ export async function update(
   await verifyWorkflowOwnership(id, session.user.id);
 
   // Build update data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updateData: any = {
+  const updateData: {
+    updatedAt: Date;
+    name?: string;
+    description?: string | null;
+    nodes?: WorkflowData["nodes"];
+    edges?: WorkflowData["edges"];
+    vercelProjectId?: string | null;
+  } = {
     updatedAt: new Date(),
   };
 

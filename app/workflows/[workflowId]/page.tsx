@@ -52,98 +52,113 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const [workflowNotFound, setWorkflowNotFound] = useAtom(workflowNotFoundAtom);
 
+  // Helper function to generate workflow from AI
+  const generateWorkflowFromAI = useCallback(
+    async (prompt: string) => {
+      setIsGenerating(true);
+      setCurrentWorkflowId(workflowId);
+      setCurrentWorkflowName("AI Generated Workflow");
+
+      try {
+        const workflowData = await generate(prompt);
+
+        setNodes(workflowData.nodes || []);
+        setEdges(workflowData.edges || []);
+        setCurrentWorkflowName(workflowData.name || "AI Generated Workflow");
+
+        const selectedNode = workflowData.nodes?.find(
+          (n: { selected?: boolean }) => n.selected
+        );
+        if (selectedNode) {
+          setSelectedNodeId(selectedNode.id);
+        }
+
+        await workflowApi.update(workflowId, {
+          name: workflowData.name,
+          description: workflowData.description,
+          nodes: workflowData.nodes,
+          edges: workflowData.edges,
+        });
+      } catch (error) {
+        console.error("Failed to generate workflow:", error);
+        toast.error("Failed to generate workflow");
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [
+      workflowId,
+      setIsGenerating,
+      setCurrentWorkflowId,
+      setCurrentWorkflowName,
+      setNodes,
+      setEdges,
+      setSelectedNodeId,
+    ]
+  );
+
+  // Helper function to load existing workflow
+  const loadExistingWorkflow = useCallback(async () => {
+    try {
+      const workflow = await workflowApi.getById(workflowId);
+
+      if (!workflow) {
+        setWorkflowNotFound(true);
+        return;
+      }
+
+      setNodes(workflow.nodes);
+      setEdges(workflow.edges);
+      setCurrentWorkflowId(workflow.id);
+      setCurrentWorkflowName(workflow.name);
+      setCurrentVercelProjectId(workflow.vercelProjectId || null);
+      setCurrentVercelProjectName(workflow.vercelProject?.name || null);
+      setHasUnsavedChanges(false);
+      setWorkflowNotFound(false);
+
+      const selectedNode = workflow.nodes.find((n) => n.selected);
+      if (selectedNode) {
+        setSelectedNodeId(selectedNode.id);
+      }
+    } catch (error) {
+      console.error("Failed to load workflow:", error);
+      toast.error("Failed to load workflow");
+    }
+  }, [
+    workflowId,
+    setNodes,
+    setEdges,
+    setCurrentWorkflowId,
+    setCurrentWorkflowName,
+    setCurrentVercelProjectId,
+    setCurrentVercelProjectName,
+    setHasUnsavedChanges,
+    setWorkflowNotFound,
+    setSelectedNodeId,
+  ]);
+
   useEffect(() => {
     const loadWorkflowData = async () => {
       const isGeneratingParam = searchParams?.get("generating") === "true";
       const storedPrompt = sessionStorage.getItem("ai-prompt");
       const storedWorkflowId = sessionStorage.getItem("generating-workflow-id");
 
-      // Check if state is already loaded for this workflow (e.g., after creation)
-      // If currentWorkflowId matches and we have nodes, the state is fresh
+      // Check if state is already loaded for this workflow
       if (currentWorkflowId === workflowId && nodes.length > 0) {
-        // State is already loaded, no need to fetch from server
         return;
       }
 
-      // Check if we should generate
+      // Check if we should generate from AI
       if (
         isGeneratingParam &&
         storedPrompt &&
         storedWorkflowId === workflowId
       ) {
-        // Clear session storage
         sessionStorage.removeItem("ai-prompt");
         sessionStorage.removeItem("generating-workflow-id");
-
-        // Set generating state
-        setIsGenerating(true);
-        setCurrentWorkflowId(workflowId);
-        setCurrentWorkflowName("AI Generated Workflow");
-
-        try {
-          // Generate workflow using AI
-          const workflowData = await generate(storedPrompt);
-
-          // Update nodes and edges as they come in
-          setNodes(workflowData.nodes || []);
-          setEdges(workflowData.edges || []);
-          setCurrentWorkflowName(workflowData.name || "AI Generated Workflow");
-
-          // Sync selected node if any node is selected
-          const selectedNode = workflowData.nodes?.find(
-            (n: { selected?: boolean }) => n.selected
-          );
-          if (selectedNode) {
-            setSelectedNodeId(selectedNode.id);
-          }
-
-          // Save to database
-          await workflowApi.update(workflowId, {
-            name: workflowData.name,
-            description: workflowData.description,
-            nodes: workflowData.nodes,
-            edges: workflowData.edges,
-          });
-        } catch (error) {
-          console.error("Failed to generate workflow:", error);
-          alert("Failed to generate workflow");
-        } finally {
-          setIsGenerating(false);
-        }
+        await generateWorkflowFromAI(storedPrompt);
       } else {
-        // Normal workflow loading
-        try {
-          const workflow = await workflowApi.getById(workflowId);
-
-          // Check if workflow was not found
-          if (!workflow) {
-            setWorkflowNotFound(true);
-            return;
-          }
-
-          setNodes(workflow.nodes);
-          setEdges(workflow.edges);
-          setCurrentWorkflowId(workflow.id);
-          setCurrentWorkflowName(workflow.name);
-          setCurrentVercelProjectId(workflow.vercelProjectId || null);
-          setCurrentVercelProjectName(workflow.vercelProject?.name || null);
-
-          // Reset unsaved changes flag after loading
-          setHasUnsavedChanges(false);
-
-          // Reset workflow not found state on successful load
-          setWorkflowNotFound(false);
-
-          // Sync selected node if any node is selected
-          const selectedNode = workflow.nodes.find((n) => n.selected);
-          if (selectedNode) {
-            setSelectedNodeId(selectedNode.id);
-          }
-        } catch (error) {
-          console.error("Failed to load workflow:", error);
-          // For other errors, show a toast
-          toast.error("Failed to load workflow");
-        }
+        await loadExistingWorkflow();
       }
     };
 
@@ -152,17 +167,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     workflowId,
     searchParams,
     currentWorkflowId,
-    setCurrentWorkflowId,
-    setCurrentWorkflowName,
-    setCurrentVercelProjectId,
-    setCurrentVercelProjectName,
-    setNodes,
-    setEdges,
-    setIsGenerating,
-    setSelectedNodeId,
-    setHasUnsavedChanges,
-    setWorkflowNotFound,
     nodes.length,
+    generateWorkflowFromAI,
+    loadExistingWorkflow,
   ]);
 
   // Keyboard shortcuts
@@ -190,6 +197,32 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setHasUnsavedChanges,
   ]);
 
+  // Helper to update node statuses
+  const updateAllNodeStatuses = useCallback(
+    (status: "idle" | "error" | "success") => {
+      for (const node of nodes) {
+        updateNodeData({ id: node.id, data: { status } });
+      }
+    },
+    [nodes, updateNodeData]
+  );
+
+  // Helper to execute workflow API call
+  const executeWorkflowApi = useCallback(async (wfId: string) => {
+    const response = await fetch(`/api/workflows/${wfId}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: {} }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to execute workflow");
+    }
+
+    return await response.json();
+  }, []);
+
   const handleRun = useCallback(async () => {
     if (
       isExecuting ||
@@ -203,89 +236,92 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setIsExecuting(true);
 
     // Set all nodes to idle first
-    nodes.forEach((node) => {
-      updateNodeData({ id: node.id, data: { status: "idle" } });
-    });
+    updateAllNodeStatuses("idle");
 
     try {
-      // Call the server API to execute the workflow
-      const response = await fetch(
-        `/api/workflows/${currentWorkflowId}/execute`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: {} }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to execute workflow");
-      }
-
-      const result = await response.json();
+      const result = await executeWorkflowApi(currentWorkflowId);
 
       // Update all nodes based on result
-      nodes.forEach((node) => {
-        updateNodeData({
-          id: node.id,
-          data: { status: result.status === "error" ? "error" : "success" },
-        });
-      });
+      const resultStatus = result.status === "error" ? "error" : "success";
+      updateAllNodeStatuses(resultStatus);
     } catch (error) {
       console.error("Failed to execute workflow:", error);
-
-      // Mark all nodes as error
-      nodes.forEach((node) => {
-        updateNodeData({ id: node.id, data: { status: "error" } });
-      });
+      updateAllNodeStatuses("error");
     } finally {
       setIsExecuting(false);
     }
   }, [
     isExecuting,
-    nodes,
+    nodes.length,
     isGenerating,
     currentWorkflowId,
     setIsExecuting,
-    updateNodeData,
+    updateAllNodeStatuses,
+    executeWorkflowApi,
   ]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+  // Helper to check if target is an input element
+  const isInputElement = useCallback(
+    (target: HTMLElement) =>
+      target.tagName === "INPUT" || target.tagName === "TEXTAREA",
+    []
+  );
 
-      // Check if we're inside Monaco Editor
-      const isMonacoEditor = target.closest(".monaco-editor") !== null;
+  // Helper to check if we're in Monaco editor
+  const isInMonacoEditor = useCallback(
+    (target: HTMLElement) => target.closest(".monaco-editor") !== null,
+    []
+  );
 
-      // Only intercept our specific shortcuts
-      // Cmd+S or Ctrl+S to save (works everywhere, including inputs)
+  // Helper to handle save shortcut
+  const handleSaveShortcut = useCallback(
+    (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         e.stopPropagation();
         handleSave();
-        return;
+        return true;
       }
+      return false;
+    },
+    [handleSave]
+  );
 
-      // Cmd+Enter or Ctrl+Enter to run (skip if typing in input/textarea/monaco)
+  // Helper to handle run shortcut
+  const handleRunShortcut = useCallback(
+    (e: KeyboardEvent, target: HTMLElement) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        if (!(isInput || isMonacoEditor)) {
+        if (!(isInputElement(target) || isInMonacoEditor(target))) {
           e.preventDefault();
           e.stopPropagation();
           handleRun();
         }
+        return true;
+      }
+      return false;
+    },
+    [handleRun, isInputElement, isInMonacoEditor]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Handle save shortcut
+      if (handleSaveShortcut(e)) {
         return;
       }
 
-      // Don't interfere with other keys - let them through
+      // Handle run shortcut
+      if (handleRunShortcut(e, target)) {
+        return;
+      }
     };
 
     // Use capture phase only to ensure we can intercept before other handlers
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [handleSave, handleRun]);
+  }, [handleSaveShortcut, handleRunShortcut]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">

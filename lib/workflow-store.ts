@@ -215,7 +215,10 @@ export const undoAtom = atom(null, (get, set) => {
 
   // Pop from history and set as current
   const newHistory = [...history];
-  const previousState = newHistory.pop()!;
+  const previousState = newHistory.pop();
+  if (!previousState) {
+    return; // No history to undo
+  }
   set(historyAtom, newHistory);
   set(nodesAtom, previousState.nodes);
   set(edgesAtom, previousState.edges);
@@ -240,7 +243,10 @@ export const redoAtom = atom(null, (get, set) => {
 
   // Pop from future and set as current
   const newFuture = [...future];
-  const nextState = newFuture.pop()!;
+  const nextState = newFuture.pop();
+  if (!nextState) {
+    return; // No future to redo
+  }
   set(futureAtom, newFuture);
   set(nodesAtom, nextState.nodes);
   set(edgesAtom, nextState.edges);

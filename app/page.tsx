@@ -42,6 +42,26 @@ const Home = () => {
   const _setSelectedNodeId = useSetAtom(selectedNodeAtom);
   const hasRedirectedRef = useRef(false);
 
+  // Helper to create anonymous session if needed
+  const ensureSession = useCallback(async () => {
+    if (!session) {
+      await authClient.signIn.anonymous();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }, [session]);
+
+  // Helper to load project details if workflow has one
+  const loadProjectDetails = useCallback(
+    async (workflowId: string, _projectId: string) => {
+      const fullWorkflow = await workflowApi.getById(workflowId);
+      if (fullWorkflow?.vercelProject) {
+        setCurrentVercelProjectId(fullWorkflow.vercelProject.id);
+        setCurrentVercelProjectName(fullWorkflow.vercelProject.name);
+      }
+    },
+    [setCurrentVercelProjectId, setCurrentVercelProjectName]
+  );
+
   // Create workflow and redirect when first node is added
   useEffect(() => {
     const createWorkflowAndRedirect = async () => {
@@ -52,12 +72,7 @@ const Home = () => {
       hasRedirectedRef.current = true;
 
       try {
-        // If no session, create anonymous session first
-        if (!session) {
-          await authClient.signIn.anonymous();
-          // Wait a moment for session to be established
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
+        await ensureSession();
 
         // Create workflow with the first node
         const newWorkflow = await workflowApi.create({
@@ -71,13 +86,9 @@ const Home = () => {
         setCurrentWorkflowId(newWorkflow.id);
         setCurrentWorkflowName(newWorkflow.name);
 
-        // If the workflow has a project, we need to load it to get the name
+        // Load project details if available
         if (newWorkflow.vercelProjectId) {
-          const fullWorkflow = await workflowApi.getById(newWorkflow.id);
-          if (fullWorkflow?.vercelProject) {
-            setCurrentVercelProjectId(fullWorkflow.vercelProject.id);
-            setCurrentVercelProjectName(fullWorkflow.vercelProject.name);
-          }
+          await loadProjectDetails(newWorkflow.id, newWorkflow.vercelProjectId);
         }
 
         // Redirect to the workflow page
@@ -93,11 +104,10 @@ const Home = () => {
     nodes,
     edges,
     router,
-    session,
+    ensureSession,
+    loadProjectDetails,
     setCurrentWorkflowId,
     setCurrentWorkflowName,
-    setCurrentVercelProjectId,
-    setCurrentVercelProjectName,
   ]);
 
   // Keyboard shortcuts
@@ -117,6 +127,32 @@ const Home = () => {
     }
   }, [currentWorkflowId, nodes, edges, setIsSaving]);
 
+  // Helper to update node statuses
+  const updateAllNodeStatuses = useCallback(
+    (status: "idle" | "error" | "success") => {
+      for (const node of nodes) {
+        updateNodeData({ id: node.id, data: { status } });
+      }
+    },
+    [nodes, updateNodeData]
+  );
+
+  // Helper to execute workflow API call
+  const executeWorkflowApi = useCallback(async (workflowId: string) => {
+    const response = await fetch(`/api/workflows/${workflowId}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: {} }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to execute workflow");
+    }
+
+    return await response.json();
+  }, []);
+
   const handleRun = useCallback(async () => {
     if (isExecuting || nodes.length === 0 || !currentWorkflowId) {
       return;
@@ -125,82 +161,91 @@ const Home = () => {
     setIsExecuting(true);
 
     // Set all nodes to idle first
-    nodes.forEach((node) => {
-      updateNodeData({ id: node.id, data: { status: "idle" } });
-    });
+    updateAllNodeStatuses("idle");
 
     try {
-      // Call the server API to execute the workflow
-      const response = await fetch(
-        `/api/workflows/${currentWorkflowId}/execute`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: {} }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to execute workflow");
-      }
-
-      const result = await response.json();
+      const result = await executeWorkflowApi(currentWorkflowId);
 
       // Update all nodes based on result
-      nodes.forEach((node) => {
-        updateNodeData({
-          id: node.id,
-          data: { status: result.status === "error" ? "error" : "success" },
-        });
-      });
+      const resultStatus = result.status === "error" ? "error" : "success";
+      updateAllNodeStatuses(resultStatus);
     } catch (error) {
       console.error("Failed to execute workflow:", error);
-
-      // Mark all nodes as error
-      nodes.forEach((node) => {
-        updateNodeData({ id: node.id, data: { status: "error" } });
-      });
+      updateAllNodeStatuses("error");
     } finally {
       setIsExecuting(false);
     }
-  }, [isExecuting, nodes, currentWorkflowId, setIsExecuting, updateNodeData]);
+  }, [
+    isExecuting,
+    nodes.length,
+    currentWorkflowId,
+    setIsExecuting,
+    updateAllNodeStatuses,
+    executeWorkflowApi,
+  ]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+  // Helper to check if target is an input element
+  const isInputElement = useCallback(
+    (target: HTMLElement) =>
+      target.tagName === "INPUT" || target.tagName === "TEXTAREA",
+    []
+  );
 
-      // Check if we're inside Monaco Editor
-      const isMonacoEditor = target.closest(".monaco-editor") !== null;
+  // Helper to check if we're in Monaco editor
+  const isInMonacoEditor = useCallback(
+    (target: HTMLElement) => target.closest(".monaco-editor") !== null,
+    []
+  );
 
-      // Only intercept our specific shortcuts
-      // Cmd+S or Ctrl+S to save (works everywhere, including inputs)
+  // Helper to handle save shortcut
+  const handleSaveShortcut = useCallback(
+    (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         e.stopPropagation();
         handleSave();
-        return;
+        return true;
       }
+      return false;
+    },
+    [handleSave]
+  );
 
-      // Cmd+Enter or Ctrl+Enter to run (skip if typing in input/textarea/monaco)
+  // Helper to handle run shortcut
+  const handleRunShortcut = useCallback(
+    (e: KeyboardEvent, target: HTMLElement) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        if (!(isInput || isMonacoEditor)) {
+        if (!(isInputElement(target) || isInMonacoEditor(target))) {
           e.preventDefault();
           e.stopPropagation();
           handleRun();
         }
+        return true;
+      }
+      return false;
+    },
+    [handleRun, isInputElement, isInMonacoEditor]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Handle save shortcut
+      if (handleSaveShortcut(e)) {
         return;
       }
 
-      // Don't interfere with other keys - let them through
+      // Handle run shortcut
+      if (handleRunShortcut(e, target)) {
+        return;
+      }
     };
 
     // Use capture phase only to ensure we can intercept before other handlers
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [handleSave, handleRun]);
+  }, [handleSaveShortcut, handleRunShortcut]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">

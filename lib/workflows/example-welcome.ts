@@ -59,11 +59,11 @@ export async function onboardUser(
     };
 
     // Action: Generate and send premium welcome email
-    const { subject, body } = await generateEmail(emailData);
+    const emailResponse = await generateEmail(emailData);
     const emailResult = await sendEmail({
       to: user.email,
-      subject,
-      body,
+      subject: emailResponse.subject,
+      body: emailResponse.body,
       apiKey,
       fromEmail,
     });
@@ -71,7 +71,7 @@ export async function onboardUser(
     return emailResult;
   }
   // Action: Send basic welcome email for free users
-  const { subject, body } = await generateEmail({
+  const basicEmailResponse = await generateEmail({
     name: user.name,
     plan: "Free",
     context: "welcome",
@@ -79,8 +79,8 @@ export async function onboardUser(
 
   const emailResult = await sendEmail({
     to: user.email,
-    subject,
-    body,
+    subject: basicEmailResponse.subject,
+    body: basicEmailResponse.body,
     apiKey,
     fromEmail,
   });

@@ -1,10 +1,10 @@
 import "dotenv/config";
-import * as readline from "node:readline";
+import { createInterface } from "node:readline";
 import { sql } from "drizzle-orm";
 import { db } from "../lib/db";
 
-async function dropAllTables() {
-  const rl = readline.createInterface({
+function dropAllTables() {
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
