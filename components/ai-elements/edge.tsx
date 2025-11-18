@@ -125,17 +125,17 @@ const Animated = ({ id, source, target, style }: EdgeProps) => {
   });
 
   return (
-    <>
-      <BaseEdge 
-        id={id} 
-        markerEnd="url(#edge-arrow)" 
-        path={edgePath} 
-        style={style} 
-      />
-      <circle fill="var(--primary)" r="4">
-        <animateMotion dur="2s" path={edgePath} repeatCount="indefinite" />
-      </circle>
-    </>
+    <BaseEdge 
+      id={id} 
+      path={edgePath} 
+      style={{
+        ...style,
+        stroke: "var(--muted-foreground)",
+        strokeWidth: 2,
+        animation: "dashdraw 0.5s linear infinite",
+        strokeDasharray: 5,
+      }}
+    />
   );
 };
 

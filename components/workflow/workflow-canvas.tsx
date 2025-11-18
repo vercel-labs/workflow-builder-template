@@ -256,6 +256,11 @@ export function WorkflowCanvas() {
           y: adjustedY,
         });
 
+        // Center the node vertically at the cursor position
+        // Node height is 192px (h-48 in Tailwind)
+        const nodeHeight = 192;
+        position.y -= nodeHeight / 2;
+
         // Create new action node
         const newNode: WorkflowNode = {
           id: nanoid(),
@@ -346,29 +351,6 @@ export function WorkflowCanvas() {
         onPaneClick={onPaneClick}
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
-        <svg
-          aria-hidden="true"
-          style={{ position: "absolute", width: 0, height: 0 }}
-        >
-          <title>Edge arrow marker definition</title>
-          <defs>
-            <marker
-              id="edge-arrow"
-              markerHeight="20"
-              markerUnits="strokeWidth"
-              markerWidth="20"
-              orient="auto"
-              refX="10"
-              refY="6"
-            >
-              <path
-                className="text-foreground"
-                d="M 0 0 L 12 6 L 0 12 z"
-                fill="currentColor"
-              />
-            </marker>
-          </defs>
-        </svg>
         <Controls />
         <MiniMap
           bgColor="var(--sidebar)"
