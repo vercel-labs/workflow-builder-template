@@ -1,5 +1,12 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Copy, Eraser, MenuIcon, RefreshCw, Trash2 } from "lucide-react";
+import {
+  Copy,
+  Eraser,
+  FileCode,
+  MenuIcon,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deleteExecutions } from "@/app/actions/workflow/delete-executions";
@@ -421,6 +428,19 @@ const PanelInner = () => {
             </div>
           </TabsContent>
           <TabsContent className="flex flex-col overflow-hidden" value="code">
+            <div className="shrink-0 border-b bg-muted/30 px-3 pb-2">
+              <div className="flex items-center gap-2">
+                <FileCode className="size-3.5 text-muted-foreground" />
+                <code className="text-muted-foreground text-xs">
+                  workflows/
+                  {currentWorkflowName
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")
+                    .replace(/[^a-z0-9-]/g, "") || "workflow"}
+                  .ts
+                </code>
+              </div>
+            </div>
             <div className="flex-1 overflow-hidden">
               <CodeEditor
                 height="100%"
@@ -560,6 +580,19 @@ const PanelInner = () => {
           </div>
         </TabsContent>
         <TabsContent className="flex flex-col overflow-hidden" value="code">
+          <div className="shrink-0 border-b bg-muted/30 px-3 pb-2">
+            <div className="flex items-center gap-2">
+              <FileCode className="size-3.5 text-muted-foreground" />
+              <code className="text-muted-foreground text-xs">
+                steps/
+                {(selectedNode.data.config?.actionType as string)
+                  ?.toLowerCase()
+                  .replace(/\s+/g, "-")
+                  .replace(/[^a-z0-9-]/g, "") || "action"}
+                -step.ts
+              </code>
+            </div>
+          </div>
           <div className="flex-1 overflow-hidden">
             <CodeEditor
               height="100%"
