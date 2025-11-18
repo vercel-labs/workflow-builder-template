@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getProjectIntegrations } from "@/app/actions/vercel-project/get-integrations";
 import { updateProjectIntegrations } from "@/app/actions/vercel-project/update-integrations";
@@ -53,7 +53,7 @@ export function ProjectIntegrationsDialog({
   const [slackApiKey, setSlackApiKey] = useState("");
   const [savingIntegrations, setSavingIntegrations] = useState(false);
 
-  const loadIntegrations = async () => {
+  const loadIntegrations = useCallback(async () => {
     if (!projectId) {
       return;
     }
@@ -71,7 +71,7 @@ export function ProjectIntegrationsDialog({
       console.error("Failed to load project integrations:", error);
       toast.error("Failed to load integrations");
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     if (open && projectId) {
@@ -80,6 +80,51 @@ export function ProjectIntegrationsDialog({
     }
   }, [open, projectId, loadIntegrations]);
 
+  const buildResendUpdates = (
+    apiKey: string,
+    fromEmail: string
+  ): Record<string, string | null> => {
+    const updates: Record<string, string | null> = {};
+    if (apiKey && apiKey !== "••••••••") {
+      updates.resendApiKey = apiKey;
+    }
+    if (fromEmail) {
+      updates.resendFromEmail = fromEmail;
+    }
+    return updates;
+  };
+
+  const buildLinearUpdates = (
+    apiKey: string
+  ): Record<string, string | null> => {
+    const updates: Record<string, string | null> = {};
+    if (apiKey && apiKey !== "••••••••") {
+      updates.linearApiKey = apiKey;
+    }
+    return updates;
+  };
+
+  const buildSlackUpdates = (apiKey: string): Record<string, string | null> => {
+    const updates: Record<string, string | null> = {};
+    if (apiKey && apiKey !== "••••••••") {
+      updates.slackApiKey = apiKey;
+    }
+    return updates;
+  };
+
+  const buildUpdatesForSave = (type: string): Record<string, string | null> => {
+    if (type === "resend") {
+      return buildResendUpdates(resendApiKey, resendFromEmail);
+    }
+    if (type === "linear") {
+      return buildLinearUpdates(linearApiKey);
+    }
+    if (type === "slack") {
+      return buildSlackUpdates(slackApiKey);
+    }
+    return {};
+  };
+
   const handleSaveIntegrations = async (type: string) => {
     if (!projectId) {
       return;
@@ -87,27 +132,7 @@ export function ProjectIntegrationsDialog({
 
     setSavingIntegrations(true);
     try {
-      const updates: Record<string, string | null> = {};
-
-      if (type === "resend") {
-        if (resendApiKey && resendApiKey !== "••••••••") {
-          updates.resendApiKey = resendApiKey;
-        }
-        if (resendFromEmail) {
-          updates.resendFromEmail = resendFromEmail;
-        }
-      } else if (type === "linear") {
-        if (linearApiKey && linearApiKey !== "••••••••") {
-          updates.linearApiKey = linearApiKey;
-        }
-      } else if (
-        type === "slack" &&
-        slackApiKey &&
-        slackApiKey !== "••••••••"
-      ) {
-        updates.slackApiKey = slackApiKey;
-      }
-
+      const updates = buildUpdatesForSave(type);
       await updateProjectIntegrations(projectId, updates);
       await loadIntegrations();
       toast.success("Integrations updated successfully");
@@ -119,6 +144,32 @@ export function ProjectIntegrationsDialog({
     }
   };
 
+  const buildUpdatesForRemove = (type: string): Record<string, null> => {
+    const updates: Record<string, null> = {};
+
+    if (type === "resend") {
+      updates.resendApiKey = null;
+      updates.resendFromEmail = null;
+    } else if (type === "linear") {
+      updates.linearApiKey = null;
+    } else if (type === "slack") {
+      updates.slackApiKey = null;
+    }
+
+    return updates;
+  };
+
+  const clearFormFields = (type: string) => {
+    if (type === "resend") {
+      setResendApiKey("");
+      setResendFromEmail("");
+    } else if (type === "linear") {
+      setLinearApiKey("");
+    } else if (type === "slack") {
+      setSlackApiKey("");
+    }
+  };
+
   const handleRemoveIntegration = async (type: string) => {
     if (!projectId) {
       return;
@@ -126,30 +177,10 @@ export function ProjectIntegrationsDialog({
 
     setSavingIntegrations(true);
     try {
-      const updates: Record<string, null> = {};
-
-      if (type === "resend") {
-        updates.resendApiKey = null;
-        updates.resendFromEmail = null;
-      } else if (type === "linear") {
-        updates.linearApiKey = null;
-      } else if (type === "slack") {
-        updates.slackApiKey = null;
-      }
-
+      const updates = buildUpdatesForRemove(type);
       await updateProjectIntegrations(projectId, updates);
       await loadIntegrations();
-
-      // Clear form fields
-      if (type === "resend") {
-        setResendApiKey("");
-        setResendFromEmail("");
-      } else if (type === "linear") {
-        setLinearApiKey("");
-      } else if (type === "slack") {
-        setSlackApiKey("");
-      }
-
+      clearFormFields(type);
       toast.success("Integration removed successfully");
     } catch (error) {
       console.error("Failed to remove integration:", error);

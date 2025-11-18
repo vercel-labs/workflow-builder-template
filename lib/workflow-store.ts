@@ -151,7 +151,7 @@ function updateTemplatesInConfig(
         `\\{\\{@${escapeRegex(nodeId)}:${escapeRegex(oldLabel)}(\\.[^}]+)?\\}\\}`,
         "g"
       );
-      const newValue = value.replace(pattern, (match, fieldPart) => {
+      const newValue = value.replace(pattern, (_match, fieldPart) => {
         hasChanges = true;
         return `{{@${nodeId}:${newLabel}${fieldPart || ""}}}`;
       });

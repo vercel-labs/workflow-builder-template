@@ -593,7 +593,10 @@ class ServerWorkflowExecutor {
               const aiSchema = processedConfig?.aiSchema as string | undefined;
 
               console.log("[Executor] Using model ID:", modelId);
-              console.log("[Executor] Processed prompt (after template processing):", prompt);
+              console.log(
+                "[Executor] Processed prompt (after template processing):",
+                prompt
+              );
               console.log("[Executor] Format:", aiFormat);
 
               if (prompt) {

@@ -58,7 +58,7 @@ function convertTemplateToJS(template: string): string {
       return `\${outputs?.['${sanitizedNodeId}']?.data${accessPath}}`;
     }
     // Check if this is a legacy node ID reference (starts with $)
-    else if (trimmed.startsWith("$")) {
+    if (trimmed.startsWith("$")) {
       const withoutDollar = trimmed.substring(1);
 
       // Handle special case: {{$nodeId}} (entire output)
@@ -187,7 +187,7 @@ export function generateWorkflowSDKCode(
           const slackChannel = (config.slackChannel as string) || "#general";
           const convertedSlackMessage = convertTemplateToJS(slackMessage);
           const convertedSlackChannel = convertTemplateToJS(slackChannel);
-          
+
           stepBody = `  const slack = new WebClient(process.env.SLACK_API_KEY);
   
   // Use template literals with dynamic values from outputs
@@ -207,7 +207,7 @@ export function generateWorkflowSDKCode(
           const ticketDescription = (config.ticketDescription as string) || "";
           const convertedTitle = convertTemplateToJS(ticketTitle);
           const convertedDescription = convertTemplateToJS(ticketDescription);
-          
+
           stepBody = `  const linear = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });
   
   // Use template literals with dynamic values from outputs
@@ -231,7 +231,7 @@ export function generateWorkflowSDKCode(
               : "anthropic";
           const aiPrompt = (config.aiPrompt as string) || "";
           const convertedPrompt = convertTemplateToJS(aiPrompt);
-          
+
           stepBody = `  // Use template literal with dynamic values from outputs
   const aiPrompt = \`${escapeForTemplateLiteral(convertedPrompt)}\`;
   const finalPrompt = (input.aiPrompt as string) || aiPrompt;
@@ -247,7 +247,7 @@ export function generateWorkflowSDKCode(
           imports.add("import OpenAI from 'openai';");
           const imagePrompt = (config.imagePrompt as string) || "";
           const convertedImagePrompt = convertTemplateToJS(imagePrompt);
-          
+
           stepBody = `  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   
   // Use template literal with dynamic values from outputs
@@ -266,7 +266,7 @@ export function generateWorkflowSDKCode(
         } else if (actionType === "Database Query") {
           const dbQuery = (config.dbQuery as string) || "SELECT 1";
           const convertedQuery = convertTemplateToJS(dbQuery);
-          
+
           stepBody = `  // Database Query - You need to set up your database connection
   // Install: pnpm add postgres (or your preferred database library)
   // Set DATABASE_URL in your environment variables
@@ -422,10 +422,12 @@ ${stepBody}
 
         if (nextNodes.length > 0) {
           lines.push(`${indent}// ${node.data.label}`);
-          
+
           // Use template literal to evaluate condition with dynamic values
           // Then convert to boolean
-          lines.push(`${indent}const ${conditionVarName} = \`${escapeForTemplateLiteral(convertedCondition)}\`;`);
+          lines.push(
+            `${indent}const ${conditionVarName} = \`${escapeForTemplateLiteral(convertedCondition)}\`;`
+          );
           lines.push(`${indent}if (${conditionVarName}) {`);
 
           if (nextNodes[0]) {

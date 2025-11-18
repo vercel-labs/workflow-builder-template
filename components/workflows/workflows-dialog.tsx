@@ -119,7 +119,7 @@ export const WorkflowsDialog = () => {
           </DialogHeader>
 
           <div className="max-h-[calc(85vh-8rem)] overflow-y-auto">
-            {loading ? (
+            {loading && (
               <div className="flex items-center justify-center py-16">
                 <div className="flex flex-col items-center gap-3">
                   <Spinner />
@@ -128,7 +128,8 @@ export const WorkflowsDialog = () => {
                   </p>
                 </div>
               </div>
-            ) : workflows.length > 0 ? (
+            )}
+            {!loading && workflows.length > 0 && (
               <div className="divide-y">
                 {workflows.map((workflow) => (
                   <div
@@ -147,6 +148,7 @@ export const WorkflowsDialog = () => {
                     <button
                       className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5 text-left"
                       onClick={() => handleOpenWorkflow(workflow.id)}
+                      type="button"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <h3 className="min-w-0 truncate font-semibold text-base leading-none transition-colors group-hover:text-primary">
@@ -163,7 +165,8 @@ export const WorkflowsDialog = () => {
                   </div>
                 ))}
               </div>
-            ) : (
+            )}
+            {!loading && workflows.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="mb-4 rounded-full bg-muted p-4">
                   <Clock className="h-8 w-8 text-muted-foreground" />

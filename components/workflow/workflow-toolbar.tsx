@@ -393,7 +393,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         {session && (
           <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
             <DropdownMenu onOpenChange={(open) => open && loadWorkflows()}>
-              <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 text-sm font-medium transition-all hover:bg-black/5 dark:hover:bg-white/5">
+              <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
                 <WorkflowIcon className="size-4" />
                 <p className="font-medium text-sm">
                   {workflowId ? workflowName : "New Workflow"}
@@ -436,7 +436,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
             </DropdownMenu>
             <div className="h-full w-px bg-border" />
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-full cursor-pointer items-center px-2 text-sm font-medium transition-all hover:bg-black/5 dark:hover:bg-white/5">
+              <DropdownMenuTrigger className="flex h-full cursor-pointer items-center px-2 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
@@ -474,7 +474,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
             {/* Undo/Redo - Mobile Vertical */}
             <ButtonGroup className="flex lg:hidden" orientation="vertical">
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!canUndo || isGenerating}
                 onClick={() => undo()}
                 size="icon"
@@ -484,7 +484,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <Undo2 className="size-4" />
               </Button>
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!canRedo || isGenerating}
                 onClick={() => redo()}
                 size="icon"
@@ -494,11 +494,11 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <Redo2 className="size-4" />
               </Button>
             </ButtonGroup>
-            
+
             {/* Undo/Redo - Desktop Horizontal */}
             <ButtonGroup className="hidden lg:flex" orientation="horizontal">
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!canUndo || isGenerating}
                 onClick={() => undo()}
                 size="icon"
@@ -508,7 +508,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <Undo2 className="size-4" />
               </Button>
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!canRedo || isGenerating}
                 onClick={() => redo()}
                 size="icon"
@@ -518,11 +518,11 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <Redo2 className="size-4" />
               </Button>
             </ButtonGroup>
-            
+
             {/* Save/Deploy - Mobile Vertical */}
             <ButtonGroup className="flex lg:hidden" orientation="vertical">
               <Button
-                className="relative border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="relative border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!currentWorkflowId || isGenerating || isSaving}
                 onClick={handleSave}
                 size="icon"
@@ -539,7 +539,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 )}
               </Button>
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={
                   isDeploying ||
                   nodes.length === 0 ||
@@ -563,7 +563,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
               </Button>
               {deploymentUrl && (
                 <Button
-                  className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                  className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                   onClick={() => window.open(deploymentUrl, "_blank")}
                   size="icon"
                   title="Open deployment"
@@ -573,11 +573,11 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 </Button>
               )}
             </ButtonGroup>
-            
+
             {/* Save/Deploy - Desktop Horizontal */}
             <ButtonGroup className="hidden lg:flex" orientation="horizontal">
               <Button
-                className="relative border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="relative border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={!currentWorkflowId || isGenerating || isSaving}
                 onClick={handleSave}
                 size="icon"
@@ -594,7 +594,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 )}
               </Button>
               <Button
-                className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={
                   isDeploying ||
                   nodes.length === 0 ||
@@ -618,7 +618,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
               </Button>
               {deploymentUrl && (
                 <Button
-                  className="border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                  className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                   onClick={() => window.open(deploymentUrl, "_blank")}
                   size="icon"
                   title="Open deployment"
@@ -631,7 +631,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
 
             <ButtonGroup>
               <Button
-                className="relative border hover:bg-black/5 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                className="relative border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                 disabled={isExecuting || nodes.length === 0 || isGenerating}
                 onClick={() => handleExecute()}
                 size="icon"
@@ -655,7 +655,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    className="w-6 border hover:bg-black/5 px-1 disabled:opacity-100 disabled:[&>svg]:text-muted-foreground dark:hover:bg-white/5"
+                    className="w-6 border px-1 hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
                     disabled={isExecuting || nodes.length === 0 || isGenerating}
                     size="icon"
                     title="Select run mode"
@@ -743,10 +743,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
               >
                 Cancel
               </Button>
-              <Button
-                disabled={!newWorkflowName.trim()}
-                type="submit"
-              >
+              <Button disabled={!newWorkflowName.trim()} type="submit">
                 Rename
               </Button>
             </DialogFooter>

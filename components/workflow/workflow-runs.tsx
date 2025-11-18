@@ -168,9 +168,10 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
 
         return (
           <div className="rounded-lg border border-muted" key={execution.id}>
-            <div
-              className="flex w-full cursor-pointer items-center gap-2 p-2 transition-colors hover:bg-muted/50"
+            <button
+              className="flex w-full cursor-pointer items-center gap-2 p-2 text-left transition-colors hover:bg-muted/50"
               onClick={() => toggleRun(execution.id)}
+              type="button"
             >
               {isExpanded ? (
                 <ChevronDown className="h-3 w-3" />
@@ -197,7 +198,7 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
                   </div>
                 )}
               </div>
-            </div>
+            </button>
 
             {isExpanded && (
               <div className="border-muted border-t">
@@ -211,9 +212,10 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
                       const isLogExpanded = expandedLogs.has(log.id);
                       return (
                         <div className="rounded border" key={log.id}>
-                          <div
-                            className="cursor-pointer px-2 py-1.5 hover:bg-muted/30"
+                          <button
+                            className="w-full cursor-pointer px-2 py-1.5 text-left hover:bg-muted/30"
                             onClick={() => toggleLog(log.id)}
+                            type="button"
                           >
                             <div className="flex items-center gap-2">
                               {isLogExpanded ? (
@@ -245,7 +247,7 @@ export function WorkflowRuns({ isActive = false }: WorkflowRunsProps) {
                                 )}
                               </div>
                             </div>
-                          </div>
+                          </button>
 
                           {isLogExpanded && (
                             <div className="border-t bg-muted/20 p-2">

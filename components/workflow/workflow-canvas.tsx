@@ -3,7 +3,10 @@
 import {
   ConnectionMode,
   MiniMap,
+  type Node,
+  type NodeMouseHandler,
   type OnConnect,
+  type OnConnectStartParams,
   useReactFlow,
   type Viewport,
   type Connection as XYFlowConnection,
@@ -163,8 +166,9 @@ export function WorkflowCanvas() {
     [currentWorkflowId]
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nodeTypes = useMemo<Record<string, React.ComponentType<any>>>(
+  const nodeTypes = useMemo<
+    Record<string, React.ComponentType<{ data: WorkflowNode["data"] }>>
+  >(
     () => ({
       trigger: TriggerNode,
       action: ActionNode,
@@ -176,20 +180,20 @@ export function WorkflowCanvas() {
 
   const isValidConnection = useCallback(
     (connection: XYFlowConnection | XYFlowEdge) => {
-    // Ensure we have both source and target
+      // Ensure we have both source and target
       if (!(connection.source && connection.target)) {
-      return false;
-    }
+        return false;
+      }
 
-    // Prevent self-connections
-    if (connection.source === connection.target) {
-      return false;
-    }
+      // Prevent self-connections
+      if (connection.source === connection.target) {
+        return false;
+      }
 
-    // Ensure connection is from source handle to target handle
-    // sourceHandle should be defined if connecting from a specific handle
-    // targetHandle should be defined if connecting to a specific handle
-    return true;
+      // Ensure connection is from source handle to target handle
+      // sourceHandle should be defined if connecting from a specific handle
+      // targetHandle should be defined if connecting to a specific handle
+      return true;
     },
     []
   );
@@ -207,21 +211,51 @@ export function WorkflowCanvas() {
     [edges, setEdges, setHasUnsavedChanges]
   );
 
-  const onNodeClick = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (_event: React.MouseEvent, node: any) => {
+  const onNodeClick: NodeMouseHandler = useCallback(
+    (_event, node) => {
       setSelectedNode(node.id);
     },
     [setSelectedNode]
   );
 
   const onConnectStart = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (_event: any, { nodeId }: { nodeId: string | null }) => {
-      connectingNodeId.current = nodeId;
+    (
+      _event: React.MouseEvent | React.TouchEvent,
+      params: OnConnectStartParams
+    ) => {
+      connectingNodeId.current = params.nodeId;
     },
     []
   );
+
+  const getClientPosition = (event: MouseEvent | TouchEvent) => {
+    const clientX =
+      "changedTouches" in event
+        ? event.changedTouches[0].clientX
+        : event.clientX;
+    const clientY =
+      "changedTouches" in event
+        ? event.changedTouches[0].clientY
+        : event.clientY;
+    return { clientX, clientY };
+  };
+
+  const calculateMenuPosition = (
+    event: MouseEvent | TouchEvent,
+    clientX: number,
+    clientY: number
+  ) => {
+    const reactFlowBounds = (event.target as Element)
+      .closest(".react-flow")
+      ?.getBoundingClientRect();
+
+    const adjustedX = reactFlowBounds
+      ? clientX - reactFlowBounds.left
+      : clientX;
+    const adjustedY = reactFlowBounds ? clientY - reactFlowBounds.top : clientY;
+
+    return { adjustedX, adjustedY };
+  };
 
   const onConnectEnd = useCallback((event: MouseEvent | TouchEvent) => {
     if (!connectingNodeId.current) {
@@ -229,34 +263,16 @@ export function WorkflowCanvas() {
     }
 
     const target = event.target as Element;
-
-    // Check if we're not dropping on a node or handle
     const isNode = target.closest(".react-flow__node");
     const isHandle = target.closest(".react-flow__handle");
 
     if (!(isNode || isHandle)) {
-      // Get mouse position relative to the viewport
-      const clientX =
-        "changedTouches" in event
-          ? event.changedTouches[0].clientX
-          : event.clientX;
-      const clientY =
-        "changedTouches" in event
-          ? event.changedTouches[0].clientY
-          : event.clientY;
-
-      // Get the ReactFlow wrapper element to calculate offset
-      const reactFlowBounds = (event.target as Element)
-        .closest(".react-flow")
-        ?.getBoundingClientRect();
-
-      // Adjust position relative to the ReactFlow container
-      const adjustedX = reactFlowBounds
-        ? clientX - reactFlowBounds.left
-        : clientX;
-      const adjustedY = reactFlowBounds
-        ? clientY - reactFlowBounds.top
-        : clientY;
+      const { clientX, clientY } = getClientPosition(event);
+      const { adjustedX, adjustedY } = calculateMenuPosition(
+        event,
+        clientX,
+        clientY
+      );
 
       menuJustOpened.current = true;
       setMenu({
@@ -265,13 +281,11 @@ export function WorkflowCanvas() {
         left: adjustedX,
       });
 
-      // Reset the flag after a brief moment
       setTimeout(() => {
         menuJustOpened.current = false;
       }, 100);
     }
 
-    // Reset the connecting node
     connectingNodeId.current = null;
   }, []);
 
@@ -328,12 +342,11 @@ export function WorkflowCanvas() {
   }, [setSelectedNode]);
 
   const onSelectionChange = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ({ nodes }: { nodes: any[] }) => {
-      if (nodes.length === 0) {
+    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+      if (selectedNodes.length === 0) {
         setSelectedNode(null);
-      } else if (nodes.length === 1) {
-        setSelectedNode(nodes[0].id);
+      } else if (selectedNodes.length === 1) {
+        setSelectedNode(selectedNodes[0].id);
       }
     },
     [setSelectedNode]
@@ -376,7 +389,11 @@ export function WorkflowCanvas() {
         onPaneClick={onPaneClick}
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
-        <svg style={{ position: "absolute", width: 0, height: 0 }}>
+        <svg
+          aria-hidden="true"
+          style={{ position: "absolute", width: 0, height: 0 }}
+        >
+          <title>Edge arrow marker definition</title>
           <defs>
             <marker
               id="edge-arrow"
@@ -419,13 +436,14 @@ export function WorkflowCanvas() {
               const Icon = template.icon;
               return (
                 <div key={template.type}>
-                  <div
-                    className="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                  <button
+                    className="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                     onClick={() => onAddNodeFromMenu(template)}
+                    type="button"
                   >
                     <Icon className="size-4" />
                     {template.displayLabel}
-                  </div>
+                  </button>
                   {index < filteredArray.length - 1 && (
                     <div className="-mx-1 my-1 h-px bg-muted" />
                   )}

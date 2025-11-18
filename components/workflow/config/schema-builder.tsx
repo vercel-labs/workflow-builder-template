@@ -37,24 +37,35 @@ export function SchemaBuilder({
     onChange([...schema, { name: "", type: "string" }]);
   };
 
+  const resetDependentFields = (
+    field: SchemaField,
+    type: SchemaField["type"]
+  ): SchemaField => {
+    const updated = { ...field };
+
+    if (type !== "array") {
+      updated.itemType = undefined;
+    }
+    if (type !== "object") {
+      updated.fields = undefined;
+    }
+    if (type === "array" && !updated.itemType) {
+      updated.itemType = "string";
+    }
+    if (type === "object" && !updated.fields) {
+      updated.fields = [];
+    }
+
+    return updated;
+  };
+
   const updateField = (index: number, updates: Partial<SchemaField>) => {
     const newSchema = [...schema];
     newSchema[index] = { ...newSchema[index], ...updates };
 
     // Reset dependent fields when type changes
     if (updates.type) {
-      if (updates.type !== "array") {
-        newSchema[index].itemType = undefined;
-      }
-      if (updates.type !== "object") {
-        newSchema[index].fields = undefined;
-      }
-      if (updates.type === "array" && !newSchema[index].itemType) {
-        newSchema[index].itemType = "string";
-      }
-      if (updates.type === "object" && !newSchema[index].fields) {
-        newSchema[index].fields = [];
-      }
+      newSchema[index] = resetDependentFields(newSchema[index], updates.type);
     }
 
     onChange(newSchema);
@@ -77,7 +88,7 @@ export function SchemaBuilder({
       {schema.map((field, index) => (
         <div
           className="space-y-2 rounded-md border p-3"
-          key={`field-${level}-${index}`}
+          key={`field-${level}-${field.name || "unnamed"}-${index}`}
         >
           <div className="flex gap-2">
             <div className="flex-1">

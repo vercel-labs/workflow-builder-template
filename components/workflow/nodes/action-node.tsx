@@ -16,23 +16,27 @@ import type { WorkflowNodeData } from "@/lib/workflow-store";
 
 // Helper to parse template variables and render them as badges
 const parseTemplateContent = (text: string) => {
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
   // Match template patterns: {{@nodeId:DisplayName.field}} or {{@nodeId:DisplayName}}
   const pattern = /\{\{@([^:]+):([^}]+)\}\}/g;
-  const parts: Array<{ type: "text" | "badge"; content: string }> = [];
+  const parts: Array<{ type: "text" | "badge"; content: string; id: string }> =
+    [];
   let lastIndex = 0;
-  let match;
+  let matchResult = pattern.exec(text);
 
-  while ((match = pattern.exec(text)) !== null) {
-    const [fullMatch, , displayPart] = match;
-    const matchStart = match.index;
+  while (matchResult !== null) {
+    const [, , displayPart] = matchResult;
+    const matchStart = matchResult.index;
 
     // Add text before the template
     if (matchStart > lastIndex) {
       parts.push({
         type: "text",
         content: text.slice(lastIndex, matchStart),
+        id: `text-${lastIndex}-${matchStart}`,
       });
     }
 
@@ -40,9 +44,11 @@ const parseTemplateContent = (text: string) => {
     parts.push({
       type: "badge",
       content: displayPart,
+      id: `badge-${displayPart}-${matchStart}`,
     });
 
     lastIndex = pattern.lastIndex;
+    matchResult = pattern.exec(text);
   }
 
   // Add remaining text
@@ -50,6 +56,7 @@ const parseTemplateContent = (text: string) => {
     parts.push({
       type: "text",
       content: text.slice(lastIndex),
+      id: `text-${lastIndex}-end`,
     });
   }
 
@@ -62,19 +69,19 @@ const parseTemplateContent = (text: string) => {
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-muted-foreground text-xs">
-      {parts.map((part, index) => {
+      {parts.map((part) => {
         if (part.type === "badge") {
           return (
             <span
               className="inline-flex items-center gap-1 rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 font-mono text-blue-600 text-xs dark:text-blue-400"
-              key={index}
+              key={part.id}
             >
               {part.content}
             </span>
           );
         }
         return (
-          <span className="truncate" key={index}>
+          <span className="truncate" key={part.id}>
             {part.content}
           </span>
         );
@@ -102,19 +109,19 @@ const getIntegrationFromActionType = (actionType: string): string => {
 const getProviderLogo = (actionType: string) => {
   switch (actionType) {
     case "Send Email":
-      return <IntegrationIcon integration="resend" className="size-5" />;
+      return <IntegrationIcon className="size-5" integration="resend" />;
     case "Send Slack Message":
-      return <IntegrationIcon integration="slack" className="size-5" />;
+      return <IntegrationIcon className="size-5" integration="slack" />;
     case "Create Ticket":
     case "Find Issues":
-      return <IntegrationIcon integration="linear" className="size-5" />;
+      return <IntegrationIcon className="size-5" integration="linear" />;
     case "HTTP Request":
       return <Zap className="size-5 text-amber-300" />;
     case "Database Query":
       return <Database className="size-5 text-blue-300" />;
     case "Generate Text":
     case "Generate Image":
-      return <IntegrationIcon integration="vercel" className="size-5" />;
+      return <IntegrationIcon className="size-5" integration="vercel" />;
     case "Execute Code":
       return <Code className="size-5 text-green-300" />;
     default:
@@ -136,34 +143,60 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
   const displayDescription =
     data.description || getIntegrationFromActionType(actionType);
 
+  // Helper functions to get content based on action type
+  const getHttpRequestContent = (config: Record<string, unknown>) =>
+    config.endpoint ? `URL: ${config.endpoint}` : null;
+
+  const getDatabaseQueryContent = (config: Record<string, unknown>) =>
+    config.dbQuery ? `Query: ${config.dbQuery}` : null;
+
+  const getEmailContent = (config: Record<string, unknown>) =>
+    config.emailTo ? `To: ${config.emailTo}` : null;
+
+  const getSlackContent = (config: Record<string, unknown>) =>
+    config.slackChannel ? `Channel: ${config.slackChannel}` : null;
+
+  const getTicketContent = (config: Record<string, unknown>) =>
+    config.ticketTitle ? `Title: ${config.ticketTitle}` : null;
+
+  const getIssuesContent = (config: Record<string, unknown>) =>
+    config.linearAssigneeId ? `Assignee: ${config.linearAssigneeId}` : null;
+
+  const getAiGenerationContent = (config: Record<string, unknown>) => {
+    if (config.aiPrompt) {
+      return `Prompt: ${config.aiPrompt}`;
+    }
+    if (config.imagePrompt) {
+      return `Prompt: ${config.imagePrompt}`;
+    }
+    return null;
+  };
+
+  const getCodeContent = (config: Record<string, unknown>) =>
+    config.code ? `Code: ${config.code}` : null;
+
   // Determine what content to show based on action type
   const getContentField = () => {
     const config = data.config || {};
 
     switch (actionType) {
       case "HTTP Request":
-        return config.endpoint ? `URL: ${config.endpoint}` : null;
+        return getHttpRequestContent(config);
       case "Database Query":
-        return config.dbQuery ? `Query: ${config.dbQuery}` : null;
+        return getDatabaseQueryContent(config);
       case "Send Email":
-        return config.emailTo ? `To: ${config.emailTo}` : null;
+        return getEmailContent(config);
       case "Send Slack Message":
-        return config.slackChannel ? `Channel: ${config.slackChannel}` : null;
+        return getSlackContent(config);
       case "Create Ticket":
-        return config.ticketTitle ? `Title: ${config.ticketTitle}` : null;
+        return getTicketContent(config);
       case "Find Issues":
-        return config.linearAssigneeId
-          ? `Assignee: ${config.linearAssigneeId}`
-          : null;
+        return getIssuesContent(config);
       case "Generate Text":
       case "Generate Image":
-        return config.aiPrompt
-          ? `Prompt: ${config.aiPrompt}`
-          : config.imagePrompt
-            ? `Prompt: ${config.imagePrompt}`
-            : null;
+        return getAiGenerationContent(config);
       case "Execute Code":
-        return config.code ? `Code: ${config.code}` : null;
+        return getCodeContent(config);
       default:
         return null;
     }

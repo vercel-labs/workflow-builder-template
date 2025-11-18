@@ -15,23 +15,27 @@ import type { WorkflowNodeData } from "@/lib/workflow-store";
 
 // Helper to parse template variables and render them as badges
 const parseTemplateContent = (text: string) => {
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
   // Match template patterns: {{@nodeId:DisplayName.field}} or {{@nodeId:DisplayName}}
   const pattern = /\{\{@([^:]+):([^}]+)\}\}/g;
-  const parts: Array<{ type: "text" | "badge"; content: string }> = [];
+  const parts: Array<{ type: "text" | "badge"; content: string; id: string }> =
+    [];
   let lastIndex = 0;
-  let match;
+  let matchResult = pattern.exec(text);
 
-  while ((match = pattern.exec(text)) !== null) {
-    const [fullMatch, , displayPart] = match;
-    const matchStart = match.index;
+  while (matchResult !== null) {
+    const [, , displayPart] = matchResult;
+    const matchStart = matchResult.index;
 
     // Add text before the template
     if (matchStart > lastIndex) {
       parts.push({
         type: "text",
         content: text.slice(lastIndex, matchStart),
+        id: `text-${lastIndex}-${matchStart}`,
       });
     }
 
@@ -39,9 +43,11 @@ const parseTemplateContent = (text: string) => {
     parts.push({
       type: "badge",
       content: displayPart,
+      id: `badge-${displayPart}-${matchStart}`,
     });
 
     lastIndex = pattern.lastIndex;
+    matchResult = pattern.exec(text);
   }
 
   // Add remaining text
@@ -49,6 +55,7 @@ const parseTemplateContent = (text: string) => {
     parts.push({
       type: "text",
       content: text.slice(lastIndex),
+      id: `text-${lastIndex}-end`,
     });
   }
 
@@ -61,19 +68,19 @@ const parseTemplateContent = (text: string) => {
 
   return (
     <div className="flex flex-wrap items-center gap-1 text-muted-foreground text-xs">
-      {parts.map((part, index) => {
+      {parts.map((part) => {
         if (part.type === "badge") {
           return (
             <span
               className="inline-flex items-center gap-1 rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 font-mono text-blue-600 text-xs dark:text-blue-400"
-              key={index}
+              key={part.id}
             >
               {part.content}
             </span>
           );
         }
         return (
-          <span className="truncate" key={index}>
+          <span className="truncate" key={part.id}>
             {part.content}
           </span>
         );
