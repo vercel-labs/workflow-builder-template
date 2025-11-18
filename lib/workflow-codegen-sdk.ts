@@ -334,6 +334,70 @@ function findTriggerNodes(
   );
 }
 
+// Helper to find all node references in templates
+function findNodeReferences(template: string): Set<string> {
+  const refs = new Set<string>();
+  if (!template || typeof template !== "string") {
+    return refs;
+  }
+
+  const pattern = /\{\{([^}]+)\}\}/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(template)) !== null) {
+    const expression = match[1].trim();
+    
+    // Handle @nodeId:DisplayName.field format
+    if (expression.startsWith("@")) {
+      const withoutAt = expression.substring(1);
+      const colonIndex = withoutAt.indexOf(":");
+      if (colonIndex !== -1) {
+        const nodeId = withoutAt.substring(0, colonIndex);
+        refs.add(nodeId);
+      }
+    }
+    // Handle $nodeId.field format
+    else if (expression.startsWith("$")) {
+      const withoutDollar = expression.substring(1);
+      const parts = withoutDollar.split(".");
+      if (parts.length > 0) {
+        refs.add(parts[0]);
+      }
+    }
+  }
+
+  return refs;
+}
+
+// Helper to analyze which node outputs are used
+function analyzeNodeUsage(nodes: WorkflowNode[]): Set<string> {
+  const usedNodes = new Set<string>();
+
+  for (const node of nodes) {
+    if (node.data.type === "action") {
+      const config = node.data.config || {};
+      
+      // Check all config values for template references
+      for (const value of Object.values(config)) {
+        if (typeof value === "string") {
+          const refs = findNodeReferences(value);
+          for (const ref of refs) {
+            usedNodes.add(ref);
+          }
+        }
+      }
+    }
+  }
+  
+  // Always mark the last node as used (it's returned)
+  const lastNode = nodes.at(-1);
+  if (lastNode) {
+    usedNodes.add(lastNode.id);
+  }
+
+  return usedNodes;
+}
+
 // Helper to create step name mapping
 function createStepNameMapping(nodes: WorkflowNode[]): Map<string, string> {
   const stepNameCounts = new Map<string, number>();
@@ -393,6 +457,9 @@ export function generateWorkflowSDKCode(
 
   // Find trigger nodes
   const triggerNodes = findTriggerNodes(nodes, edges);
+  
+  // Analyze which node outputs are actually used
+  const usedNodeOutputs = analyzeNodeUsage(nodes);
 
   // Always import sleep and FatalError
   imports.add("import { sleep, FatalError } from 'workflow';");
@@ -468,6 +535,11 @@ ${stepBody}
     label: string,
     indent: string
   ): string[] {
+    // Skip trigger code if trigger outputs aren't used
+    if (!usedNodeOutputs.has(nodeId)) {
+      return [`${indent}// Trigger (outputs not used)`];
+    }
+    
     const varName = `result_${sanitizeVarName(nodeId)}`;
     return [
       `${indent}// Triggered`,
@@ -483,17 +555,30 @@ ${stepBody}
     label: string,
     indent: string
   ): string[] {
-    const varName = `result_${sanitizeVarName(nodeId)}`;
     const nodeActionType = nodeConfig.actionType as string;
     const nodeLabel = label || nodeActionType || "UnnamedStep";
     const stepFnName =
       nodeToStepName.get(nodeId) || sanitizeStepName(nodeLabel);
 
-    return [
-      `${indent}// ${nodeLabel}`,
-      `${indent}const ${varName} = await ${stepFnName}({ ...input, outputs });`,
-      `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: '${nodeLabel}', data: ${varName} };`,
-    ];
+    const lines: string[] = [`${indent}// ${nodeLabel}`];
+    
+    // Check if this node's output is used by any downstream node
+    const outputIsUsed = usedNodeOutputs.has(nodeId);
+    
+    if (outputIsUsed) {
+      const varName = `result_${sanitizeVarName(nodeId)}`;
+      lines.push(
+        `${indent}const ${varName} = await ${stepFnName}({ ...input, outputs });`
+      );
+      lines.push(
+        `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: '${nodeLabel}', data: ${varName} };`
+      );
+    } else {
+      // If output not used, don't store the result in a variable
+      lines.push(`${indent}await ${stepFnName}({ ...input, outputs });`);
+    }
+
+    return lines;
   }
 
   // Helper to generate condition node code
@@ -623,8 +708,11 @@ ${stepBody}
 
   const functionName = sanitizeFunctionName(workflowName);
 
-  const mainFunction = `export async function ${functionName}(input: Record<string, unknown>) {
+  const mainFunction = `export async function ${functionName}() {
   "use workflow";
+  
+  // Input from workflow trigger - replace with your trigger data
+  const input: Record<string, unknown> = {};
   
 ${workflowBody.join("\n")}
 }`;
