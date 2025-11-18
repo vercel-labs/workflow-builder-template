@@ -110,6 +110,115 @@ export function generateWorkflowCode(
     ];
   }
 
+  function generateAiTextActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    imports.add("import { generateText } from './integrations/ai';");
+    const aiPrompt =
+      (node.data.config?.aiPrompt as string) || "Generate a summary";
+    const aiModel = (node.data.config?.aiModel as string) || "gpt-4o-mini";
+    const aiFormat = (node.data.config?.aiFormat as string) || "text";
+
+    const lines = [
+      `${indent}// Generate text using AI`,
+      `${indent}const ${varName} = await generateText({`,
+      `${indent}  model: "${aiModel}",`,
+      `${indent}  prompt: \`${aiPrompt}\`,`,
+    ];
+
+    if (aiFormat === "object") {
+      lines.push(`${indent}  format: "object",`);
+    }
+
+    lines.push(`${indent}});`);
+    return lines;
+  }
+
+  function generateAiImageActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    imports.add("import { generateImage } from './integrations/ai';");
+    const imagePrompt =
+      (node.data.config?.imagePrompt as string) || "A beautiful landscape";
+    const imageModel =
+      (node.data.config?.imageModel as string) || "openai/dall-e-3";
+
+    return [
+      `${indent}// Generate image using AI`,
+      `${indent}const ${varName} = await generateImage({`,
+      `${indent}  model: "${imageModel}",`,
+      `${indent}  prompt: \`${imagePrompt}\`,`,
+      `${indent}});`,
+    ];
+  }
+
+  function generateSlackActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    imports.add("import { sendSlackMessage } from './integrations/slack';");
+    const slackChannel =
+      (node.data.config?.slackChannel as string) || "#general";
+    const slackMessage =
+      (node.data.config?.slackMessage as string) || "Message content";
+
+    return [
+      `${indent}const ${varName} = await sendSlackMessage({`,
+      `${indent}  channel: "${slackChannel}",`,
+      `${indent}  text: "${slackMessage}",`,
+      `${indent}});`,
+    ];
+  }
+
+  function generateExecuteCodeActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    imports.add("import { executeCode } from './integrations/code';");
+    const code =
+      (node.data.config?.code as string) || "return { result: 'success' }";
+    const codeLanguage =
+      (node.data.config?.codeLanguage as string) || "javascript";
+
+    return [
+      `${indent}// Execute ${codeLanguage} code`,
+      `${indent}const ${varName} = await executeCode({`,
+      `${indent}  language: "${codeLanguage}",`,
+      `${indent}  code: \`${code}\`,`,
+      `${indent}});`,
+    ];
+  }
+
+  function generateLinearActionCode(indent: string, varName: string): string[] {
+    imports.add("import { createLinearIssue } from './integrations/linear';");
+    return [
+      `${indent}const ${varName} = await createLinearIssue({`,
+      `${indent}  title: "Issue title",`,
+      `${indent}  description: "Issue description",`,
+      `${indent}});`,
+    ];
+  }
+
+  function generateFindIssuesActionCode(
+    indent: string,
+    varName: string
+  ): string[] {
+    imports.add("import { findIssues } from './integrations/linear';");
+    return [
+      `${indent}const ${varName} = await findIssues({`,
+      `${indent}  assigneeId: "user-id",`,
+      `${indent}  status: "in_progress",`,
+      `${indent}});`,
+    ];
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
     indent: string,
@@ -123,22 +232,43 @@ export function generateWorkflowCode(
 
     const actionType = node.data.config?.actionType as string;
     const endpoint = node.data.config?.endpoint as string;
+    const label = node.data.label.toLowerCase();
 
-    if (
-      actionType === "Send Email" ||
-      node.data.label.toLowerCase().includes("email")
-    ) {
+    if (actionType === "Send Email" || label.includes("email")) {
       lines.push(...generateEmailActionCode(indent, varName));
     } else if (
-      actionType === "Create Ticket" ||
-      node.data.label.toLowerCase().includes("ticket")
+      actionType === "Create Linear Issue" ||
+      actionType === "linear" ||
+      label.includes("linear")
     ) {
-      lines.push(...generateTicketActionCode(indent, varName));
+      lines.push(...generateLinearActionCode(indent, varName));
     } else if (
-      actionType === "Database Query" ||
-      node.data.label.toLowerCase().includes("database")
+      actionType === "Send Slack Message" ||
+      actionType === "slack" ||
+      label.includes("slack")
     ) {
+      lines.push(...generateSlackActionCode(node, indent, varName));
+    } else if (actionType === "Database Query" || label.includes("database")) {
       lines.push(...generateDatabaseActionCode(indent, varName));
+    } else if (
+      actionType === "Generate Text" ||
+      label.includes("generate text")
+    ) {
+      lines.push(...generateAiTextActionCode(node, indent, varName));
+    } else if (
+      actionType === "Generate Image" ||
+      label.includes("generate image")
+    ) {
+      lines.push(...generateAiImageActionCode(node, indent, varName));
+    } else if (
+      actionType === "Execute Code" ||
+      label.includes("execute code")
+    ) {
+      lines.push(...generateExecuteCodeActionCode(node, indent, varName));
+    } else if (actionType === "Create Ticket" || label.includes("ticket")) {
+      lines.push(...generateTicketActionCode(indent, varName));
+    } else if (actionType === "Find Issues" || label.includes("find issues")) {
+      lines.push(...generateFindIssuesActionCode(indent, varName));
     } else if (actionType === "HTTP Request" || endpoint) {
       lines.push(...generateHTTPActionCode(indent, varName, endpoint));
     } else {

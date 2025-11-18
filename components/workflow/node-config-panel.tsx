@@ -1,6 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { Copy, Eraser, MenuIcon, RefreshCw, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deleteExecutions } from "@/app/actions/workflow/delete-executions";
 import {
@@ -18,6 +18,7 @@ import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { workflowApi } from "@/lib/workflow-api";
+import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
@@ -39,585 +40,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ActionConfig } from "./config/action-config";
 import { ActionGrid } from "./config/action-grid";
 import { TriggerConfig } from "./config/trigger-config";
+import {
+  generateNodeCode,
+  NON_ALPHANUMERIC_REGEX,
+  WORD_SPLIT_REGEX,
+} from "./utils/code-generators";
 import { WorkflowRuns } from "./workflow-runs";
-
-// Helper to handle @-prefixed node references
-const handleAtReference = (trimmed: string, match: string): string => {
-  const withoutAt = trimmed.substring(1);
-  const colonIndex = withoutAt.indexOf(":");
-
-  if (colonIndex === -1) {
-    return match; // Invalid format, keep original
-  }
-
-  const nodeId = withoutAt.substring(0, colonIndex);
-  const rest = withoutAt.substring(colonIndex + 1);
-  const dotIndex = rest.indexOf(".");
-  const fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
-
-  if (!fieldPath) {
-    return `\${input.outputs?.['${nodeId}']?.data}`;
-  }
-
-  const accessPath = fieldPath
-    .split(".")
-    .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_ACCESS_REGEX);
-      if (arrayMatch) {
-        return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
-      }
-      return `?.${part}`;
-    })
-    .join("");
-
-  return `\${input.outputs?.['${nodeId}']?.data${accessPath}}`;
-};
-
-// Helper to handle $-prefixed node references
-const handleDollarReference = (trimmed: string): string => {
-  const withoutDollar = trimmed.substring(1);
-
-  if (!(withoutDollar.includes(".") || withoutDollar.includes("["))) {
-    return `\${input.outputs?.['${withoutDollar}']?.data}`;
-  }
-
-  const parts = withoutDollar.split(".");
-  const nodeId = parts[0];
-  const fieldPath = parts.slice(1).join(".");
-
-  if (!fieldPath) {
-    return `\${input.outputs?.['${nodeId}']?.data}`;
-  }
-
-  const accessPath = fieldPath
-    .split(".")
-    .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_ACCESS_REGEX);
-      if (arrayMatch) {
-        return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
-      }
-      return `?.${part}`;
-    })
-    .join("");
-
-  return `\${input.outputs?.['${nodeId}']?.data${accessPath}}`;
-};
-
-// Helper function to convert template variables to JavaScript expressions
-const convertTemplateToJS = (
-  template: string
-): {
-  convertedString: string;
-  hasTemplates: boolean;
-} => {
-  if (!template || typeof template !== "string") {
-    return { convertedString: template, hasTemplates: false };
-  }
-
-  let hasTemplates = false;
-  const pattern = /\{\{([^}]+)\}\}/g;
-
-  const convertedString = template.replace(pattern, (match, expression) => {
-    hasTemplates = true;
-    const trimmed = expression.trim();
-
-    if (trimmed.startsWith("@")) {
-      return handleAtReference(trimmed, match);
-    }
-    if (trimmed.startsWith("$")) {
-      return handleDollarReference(trimmed);
-    }
-    // Legacy label-based references
-    return `\${input.outputs?.['${trimmed.replace(/\./g, "']?.data?.")}']}`;
-  });
-
-  return { convertedString, hasTemplates };
-};
-
-// Helper for email action code - generate variable declarations
-const generateEmailVariables = ({
-  hasToTemplates,
-  hasSubjectTemplates,
-  hasBodyTemplates,
-  convertedTo,
-  convertedSubject,
-  convertedBody,
-  lines,
-}: {
-  hasToTemplates: boolean;
-  hasSubjectTemplates: boolean;
-  hasBodyTemplates: boolean;
-  convertedTo: string;
-  convertedSubject: string;
-  convertedBody: string;
-  lines: string[];
-}) => {
-  if (hasToTemplates || hasSubjectTemplates || hasBodyTemplates) {
-    lines.push("  // Send email with dynamic values");
-    if (hasToTemplates) {
-      lines.push(`  const to = \`${convertedTo}\`;`);
-    }
-    if (hasSubjectTemplates) {
-      lines.push(`  const subject = \`${convertedSubject}\`;`);
-    }
-    if (hasBodyTemplates) {
-      lines.push(`  const body = \`${convertedBody}\`;`);
-    }
-  }
-};
-
-// Helper for email action code - generate sendEmail call
-const generateSendEmailCall = ({
-  hasToTemplates,
-  hasSubjectTemplates,
-  hasBodyTemplates,
-  emailTo,
-  emailSubject,
-  emailBody,
-  lines,
-}: {
-  hasToTemplates: boolean;
-  hasSubjectTemplates: boolean;
-  hasBodyTemplates: boolean;
-  emailTo: string;
-  emailSubject: string;
-  emailBody: string;
-  lines: string[];
-}) => {
-  lines.push("  const result = await sendEmail({");
-  lines.push(hasToTemplates ? "    to," : `    to: "${emailTo}",`);
-  lines.push(
-    hasSubjectTemplates ? "    subject," : `    subject: "${emailSubject}",`
-  );
-  lines.push(hasBodyTemplates ? "    body," : `    body: "${emailBody}",`);
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Email sent:', result);`);
-  lines.push("  return result;");
-};
-
-// Generate email action code
-const generateEmailActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const emailTo = (config?.emailTo as string) || "user@example.com";
-  const emailSubject = (config?.emailSubject as string) || "Subject";
-  const emailBody = (config?.emailBody as string) || "Email content";
-  const { convertedString: convertedTo, hasTemplates: hasToTemplates } =
-    convertTemplateToJS(emailTo);
-  const {
-    convertedString: convertedSubject,
-    hasTemplates: hasSubjectTemplates,
-  } = convertTemplateToJS(emailSubject);
-  const { convertedString: convertedBody, hasTemplates: hasBodyTemplates } =
-    convertTemplateToJS(emailBody);
-
-  generateEmailVariables({
-    hasToTemplates,
-    hasSubjectTemplates,
-    hasBodyTemplates,
-    convertedTo,
-    convertedSubject,
-    convertedBody,
-    lines,
-  });
-
-  generateSendEmailCall({
-    hasToTemplates,
-    hasSubjectTemplates,
-    hasBodyTemplates,
-    emailTo,
-    emailSubject,
-    emailBody,
-    lines,
-  });
-};
-
-// Generate Slack action code
-const generateSlackActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const slackChannel = (config?.slackChannel as string) || "#general";
-  const slackMessage = (config?.slackMessage as string) || "Message content";
-  const {
-    convertedString: convertedChannel,
-    hasTemplates: hasChannelTemplates,
-  } = convertTemplateToJS(slackChannel);
-  const {
-    convertedString: convertedMessage,
-    hasTemplates: hasMessageTemplates,
-  } = convertTemplateToJS(slackMessage);
-
-  if (hasChannelTemplates || hasMessageTemplates) {
-    lines.push("  // Send Slack message with dynamic values");
-    if (hasChannelTemplates) {
-      lines.push(`  const channel = \`${convertedChannel}\`;`);
-    }
-    if (hasMessageTemplates) {
-      lines.push(`  const text = \`${convertedMessage}\`;`);
-    }
-    lines.push("  const result = await sendSlackMessage({");
-    lines.push(
-      hasChannelTemplates ? "    channel," : `    channel: "${slackChannel}",`
-    );
-    lines.push(
-      hasMessageTemplates ? "    text," : `    text: "${slackMessage}",`
-    );
-  } else {
-    lines.push("  const result = await sendSlackMessage({");
-    lines.push(`    channel: "${slackChannel}",`);
-    lines.push(`    text: "${slackMessage}",`);
-  }
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Slack message sent:', result);`);
-  lines.push("  return result;");
-};
-
-// Generate database action code
-const generateDatabaseActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const dbQuery = (config?.dbQuery as string) || "SELECT * FROM users";
-  const { convertedString: convertedQuery, hasTemplates } =
-    convertTemplateToJS(dbQuery);
-
-  if (hasTemplates) {
-    lines.push("  // Execute database query with dynamic values");
-    lines.push(`  const query = \`${convertedQuery}\`;`);
-    lines.push("  const result = await executeQuery({");
-    lines.push("    query,");
-    lines.push("  });");
-  } else {
-    lines.push("  // Execute database query");
-    lines.push("  const result = await executeQuery({");
-    lines.push(`    query: \`${dbQuery}\`,`);
-    lines.push("  });");
-  }
-  lines.push("");
-  lines.push(`  console.log('Database query completed:', result);`);
-  lines.push("  return result;");
-};
-
-// Generate AI text action code
-const generateAiTextActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const aiPrompt = (config?.aiPrompt as string) || "Generate a summary";
-  const aiModel = (config?.aiModel as string) || "gpt-4o-mini";
-  const aiFormat = (config?.aiFormat as string) || "text";
-  const { convertedString: convertedPrompt, hasTemplates } =
-    convertTemplateToJS(aiPrompt);
-
-  lines.push("  // Generate text using AI");
-  if (hasTemplates) {
-    lines.push(`  const prompt = \`${convertedPrompt}\`;`);
-    lines.push("  const result = await generateText({");
-    lines.push(`    model: "${aiModel}",`);
-    lines.push("    prompt,");
-  } else {
-    lines.push("  const result = await generateText({");
-    lines.push(`    model: "${aiModel}",`);
-    lines.push(`    prompt: \`${aiPrompt}\`,`);
-  }
-  if (aiFormat === "object") {
-    lines.push(`    format: "object",`);
-  }
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Text generated:', result);`);
-  lines.push("  return result;");
-};
-
-// Generate AI image action code
-const generateAiImageActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const imagePrompt =
-    (config?.imagePrompt as string) || "A beautiful landscape";
-  const imageModel = (config?.imageModel as string) || "openai/dall-e-3";
-  const { convertedString: convertedPrompt, hasTemplates } =
-    convertTemplateToJS(imagePrompt);
-
-  lines.push("  // Generate image using AI");
-  if (hasTemplates) {
-    lines.push(`  const prompt = \`${convertedPrompt}\`;`);
-    lines.push("  const result = await generateImage({");
-    lines.push(`    model: "${imageModel}",`);
-    lines.push("    prompt,");
-  } else {
-    lines.push("  const result = await generateImage({");
-    lines.push(`    model: "${imageModel}",`);
-    lines.push(`    prompt: \`${imagePrompt}\`,`);
-  }
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Image generated:', result);`);
-  lines.push("  return result;");
-};
-
-// Generate ticket action code
-const generateTicketActionCode = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const ticketTitle = (config?.ticketTitle as string) || "Bug report";
-  const ticketDescription =
-    (config?.ticketDescription as string) || "Issue description";
-  const { convertedString: convertedTitle, hasTemplates: hasTitleTemplates } =
-    convertTemplateToJS(ticketTitle);
-  const {
-    convertedString: convertedDescription,
-    hasTemplates: hasDescriptionTemplates,
-  } = convertTemplateToJS(ticketDescription);
-
-  if (hasTitleTemplates || hasDescriptionTemplates) {
-    lines.push("  // Create ticket with dynamic values");
-    if (hasTitleTemplates) {
-      lines.push(`  const title = \`${convertedTitle}\`;`);
-    }
-    if (hasDescriptionTemplates) {
-      lines.push(`  const description = \`${convertedDescription}\`;`);
-    }
-    lines.push("  const result = await createTicket({");
-    lines.push(
-      hasTitleTemplates ? "    title," : `    title: "${ticketTitle}",`
-    );
-    lines.push(
-      hasDescriptionTemplates
-        ? "    description,"
-        : `    description: "${ticketDescription}",`
-    );
-    lines.push("    priority: 2,");
-  } else {
-    lines.push("  const result = await createTicket({");
-    lines.push(`    title: "${ticketTitle}",`);
-    lines.push(`    description: "${ticketDescription}",`);
-    lines.push("    priority: 2,");
-  }
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Ticket created:', result);`);
-  lines.push("  return result;");
-};
-
-// Handle linear issue action
-const handleLinearAction = (lines: string[]) => {
-  lines.push("  const issue = await createLinearIssue({");
-  lines.push(`    title: "Issue title",`);
-  lines.push(`    description: "Issue description",`);
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Linear issue created:', issue);`);
-  lines.push("  return issue;");
-};
-
-// Handle execute code action
-const handleExecuteCodeAction = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const code = (config?.code as string) || "return { result: 'success' }";
-  const codeLanguage = (config?.codeLanguage as string) || "javascript";
-  lines.push(`  // Execute ${codeLanguage} code`);
-  lines.push("  const result = await executeCode({");
-  lines.push(`    language: "${codeLanguage}",`);
-  lines.push(`    code: \`${code}\`,`);
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Code executed:', result);`);
-  lines.push("  return result;");
-};
-
-// Handle find issues action
-const handleFindIssuesAction = (lines: string[]) => {
-  lines.push("  const result = await findIssues({");
-  lines.push(`    assigneeId: "user-id",`);
-  lines.push(`    status: "in_progress",`);
-  lines.push("  });");
-  lines.push("");
-  lines.push(`  console.log('Issues found:', result);`);
-  lines.push("  return result;");
-};
-
-// Handle condition action
-const handleConditionAction = (
-  config: Record<string, unknown>,
-  lines: string[]
-) => {
-  const condition = (config?.condition as string) || "true";
-  const { convertedString: convertedCondition, hasTemplates } =
-    convertTemplateToJS(condition);
-
-  lines.push("  // Evaluate condition");
-  if (hasTemplates) {
-    // Convert template string to actual JS expression that accesses the values
-    // Remove the template literal backticks and ${ } wrappers to get raw JS
-    const jsExpression = convertedCondition
-      .replace(/\$\{/g, "(")
-      .replace(/\}/g, ")");
-    lines.push(`  const result = ${jsExpression};`);
-  } else {
-    lines.push(`  const result = ${condition};`);
-  }
-  lines.push("");
-  lines.push(`  console.log('Condition evaluated:', result);`);
-  lines.push("  return { condition: result };");
-};
-
-// Handle generic HTTP request action
-const handleGenericHttpAction = (endpoint: string, lines: string[]) => {
-  lines.push(`  const response = await fetch('${endpoint}', {`);
-  lines.push(`    method: 'POST',`);
-  lines.push("    headers: {");
-  lines.push(`      'Content-Type': 'application/json'`);
-  lines.push("    },");
-  lines.push("    body: JSON.stringify(input),");
-  lines.push("  });");
-  lines.push("");
-  lines.push("  const data = await response.json();");
-  lines.push(`  console.log('HTTP request completed:', data);`);
-  lines.push("  return data;");
-};
-
-// Helper to check if action matches type
-const matchesActionType = (
-  actionType: string,
-  label: string,
-  ...keywords: string[]
-): boolean =>
-  keywords.some(
-    (keyword) =>
-      actionType === keyword ||
-      label.toLowerCase().includes(keyword.toLowerCase())
-  );
-
-// Handle action type logic
-const generateActionCode = ({
-  actionType,
-  label,
-  config,
-  endpoint,
-  lines,
-}: {
-  actionType: string;
-  label: string;
-  config: Record<string, unknown>;
-  endpoint: string;
-  lines: string[];
-}) => {
-  if (matchesActionType(actionType, label, "Send Email", "email")) {
-    generateEmailActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Create Linear Issue", "linear")
-  ) {
-    handleLinearAction(lines);
-  } else if (
-    matchesActionType(actionType, label, "Send Slack Message", "slack")
-  ) {
-    generateSlackActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Database Query", "database")
-  ) {
-    generateDatabaseActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Generate Text", "generate text")
-  ) {
-    generateAiTextActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Generate Image", "generate image")
-  ) {
-    generateAiImageActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Execute Code", "execute code")
-  ) {
-    handleExecuteCodeAction(config, lines);
-  } else if (matchesActionType(actionType, label, "Create Ticket", "ticket")) {
-    generateTicketActionCode(config, lines);
-  } else if (
-    matchesActionType(actionType, label, "Find Issues", "find issues")
-  ) {
-    handleFindIssuesAction(lines);
-  } else if (matchesActionType(actionType, label, "Condition", "condition")) {
-    handleConditionAction(config, lines);
-  } else {
-    handleGenericHttpAction(endpoint, lines);
-  }
-};
-
-// Generate code snippet for a single node
-const generateNodeCode = (node: {
-  id: string;
-  data: {
-    type: string;
-    label: string;
-    description?: string;
-    config?: Record<string, unknown>;
-  };
-}): string => {
-  const lines: string[] = [];
-
-  // Convert label to camelCase function name
-  const functionName = `${node.data.label
-    .replace(/[^a-zA-Z0-9\s]/g, "")
-    .split(WORD_SPLIT_REGEX)
-    .map((word, i) => {
-      if (i === 0) {
-        return word.toLowerCase();
-      }
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join("")}Step`;
-
-  lines.push(
-    `async function ${functionName}(input: Record<string, unknown> & { outputs?: Record<string, { label: string; data: unknown }> }) {`
-  );
-  lines.push("");
-  lines.push(`  "use step";`);
-  lines.push("");
-
-  if (node.data.description) {
-    lines.push(`  // ${node.data.description}`);
-    lines.push("");
-  }
-
-  switch (node.data.type) {
-    case "trigger":
-      lines.push("  // Trigger setup");
-      lines.push(`  console.log('Workflow triggered with input:', input);`);
-      lines.push("  return input;");
-      break;
-
-    case "action": {
-      const actionType = node.data.config?.actionType as string;
-      const endpoint =
-        (node.data.config?.endpoint as string) || "https://api.example.com";
-
-      generateActionCode({
-        actionType,
-        label: node.data.label,
-        config: node.data.config || {},
-        endpoint,
-        lines,
-      });
-      break;
-    }
-
-    default:
-      lines.push("  // No implementation for this node type");
-      lines.push("  return input;");
-      break;
-  }
-
-  lines.push("}");
-
-  return lines.join("\n");
-};
 
 // Multi-selection panel component
 const MultiSelectionPanel = ({
@@ -723,10 +151,35 @@ const PanelInner = () => {
   const selectedEdges = edges.filter((edge) => edge.selected);
   const hasMultipleSelections = selectedNodes.length + selectedEdges.length > 1;
 
+  // Generate workflow code
+  const workflowCode = useMemo(() => {
+    const baseName =
+      currentWorkflowName
+        .replace(NON_ALPHANUMERIC_REGEX, "")
+        .split(WORD_SPLIT_REGEX)
+        .map((word, i) => {
+          if (i === 0) {
+            return word.toLowerCase();
+          }
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join("") || "execute";
+
+    const functionName = `${baseName}Workflow`;
+
+    const { code } = generateWorkflowCode(nodes, edges, { functionName });
+    return code;
+  }, [nodes, edges, currentWorkflowName]);
+
   const handleCopyCode = () => {
     if (selectedNode) {
       navigator.clipboard.writeText(generateNodeCode(selectedNode));
     }
+  };
+
+  const handleCopyWorkflowCode = () => {
+    navigator.clipboard.writeText(workflowCode);
+    toast.success("Code copied to clipboard");
   };
 
   const handleDelete = () => {
@@ -897,6 +350,12 @@ const PanelInner = () => {
             >
               Runs
             </TabsTrigger>
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="code"
+            >
+              Code
+            </TabsTrigger>
           </TabsList>
           <TabsContent
             className="flex flex-col overflow-hidden"
@@ -958,6 +417,34 @@ const PanelInner = () => {
                 variant="ghost"
               >
                 <Trash2 className="size-4" />
+              </Button>
+            </div>
+          </TabsContent>
+          <TabsContent className="flex flex-col overflow-hidden" value="code">
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor
+                height="100%"
+                language="typescript"
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  fontSize: 13,
+                  lineNumbers: "on",
+                  folding: true,
+                  wordWrap: "off",
+                  padding: { top: 16, bottom: 16 },
+                }}
+                value={workflowCode}
+              />
+            </div>
+            <div className="shrink-0 border-t p-4">
+              <Button
+                onClick={handleCopyWorkflowCode}
+                size="icon"
+                variant="ghost"
+              >
+                <Copy className="size-4" />
               </Button>
             </div>
           </TabsContent>
@@ -1084,7 +571,7 @@ const PanelInner = () => {
                 fontSize: 13,
                 lineNumbers: "on",
                 folding: false,
-                wordWrap: "on",
+                wordWrap: "off",
                 padding: { top: 16, bottom: 16 },
               }}
               value={generateNodeCode(selectedNode)}
@@ -1119,11 +606,6 @@ const PanelInner = () => {
     </>
   );
 };
-
-// Regex for splitting camel case - defined at top level
-const WORD_SPLIT_REGEX = /\s+/;
-const ARRAY_ACCESS_REGEX = /^([^[]+)\[(\d+)\]$/;
-
 export const NodeConfigPanel = () => {
   return (
     <>
