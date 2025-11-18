@@ -66,39 +66,29 @@ class WorkflowExecutor {
           break;
 
         case "action": {
-          // Simulate action execution for UI
-          const endpoint = node.data.config?.endpoint as string;
-          result = {
-            success: true,
-            data: {
-              endpoint,
-              response: {
-                status: 200,
-                message: "Action executed successfully",
+          const actionType = node.data.config?.actionType as string;
+          // Handle condition as an action type
+          if (actionType === "Condition") {
+            const condition = node.data.config?.condition as string;
+            const conditionResult = Math.random() > 0.5; // Random for demo
+            result = {
+              success: true,
+              data: { condition, result: conditionResult },
+            };
+          } else {
+            // Simulate action execution for UI
+            const endpoint = node.data.config?.endpoint as string;
+            result = {
+              success: true,
+              data: {
+                endpoint,
+                response: {
+                  status: 200,
+                  message: "Action executed successfully",
+                },
               },
-            },
-          };
-          break;
-        }
-
-        case "condition": {
-          // Simulate condition evaluation
-          const condition = node.data.config?.condition as string;
-          const conditionResult = Math.random() > 0.5; // Random for demo
-          result = {
-            success: true,
-            data: { condition, result: conditionResult },
-          };
-          break;
-        }
-
-        case "transform": {
-          // Simulate data transformation
-          const transformType = node.data.config?.transformType as string;
-          result = {
-            success: true,
-            data: { transformType, transformed: true },
-          };
+            };
+          }
           break;
         }
 

@@ -340,7 +340,7 @@ function createStepNameMapping(nodes: WorkflowNode[]): Map<string, string> {
   const nodeToStepName = new Map<string, string>();
 
   for (const node of nodes) {
-    if (node.data.type === "action" || node.data.type === "transform") {
+    if (node.data.type === "action") {
       const config = node.data.config || {};
       const actionType = config.actionType as string;
       const baseLabel = node.data.label || actionType || "UnnamedStep";
@@ -366,7 +366,7 @@ function generateAllStepFunctions(
   const stepFunctions: string[] = [];
 
   for (const node of nodes) {
-    if (node.data.type === "action" || node.data.type === "transform") {
+    if (node.data.type === "action") {
       const uniqueName = nodeToStepName.get(node.id);
       stepFunctions.push(generateStepFunc(node, uniqueName));
     }
@@ -432,19 +432,16 @@ export function generateWorkflowSDKCode(
           case "HTTP Request":
             stepBody = generateHTTPRequestStepBody(config);
             break;
+          case "Condition":
+            stepBody = `  // Evaluate condition
+  const condition = ${config.condition || "true"};
+  console.log('Condition evaluated:', condition);
+  return { condition };`;
+            break;
           default:
             stepBody = `  console.log('Executing ${node.data.label}');
   return { success: true };`;
         }
-        break;
-
-      case "transform":
-        stepBody = `  console.log('Transforming data');
-  return {
-    ...input,
-    transformed: true,
-    timestamp: Date.now(),
-  };`;
         break;
 
       default:
@@ -561,8 +558,16 @@ ${stepBody}
         lines.push(...generateTriggerCode(nodeId, node.data.label, indent));
         break;
 
-      case "action":
-      case "transform":
+      case "action": {
+        const actionType = node.data.config?.actionType as string;
+        // Handle condition as an action type
+        if (actionType === "Condition") {
+          lines.push(
+            ...generateConditionCode(nodeId, node, indent, visitedLocal)
+          );
+          // Conditions handle their own next nodes
+          return lines;
+        }
         lines.push(
           ...generateActionTransformCode(
             nodeId,
@@ -572,13 +577,7 @@ ${stepBody}
           )
         );
         break;
-
-      case "condition":
-        lines.push(
-          ...generateConditionCode(nodeId, node, indent, visitedLocal)
-        );
-        // Conditions handle their own next nodes
-        return lines;
+      }
 
       default:
         lines.push(`${indent}// Unknown node type: ${node.data.type}`);

@@ -632,6 +632,34 @@ function ExecuteCodeFields({
   );
 }
 
+// Condition fields component
+function ConditionFields({
+  config,
+  onUpdateConfig,
+  disabled,
+}: {
+  config: Record<string, unknown>;
+  onUpdateConfig: (key: string, value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="condition">Condition Expression</Label>
+      <TemplateBadgeInput
+        disabled={disabled}
+        id="condition"
+        onChange={(value) => onUpdateConfig("condition", value)}
+        placeholder="e.g., 5 > 3, status === 200, {{PreviousNode.value}} > 100"
+        value={(config?.condition as string) || ""}
+      />
+      <p className="text-muted-foreground text-xs">
+        Enter a JavaScript expression that evaluates to true or false. You can
+        use @ to reference previous node outputs.
+      </p>
+    </div>
+  );
+}
+
 export function ActionConfig({
   config,
   onUpdateConfig,
@@ -684,6 +712,7 @@ export function ActionConfig({
               <SelectItem value="HTTP Request">HTTP Request</SelectItem>
               <SelectItem value="Database Query">Database Query</SelectItem>
               <SelectItem value="Execute Code">Execute Code</SelectItem>
+              <SelectItem value="Condition">Condition</SelectItem>
             </SelectGroup>
             <SelectGroup>
               <SelectLabel className="flex items-center gap-2">
@@ -818,6 +847,15 @@ export function ActionConfig({
       {/* Execute Code fields */}
       {config?.actionType === "Execute Code" && (
         <ExecuteCodeFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      )}
+
+      {/* Condition fields */}
+      {config?.actionType === "Condition" && (
+        <ConditionFields
           config={config}
           disabled={disabled}
           onUpdateConfig={onUpdateConfig}

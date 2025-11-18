@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
 import {
   currentWorkflowIdAtom,
   deleteNodeAtom,
@@ -440,6 +439,31 @@ const handleFindIssuesAction = (lines: string[]) => {
   lines.push("  return result;");
 };
 
+// Handle condition action
+const handleConditionAction = (
+  config: Record<string, unknown>,
+  lines: string[]
+) => {
+  const condition = (config?.condition as string) || "true";
+  const { convertedString: convertedCondition, hasTemplates } =
+    convertTemplateToJS(condition);
+
+  lines.push("  // Evaluate condition");
+  if (hasTemplates) {
+    // Convert template string to actual JS expression that accesses the values
+    // Remove the template literal backticks and ${ } wrappers to get raw JS
+    const jsExpression = convertedCondition
+      .replace(/\$\{/g, "(")
+      .replace(/\}/g, ")");
+    lines.push(`  const result = ${jsExpression};`);
+  } else {
+    lines.push(`  const result = ${condition};`);
+  }
+  lines.push("");
+  lines.push(`  console.log('Condition evaluated:', result);`);
+  lines.push("  return { condition: result };");
+};
+
 // Handle generic HTTP request action
 const handleGenericHttpAction = (endpoint: string, lines: string[]) => {
   lines.push(`  const response = await fetch('${endpoint}', {`);
@@ -513,6 +537,8 @@ const generateActionCode = ({
     matchesActionType(actionType, label, "Find Issues", "find issues")
   ) {
     handleFindIssuesAction(lines);
+  } else if (matchesActionType(actionType, label, "Condition", "condition")) {
+    handleConditionAction(config, lines);
   } else {
     handleGenericHttpAction(endpoint, lines);
   }
@@ -573,42 +599,6 @@ const generateNodeCode = (node: {
         endpoint,
         lines,
       });
-      break;
-    }
-
-    case "condition": {
-      const condition = (node.data.config?.condition as string) || "true";
-      const { convertedString: convertedCondition, hasTemplates } =
-        convertTemplateToJS(condition);
-
-      lines.push("  // Evaluate condition");
-      if (hasTemplates) {
-        // Convert template string to actual JS expression that accesses the values
-        // Remove the template literal backticks and ${ } wrappers to get raw JS
-        const jsExpression = convertedCondition
-          .replace(/\$\{/g, "(")
-          .replace(/\}/g, ")");
-        lines.push(`  const result = ${jsExpression};`);
-      } else {
-        lines.push(`  const result = ${condition};`);
-      }
-      lines.push("");
-      lines.push(`  console.log('Condition evaluated:', result);`);
-      lines.push("  return { condition: result };");
-      break;
-    }
-
-    case "transform": {
-      const transformType =
-        (node.data.config?.transformType as string) || "Map Data";
-      lines.push(`  // Transform: ${transformType}`);
-      lines.push("  const transformed = {");
-      lines.push("    ...input,");
-      lines.push("    // Add your transformation logic here");
-      lines.push("  };");
-      lines.push("");
-      lines.push(`  console.log('Data transformed:', transformed);`);
-      lines.push("  return transformed;");
       break;
     }
 
@@ -725,40 +715,6 @@ const PanelInner = () => {
                 disabled={isGenerating}
                 onUpdateConfig={handleUpdateConfig}
               />
-            )}
-
-            {selectedNode.data.type === "condition" && (
-              <div className="space-y-2">
-                <Label htmlFor="condition">Condition Expression</Label>
-                <TemplateBadgeInput
-                  disabled={isGenerating}
-                  id="condition"
-                  onChange={(value) => handleUpdateConfig("condition", value)}
-                  placeholder="e.g., 5 > 3, status === 200, {{PreviousNode.value}} > 100"
-                  value={(selectedNode.data.config?.condition as string) || ""}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Enter a JavaScript expression that evaluates to true or false.
-                  You can use @ to reference previous node outputs.
-                </p>
-              </div>
-            )}
-
-            {selectedNode.data.type === "transform" && (
-              <div className="space-y-2">
-                <Label htmlFor="transformType">Transform Type</Label>
-                <TemplateBadgeInput
-                  disabled={isGenerating}
-                  id="transformType"
-                  onChange={(value) =>
-                    handleUpdateConfig("transformType", value)
-                  }
-                  placeholder="e.g., Map Data, Filter, Aggregate or {{NodeName.type}}"
-                  value={
-                    (selectedNode.data.config?.transformType as string) || ""
-                  }
-                />
-              </div>
             )}
 
             <div className="space-y-2">

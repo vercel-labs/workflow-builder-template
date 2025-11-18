@@ -201,8 +201,8 @@ export function generateWorkflowCode(
     return lines;
   }
 
-  // Helper to generate transform node code
-  function generateTransformCode(
+  // Helper to generate transform node code (no longer used but kept for backward compatibility)
+  function _generateTransformCode(
     node: WorkflowNode,
     varName: string,
     indent: string
@@ -242,17 +242,16 @@ export function generateWorkflowCode(
         lines.push(...generateTriggerCode(node, varName, indent));
         break;
 
-      case "action":
+      case "action": {
+        const actionType = node.data.config?.actionType as string;
+        // Handle condition as an action type
+        if (actionType === "Condition") {
+          lines.push(...generateConditionNodeCode(node, nodeId, indent));
+          return lines;
+        }
         lines.push(...generateActionNodeCode(node, indent, varName));
         break;
-
-      case "condition":
-        lines.push(...generateConditionNodeCode(node, nodeId, indent));
-        return lines;
-
-      case "transform":
-        lines.push(...generateTransformCode(node, varName, indent));
-        break;
+      }
 
       default:
         lines.push(`${indent}// Unknown node type: ${node.data.type}`);

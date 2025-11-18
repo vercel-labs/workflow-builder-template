@@ -1,13 +1,11 @@
 "use client";
 
 import type { NodeProps } from "@xyflow/react";
-import { Code, Database, Zap } from "lucide-react";
+import { Code, Database, GitBranch, Zap } from "lucide-react";
 import { memo } from "react";
 import {
   Node,
-  NodeContent,
   NodeDescription,
-  NodeHeader,
   NodeTitle,
 } from "@/components/ai-elements/node";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
@@ -101,6 +99,7 @@ const getIntegrationFromActionType = (actionType: string): string => {
     "Database Query": "System",
     "Generate Text": "AI Gateway",
     "Generate Image": "AI Gateway",
+    Condition: "Condition",
   };
   return integrationMap[actionType] || "System";
 };
@@ -109,23 +108,25 @@ const getIntegrationFromActionType = (actionType: string): string => {
 const getProviderLogo = (actionType: string) => {
   switch (actionType) {
     case "Send Email":
-      return <IntegrationIcon className="size-5" integration="resend" />;
+      return <IntegrationIcon className="size-12" integration="resend" />;
     case "Send Slack Message":
-      return <IntegrationIcon className="size-5" integration="slack" />;
+      return <IntegrationIcon className="size-12" integration="slack" />;
     case "Create Ticket":
     case "Find Issues":
-      return <IntegrationIcon className="size-5" integration="linear" />;
+      return <IntegrationIcon className="size-12" integration="linear" />;
     case "HTTP Request":
-      return <Zap className="size-5 text-amber-300" />;
+      return <Zap className="size-12 text-amber-300" />;
     case "Database Query":
-      return <Database className="size-5 text-blue-300" />;
+      return <Database className="size-12 text-blue-300" />;
     case "Generate Text":
     case "Generate Image":
-      return <IntegrationIcon className="size-5" integration="vercel" />;
+      return <IntegrationIcon className="size-12" integration="vercel" />;
     case "Execute Code":
-      return <Code className="size-5 text-green-300" />;
+      return <Code className="size-12 text-green-300" />;
+    case "Condition":
+      return <GitBranch className="size-12 text-pink-300" />;
     default:
-      return <Zap className="size-5 text-amber-300" />;
+      return <Zap className="size-12 text-amber-300" />;
   }
 };
 
@@ -175,6 +176,9 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
   const getCodeContent = (config: Record<string, unknown>) =>
     config.code ? `Code: ${config.code}` : null;
 
+  const getConditionContent = (config: Record<string, unknown>) =>
+    config.condition ? `${config.condition}` : null;
+
   // Determine what content to show based on action type
   const getContentField = () => {
     const config = data.config || {};
@@ -197,6 +201,8 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
         return getAiGenerationContent(config);
       case "Execute Code":
         return getCodeContent(config);
+      case "Condition":
+        return getConditionContent(config);
       default:
         return null;
     }
@@ -208,28 +214,28 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
   return (
     <Node
       className={cn(
-        "shadow-none",
+        "flex h-48 w-48 flex-col items-center justify-center shadow-none",
         selected &&
           "rounded-md ring ring-primary/50 transition-all duration-150 ease-out"
       )}
       handles={{ target: true, source: true }}
     >
-      <NodeHeader>
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-md bg-muted">
-            {getProviderLogo(actionType)}
-          </span>
-          <div className="flex flex-col gap-0.5">
-            <NodeTitle>{displayTitle}</NodeTitle>
-            {displayDescription && (
-              <NodeDescription>{displayDescription}</NodeDescription>
-            )}
-          </div>
+      <div className="flex flex-col items-center justify-center gap-3 p-6">
+        {getProviderLogo(actionType)}
+        <div className="flex flex-col items-center gap-1 text-center">
+          <NodeTitle className="text-base">{displayTitle}</NodeTitle>
+          {displayDescription && (
+            <NodeDescription className="text-xs">
+              {displayDescription}
+            </NodeDescription>
+          )}
+          {hasContent && (
+            <div className="mt-1 text-center text-muted-foreground text-xs">
+              {parseTemplateContent(contentField)}
+            </div>
+          )}
         </div>
-      </NodeHeader>
-      {hasContent && (
-        <NodeContent>{parseTemplateContent(contentField)}</NodeContent>
-      )}
+      </div>
     </Node>
   );
 });

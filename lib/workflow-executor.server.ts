@@ -949,28 +949,17 @@ class ServerWorkflowExecutor {
           break;
 
         case "action":
-          result = await this.executeActionNode(
-            node,
-            actionType,
-            nodeConfig,
-            processedConfig
-          );
-          break;
-
-        case "condition":
-          result = this.executeConditionNode(processedConfig);
-          break;
-
-        case "transform":
-          result = {
-            success: true,
-            data: {
-              ...this.context.input,
-              transformType: processedConfig?.transformType as string,
-              transformed: true,
-              timestamp: Date.now(),
-            },
-          };
+          // Handle condition as an action type
+          if (actionType === "Condition") {
+            result = this.executeConditionNode(processedConfig);
+          } else {
+            result = await this.executeActionNode(
+              node,
+              actionType,
+              nodeConfig,
+              processedConfig
+            );
+          }
           break;
 
         default:
@@ -1025,7 +1014,8 @@ class ServerWorkflowExecutor {
 
     const nextNodes = this.getNextNodes(nodeId);
 
-    if (node.data.type === "condition") {
+    const actionType = node.data.config?.actionType as string;
+    if (node.data.type === "action" && actionType === "Condition") {
       const conditionResult = (result.data as { result?: boolean })?.result;
       if (conditionResult === true) {
         for (const nextNodeId of nextNodes) {

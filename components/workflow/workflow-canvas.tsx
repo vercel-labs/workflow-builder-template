@@ -19,7 +19,7 @@ import { Connection } from "@/components/ai-elements/connection";
 import { Controls } from "@/components/ai-elements/controls";
 import "@xyflow/react/dist/style.css";
 
-import { GitBranch, Loader2, PlayCircle, Shuffle, Zap } from "lucide-react";
+import { Loader2, PlayCircle, Zap } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
   addNodeAtom,
@@ -36,8 +36,6 @@ import {
 } from "@/lib/workflow-store";
 import { Edge } from "../ai-elements/edge";
 import { ActionNode } from "./nodes/action-node";
-import { ConditionNode } from "./nodes/condition-node";
-import { TransformNode } from "./nodes/transform-node";
 import { TriggerNode } from "./nodes/trigger-node";
 
 const nodeTemplates = [
@@ -56,22 +54,6 @@ const nodeTemplates = [
     displayLabel: "Action",
     icon: Zap,
     defaultConfig: { actionType: "HTTP Request" },
-  },
-  {
-    type: "condition" as WorkflowNodeType,
-    label: "",
-    description: "",
-    displayLabel: "Condition",
-    icon: GitBranch,
-    defaultConfig: { condition: "If true" },
-  },
-  {
-    type: "transform" as WorkflowNodeType,
-    label: "",
-    description: "",
-    displayLabel: "Transform",
-    icon: Shuffle,
-    defaultConfig: { transformType: "Map Data" },
   },
 ];
 
@@ -92,14 +74,7 @@ export function WorkflowCanvas() {
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const { screenToFlowPosition, setViewport } = useReactFlow();
 
-  const [menu, setMenu] = useState<{
-    id: string;
-    top: number;
-    left: number;
-    sourceHandle?: string | null;
-  } | null>(null);
   const connectingNodeId = useRef<string | null>(null);
-  const menuJustOpened = useRef(false);
   const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(
     undefined
   );
@@ -170,8 +145,6 @@ export function WorkflowCanvas() {
     () => ({
       trigger: TriggerNode,
       action: ActionNode,
-      condition: ConditionNode,
-      transform: TransformNode,
     }),
     []
   );
@@ -271,72 +244,57 @@ export function WorkflowCanvas() {
           clientY
         );
 
-        menuJustOpened.current = true;
-        setMenu({
-          id: connectingNodeId.current,
-          top: adjustedY,
-          left: adjustedX,
+        // Get the action template
+        const actionTemplate = nodeTemplates.find((t) => t.type === "action");
+        if (!actionTemplate) {
+          return;
+        }
+
+        // Get the position in the flow coordinate system
+        const position = screenToFlowPosition({
+          x: adjustedX,
+          y: adjustedY,
         });
 
-        setTimeout(() => {
-          menuJustOpened.current = false;
-        }, 100);
+        // Create new action node
+        const newNode: WorkflowNode = {
+          id: nanoid(),
+          type: actionTemplate.type,
+          position,
+          data: {
+            label: actionTemplate.label,
+            description: actionTemplate.description,
+            type: actionTemplate.type,
+            config: actionTemplate.defaultConfig,
+            status: "idle",
+          },
+        };
+
+        addNode(newNode);
+
+        // Create connection from the source node to the new node
+        const newEdge = {
+          id: nanoid(),
+          source: connectingNodeId.current,
+          target: newNode.id,
+          type: "animated",
+        };
+        setEdges([...edges, newEdge]);
       }
 
       connectingNodeId.current = null;
     },
-    [getClientPosition, calculateMenuPosition]
-  );
-
-  const onAddNodeFromMenu = useCallback(
-    (template: (typeof nodeTemplates)[0]) => {
-      if (!menu) {
-        return;
-      }
-
-      // Get the position in the flow coordinate system
-      const position = screenToFlowPosition({
-        x: menu.left,
-        y: menu.top,
-      });
-
-      const newNode: WorkflowNode = {
-        id: nanoid(),
-        type: template.type,
-        position,
-        data: {
-          label: template.label,
-          description: template.description,
-          type: template.type,
-          config: template.defaultConfig,
-          status: "idle",
-        },
-      };
-
-      addNode(newNode);
-
-      // Create connection from the source node to the new node
-      const newEdge = {
-        id: nanoid(),
-        source: menu.id,
-        target: newNode.id,
-        type: "animated",
-      };
-      setEdges([...edges, newEdge]);
-
-      // Close the menu
-      setMenu(null);
-    },
-    [menu, screenToFlowPosition, addNode, edges, setEdges]
+    [
+      getClientPosition,
+      calculateMenuPosition,
+      screenToFlowPosition,
+      addNode,
+      edges,
+      setEdges,
+    ]
   );
 
   const onPaneClick = useCallback(() => {
-    // Don't close the menu if it was just opened from a connection
-    if (menuJustOpened.current) {
-      return;
-    }
-
-    setMenu(null);
     setSelectedNode(null);
   }, [setSelectedNode]);
 
@@ -418,35 +376,6 @@ export function WorkflowCanvas() {
           nodeStrokeColor="var(--border)"
         />
       </Canvas>
-
-      {menu && (
-        <div
-          className="fade-in-0 zoom-in-95 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 min-w-32 animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out"
-          style={{
-            position: "absolute",
-            top: menu.top,
-            left: menu.left,
-            zIndex: 50,
-          }}
-        >
-          {nodeTemplates
-            .filter((template) => template.type !== "trigger")
-            .map((template) => {
-              const Icon = template.icon;
-              return (
-                <button
-                  className="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                  key={template.type}
-                  onClick={() => onAddNodeFromMenu(template)}
-                  type="button"
-                >
-                  <Icon className="size-4" />
-                  {template.displayLabel}
-                </button>
-              );
-            })}
-        </div>
-      )}
     </div>
   );
 }

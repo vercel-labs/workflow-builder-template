@@ -1084,7 +1084,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
       <Panel
         className="flex flex-col-reverse items-end gap-2 border-none bg-transparent p-0 lg:flex-row lg:items-center"
         position="top-right"
-        style={isSidebarOpen ? { right: '400px' } : undefined}
+        style={isSidebarOpen ? { right: "400px" } : undefined}
       >
         <ToolbarActions
           actions={actions}
