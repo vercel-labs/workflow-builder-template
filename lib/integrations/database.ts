@@ -21,7 +21,15 @@ export async function executeQuery(
   params: DatabaseQueryParams
 ): Promise<DatabaseQueryResult> {
   try {
-    // For safety, we should validate queries in production
+    // Validate query exists
+    if (!params.query || params.query.trim() === "") {
+      return {
+        status: "error",
+        error: "Query is required",
+      };
+    }
+
+    // Execute the raw SQL query
     const result = await db.execute(sql.raw(params.query));
 
     return {
@@ -30,6 +38,7 @@ export async function executeQuery(
       rowCount: Array.isArray(result) ? result.length : 0,
     };
   } catch (error) {
+    console.error("Database query error:", error);
     return {
       status: "error",
       error: error instanceof Error ? error.message : "Unknown error",

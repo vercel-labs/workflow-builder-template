@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "../ui/spinner";
+import { AiGatewaySettings } from "./ai-gateway-settings";
 import { LinearSettings } from "./linear-settings";
 import { ResendSettings } from "./resend-settings";
 import { SlackSettings } from "./slack-settings";
@@ -22,9 +23,11 @@ type ProjectIntegrations = {
   resendFromEmail: string | null;
   linearApiKey: string | null;
   slackApiKey: string | null;
+  aiGatewayApiKey: string | null;
   hasResendKey: boolean;
   hasLinearKey: boolean;
   hasSlackKey: boolean;
+  hasAiGatewayKey: boolean;
 };
 
 type ProjectIntegrationsDialogProps = {
@@ -51,6 +54,7 @@ export function ProjectIntegrationsDialog({
   const [resendFromEmail, setResendFromEmail] = useState("");
   const [linearApiKey, setLinearApiKey] = useState("");
   const [slackApiKey, setSlackApiKey] = useState("");
+  const [aiGatewayApiKey, setAiGatewayApiKey] = useState("");
   const [savingIntegrations, setSavingIntegrations] = useState(false);
 
   const loadIntegrations = useCallback(async () => {
@@ -67,6 +71,7 @@ export function ProjectIntegrationsDialog({
       setResendFromEmail(data.resendFromEmail || "");
       setLinearApiKey(data.hasLinearKey ? "••••••••" : "");
       setSlackApiKey(data.hasSlackKey ? "••••••••" : "");
+      setAiGatewayApiKey(data.hasAiGatewayKey ? "••••••••" : "");
     } catch (error) {
       console.error("Failed to load project integrations:", error);
       toast.error("Failed to load integrations");
@@ -112,6 +117,16 @@ export function ProjectIntegrationsDialog({
     return updates;
   };
 
+  const buildAiGatewayUpdates = (
+    apiKey: string
+  ): Record<string, string | null> => {
+    const updates: Record<string, string | null> = {};
+    if (apiKey && apiKey !== "••••••••") {
+      updates.aiGatewayApiKey = apiKey;
+    }
+    return updates;
+  };
+
   const buildUpdatesForSave = (type: string): Record<string, string | null> => {
     if (type === "resend") {
       return buildResendUpdates(resendApiKey, resendFromEmail);
@@ -121,6 +136,9 @@ export function ProjectIntegrationsDialog({
     }
     if (type === "slack") {
       return buildSlackUpdates(slackApiKey);
+    }
+    if (type === "ai-gateway") {
+      return buildAiGatewayUpdates(aiGatewayApiKey);
     }
     return {};
   };
@@ -154,6 +172,8 @@ export function ProjectIntegrationsDialog({
       updates.linearApiKey = null;
     } else if (type === "slack") {
       updates.slackApiKey = null;
+    } else if (type === "ai-gateway") {
+      updates.aiGatewayApiKey = null;
     }
 
     return updates;
@@ -167,6 +187,8 @@ export function ProjectIntegrationsDialog({
       setLinearApiKey("");
     } else if (type === "slack") {
       setSlackApiKey("");
+    } else if (type === "ai-gateway") {
+      setAiGatewayApiKey("");
     }
   };
 
@@ -207,10 +229,11 @@ export function ProjectIntegrationsDialog({
           </div>
         ) : (
           <Tabs onValueChange={setActiveTab} value={activeTab}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="resend">Resend</TabsTrigger>
               <TabsTrigger value="linear">Linear</TabsTrigger>
               <TabsTrigger value="slack">Slack</TabsTrigger>
+              <TabsTrigger value="ai-gateway">AI Gateway</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resend">
@@ -284,6 +307,31 @@ export function ProjectIntegrationsDialog({
                 <Button
                   disabled={savingIntegrations}
                   onClick={() => handleSaveIntegrations("slack")}
+                >
+                  {savingIntegrations ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="ai-gateway">
+              <AiGatewaySettings
+                apiKey={aiGatewayApiKey}
+                hasKey={integrations?.hasAiGatewayKey}
+                onApiKeyChange={setAiGatewayApiKey}
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                {integrations?.hasAiGatewayKey && (
+                  <Button
+                    disabled={savingIntegrations}
+                    onClick={() => handleRemoveIntegration("ai-gateway")}
+                    variant="outline"
+                  >
+                    Remove
+                  </Button>
+                )}
+                <Button
+                  disabled={savingIntegrations}
+                  onClick={() => handleSaveIntegrations("ai-gateway")}
                 >
                   {savingIntegrations ? "Saving..." : "Save"}
                 </Button>

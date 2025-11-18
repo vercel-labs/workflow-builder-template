@@ -26,6 +26,9 @@ importers:
       '@vercel/sandbox':
         specifier: ^1.0.2
         version: 1.0.2
+      '@vercel/sdk':
+        specifier: ^1.17.1
+        version: 1.17.1
       '@xyflow/react':
         specifier: ^12.9.2
         version: 12.9.2(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -2448,6 +2451,15 @@ packages:
 
   '@vercel/sandbox@1.0.2':
     resolution: {integrity: sha512-EoZhkUag3YVSuXCfpO4SZFDwghiGCeVklUVyWFpt0dsjjXWr5C2MXvtqFeH2KbRp/58I1k5JxeSxNuUX5FWZbQ==}
+
+  '@vercel/sdk@1.17.1':
+    resolution: {integrity: sha512-wh4Y+nZAsLM0SoaLkYeHn1trIJklG5uwqTbl2keDQEJFuzcE3fG8RwyiuS+ZWW/BdpfiIwN2xAhSiSlbafTzvw==}
+    hasBin: true
+    peerDependencies:
+      '@modelcontextprotocol/sdk': '>=1.5.0 <1.10.0'
+    peerDependenciesMeta:
+      '@modelcontextprotocol/sdk':
+        optional: true
 
   '@workflow/builders@4.0.1-beta.7':
     resolution: {integrity: sha512-BSsdc8t4+74hLyrl9PLgfDvO1/PTA+7j1WLiwMgqlYBISCh4t00FGXWcrool6yu/MbIvDWlz6YHT81RhKy3sQQ==}
@@ -7059,6 +7071,10 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  '@vercel/sdk@1.17.1':
+    dependencies:
+      zod: 4.1.12
 
   '@workflow/builders@4.0.1-beta.7(@aws-sdk/client-sts@3.922.0)(@opentelemetry/api@1.9.0)':
     dependencies:

@@ -12,6 +12,7 @@ export type UpdateProjectIntegrationsInput = {
   resendFromEmail?: string | null;
   linearApiKey?: string | null;
   slackApiKey?: string | null;
+  aiGatewayApiKey?: string | null;
 };
 
 export async function updateProjectIntegrations(
@@ -60,6 +61,9 @@ export async function updateProjectIntegrations(
   if (data.slackApiKey !== undefined && data.slackApiKey) {
     envUpdates.push({ key: "SLACK_API_KEY", value: data.slackApiKey });
   }
+  if (data.aiGatewayApiKey !== undefined && data.aiGatewayApiKey) {
+    envUpdates.push({ key: "AI_GATEWAY_API_KEY", value: data.aiGatewayApiKey });
+  }
 
   // Set environment variables in Vercel
   for (const { key, value } of envUpdates) {
@@ -69,7 +73,7 @@ export async function updateProjectIntegrations(
       teamId: vercelTeamId || undefined,
       key,
       value,
-      type: "encrypted",
+      type: "encrypted", // Use "encrypted" for maximum security
     });
 
     if (result.status === "error") {

@@ -523,7 +523,7 @@ export function generateWorkflowSDKCode(
           inputParams.push(
             `query: \`${convertTemplateToJS((config.dbQuery as string) || "SELECT 1")}\``
           );
-          inputParams.push("databaseUrl: process.env.DATABASE_URL!");
+          // Note: Uses app's existing database connection, no databaseUrl needed
           break;
 
         case "HTTP Request":

@@ -12,9 +12,11 @@ export type ProjectIntegrations = {
   resendFromEmail: string | null;
   linearApiKey: string | null;
   slackApiKey: string | null;
+  aiGatewayApiKey: string | null;
   hasResendKey: boolean;
   hasLinearKey: boolean;
   hasSlackKey: boolean;
+  hasAiGatewayKey: boolean;
 };
 
 export async function getProjectIntegrations(
@@ -50,9 +52,11 @@ export async function getProjectIntegrations(
       resendFromEmail: null,
       linearApiKey: null,
       slackApiKey: null,
+      aiGatewayApiKey: null,
       hasResendKey: false,
       hasLinearKey: false,
       hasSlackKey: false,
+      hasAiGatewayKey: false,
     };
   }
 
@@ -61,6 +65,7 @@ export async function getProjectIntegrations(
     projectId: project.vercelProjectId,
     apiToken: vercelApiToken,
     teamId: vercelTeamId || undefined,
+    decrypt: true, // Decrypt encrypted environment variables
   });
 
   if (envResult.status === "error" || !envResult.envs) {
@@ -69,9 +74,11 @@ export async function getProjectIntegrations(
       resendFromEmail: null,
       linearApiKey: null,
       slackApiKey: null,
+      aiGatewayApiKey: null,
       hasResendKey: false,
       hasLinearKey: false,
       hasSlackKey: false,
+      hasAiGatewayKey: false,
     };
   }
 
@@ -85,14 +92,24 @@ export async function getProjectIntegrations(
     envResult.envs.find((env) => env.key === "LINEAR_API_KEY")?.value || null;
   const slackApiKey =
     envResult.envs.find((env) => env.key === "SLACK_API_KEY")?.value || null;
+  const aiGatewayApiKey =
+    envResult.envs.find((env) => env.key === "AI_GATEWAY_API_KEY")?.value ||
+    null;
+
+  console.log(
+    "[DEBUG] AI_GATEWAY_API_KEY:",
+    aiGatewayApiKey ? `${aiGatewayApiKey.substring(0, 10)}...` : "null"
+  );
 
   return {
     resendApiKey,
     resendFromEmail,
     linearApiKey,
     slackApiKey,
+    aiGatewayApiKey,
     hasResendKey: !!resendApiKey,
     hasLinearKey: !!linearApiKey,
     hasSlackKey: !!slackApiKey,
+    hasAiGatewayKey: !!aiGatewayApiKey,
   };
 }

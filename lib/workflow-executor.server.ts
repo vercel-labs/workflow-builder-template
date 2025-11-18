@@ -169,6 +169,7 @@ class ServerWorkflowExecutor {
         projectId: projectData.vercelProjectId,
         apiToken: vercelApiToken,
         teamId: vercelTeamId || undefined,
+        decrypt: true, // Decrypt encrypted environment variables
       });
 
       if (envResult.status === "success" && envResult.envs) {
@@ -182,20 +183,45 @@ class ServerWorkflowExecutor {
         const slackApiKey =
           envResult.envs.find((env) => env.key === "SLACK_API_KEY")?.value ||
           null;
+        const aiGatewayApiKey =
+          envResult.envs.find((env) => env.key === "AI_GATEWAY_API_KEY")
+            ?.value || null;
+
+        console.log(
+          "[DEBUG Executor] AI_GATEWAY_API_KEY:",
+          aiGatewayApiKey ? `${aiGatewayApiKey.substring(0, 10)}...` : "null"
+        );
 
         // Set up credentials for step execution
         // For test runs, use user's stored credentials
+        // Note: encrypted env vars from Vercel can't be decrypted via API,
+        // so we fallback to local process.env for test runs
         this.credentials = getCredentials("user", {
-          RESEND_API_KEY: resendApiKey || undefined,
-          LINEAR_API_KEY: linearApiKey || undefined,
-          SLACK_API_KEY: slackApiKey || undefined,
+          RESEND_API_KEY: resendApiKey || process.env.RESEND_API_KEY || undefined,
+          LINEAR_API_KEY: linearApiKey || process.env.LINEAR_API_KEY || undefined,
+          SLACK_API_KEY: slackApiKey || process.env.SLACK_API_KEY || undefined,
+          AI_GATEWAY_API_KEY: aiGatewayApiKey || process.env.AI_GATEWAY_API_KEY || undefined,
           OPENAI_API_KEY:
             envResult.envs.find((env) => env.key === "OPENAI_API_KEY")?.value ||
+            process.env.OPENAI_API_KEY ||
             undefined,
           DATABASE_URL:
             envResult.envs.find((env) => env.key === "DATABASE_URL")?.value ||
+            process.env.DATABASE_URL ||
             undefined,
         });
+
+        console.log(
+          "[DEBUG Executor] credentials.AI_GATEWAY_API_KEY:",
+          this.credentials.AI_GATEWAY_API_KEY
+            ? `${this.credentials.AI_GATEWAY_API_KEY.substring(0, 10)}...`
+            : "undefined"
+        );
+        console.log(
+          "[DEBUG Executor] Using fallback from process.env:",
+          !!process.env.AI_GATEWAY_API_KEY
+        );
+        console.log("[DEBUG Executor] Full credentials keys:", Object.keys(this.credentials));
       }
     } catch (error) {
       console.error("Failed to load project integrations:", error);
@@ -319,10 +345,20 @@ class ServerWorkflowExecutor {
     processedConfig: Record<string, unknown>
   ): Promise<ExecutionResult> {
     try {
+      console.log(`[Executor] executeActionNode called for: ${actionType}`);
+      console.log(
+        "[Executor] Raw processedConfig:",
+        JSON.stringify(processedConfig, null, 2)
+      );
+
       // Check if we have a step function for this action type
       if (hasStep(actionType)) {
+        console.log(`[Executor] Found step function for: ${actionType}`);
         const stepFn = getStep(actionType);
         if (!stepFn) {
+          console.error(
+            `[Executor] Step function is undefined for: ${actionType}`
+          );
           return {
             success: false,
             error: `Step function not found for action type: ${actionType}`,
@@ -340,7 +376,9 @@ class ServerWorkflowExecutor {
         console.log("[Executor] Enriched input:", enrichedInput);
 
         // Execute the step function
+        console.log(`[Executor] About to call stepFn for: ${actionType}`);
         const result = await stepFn(enrichedInput);
+        console.log(`[Executor] Step result for ${actionType}:`, result);
 
         return {
           success: true,
@@ -348,12 +386,19 @@ class ServerWorkflowExecutor {
         };
       }
 
+      console.log(
+        `[Executor] No step function found for: ${actionType}, using fallback`
+      );
       // Fallback for actions without step functions
       return {
         success: true,
         data: { status: 200, message: "Action executed successfully" },
       };
     } catch (error) {
+      console.error(
+        `[Executor] Error in executeActionNode for ${actionType}:`,
+        error
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

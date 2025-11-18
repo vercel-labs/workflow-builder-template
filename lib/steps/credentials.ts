@@ -12,6 +12,7 @@ export type EnvVarConfig = {
   RESEND_API_KEY?: string;
   SLACK_API_KEY?: string;
   OPENAI_API_KEY?: string;
+  AI_GATEWAY_API_KEY?: string;
   DATABASE_URL?: string;
 };
 
@@ -33,6 +34,7 @@ export function getCredentials(
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     SLACK_API_KEY: process.env.SLACK_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
   };
 }
@@ -72,9 +74,11 @@ export function enrichStepInput(
 
     case "Generate Text":
     case "Generate Image":
-      if (credentials.OPENAI_API_KEY) {
-        enrichedInput.apiKey = credentials.OPENAI_API_KEY;
+      console.log("[DEBUG enrichStepInput] AI_GATEWAY_API_KEY from credentials:", credentials.AI_GATEWAY_API_KEY ? `${credentials.AI_GATEWAY_API_KEY.substring(0, 10)}...` : "undefined");
+      if (credentials.AI_GATEWAY_API_KEY) {
+        enrichedInput.apiKey = credentials.AI_GATEWAY_API_KEY;
       }
+      console.log("[DEBUG enrichStepInput] enrichedInput.apiKey after setting:", enrichedInput.apiKey ? `${(enrichedInput.apiKey as string).substring(0, 10)}...` : "undefined");
       break;
 
     case "Database Query":

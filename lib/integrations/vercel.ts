@@ -1,4 +1,5 @@
 import "server-only";
+import { Vercel } from "@vercel/sdk";
 
 export type VercelProject = {
   id: string;
@@ -360,10 +361,75 @@ export async function createProject(
 }
 
 /**
+ * Get a single decrypted environment variable by ID
+ */
+export async function getDecryptedEnvironmentVariable(
+  params: GetProjectParams & { envId: string }
+): Promise<{
+  status: "success" | "error";
+  env?: {
+    id: string;
+    key: string;
+    value: string;
+    type: "plain" | "secret" | "encrypted" | "system";
+    target: Array<"production" | "preview" | "development">;
+  };
+  error?: string;
+}> {
+  try {
+    if (!params.apiToken) {
+      return {
+        status: "error",
+        error: "Vercel API token not configured",
+      };
+    }
+
+    const vercel = new Vercel({
+      bearerToken: params.apiToken,
+    });
+
+    console.log("[DEBUG Vercel SDK] Fetching decrypted env var:", params.envId);
+
+    // Use SDK to get the decrypted value
+    const response = await vercel.projects.getProjectEnv({
+      idOrName: params.projectId,
+      id: params.envId,
+      teamId: params.teamId,
+    });
+
+    const env = response as any;
+
+    console.log("[DEBUG Vercel SDK] Decrypted env var:", {
+      key: env.key,
+      type: env.type,
+      valueLength: env.value?.length,
+      valuePreview: env.value?.substring(0, 20) + "...",
+    });
+
+    return {
+      status: "success",
+      env: {
+        id: env.id || "",
+        key: env.key || "",
+        value: env.value || "",
+        type: (env.type as "plain" | "secret" | "encrypted" | "system") || "plain",
+        target: (env.target as Array<"production" | "preview" | "development">) || [],
+      },
+    };
+  } catch (error) {
+    console.error("[DEBUG Vercel SDK] Error fetching decrypted env var:", error);
+    return {
+      status: "error",
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
  * Get environment variables for a project
  */
 export async function getEnvironmentVariables(
-  params: GetProjectParams
+  params: GetProjectParams & { decrypt?: boolean }
 ): Promise<{
   status: "success" | "error";
   envs?: Array<{
@@ -383,26 +449,85 @@ export async function getEnvironmentVariables(
       };
     }
 
-    const data = await vercelRequest<{
-      envs: Array<{
-        id: string;
-        key: string;
-        value: string;
-        type: "plain" | "secret" | "encrypted" | "system";
-        target: Array<"production" | "preview" | "development">;
-      }>;
-    }>(
-      `/v9/projects/${params.projectId}/env`,
-      params.apiToken,
-      {},
-      params.teamId
+    const vercel = new Vercel({
+      bearerToken: params.apiToken,
+    });
+
+    console.log("[DEBUG Vercel SDK] Fetching env vars for project:", params.projectId, "teamId:", params.teamId);
+
+    // Use SDK to get environment variables
+    const response = await vercel.projects.filterProjectEnvs({
+      idOrName: params.projectId,
+      teamId: params.teamId,
+      decrypt: params.decrypt ? "true" : undefined,
+    });
+
+    // Response can have envs as an array or object property
+    const envList = (response as any).envs || [];
+
+    console.log("[DEBUG Vercel SDK] Found", envList.length, "environment variables");
+    console.log("[DEBUG Vercel SDK] Env var keys:", envList.map((e: any) => e.key).join(", "));
+
+    if (!envList || envList.length === 0) {
+      return {
+        status: "success",
+        envs: [],
+      };
+    }
+
+    // For encrypted variables, fetch the decrypted value using the individual endpoint
+    const envsWithDecryption = await Promise.all(
+      envList.map(async (env: any) => {
+        if (params.decrypt && env.type === "encrypted" && env.id) {
+          console.log("[DEBUG Vercel SDK] Fetching decrypted value for:", env.key);
+          const decryptedResult = await getDecryptedEnvironmentVariable({
+            projectId: params.projectId,
+            apiToken: params.apiToken,
+            teamId: params.teamId,
+            envId: env.id,
+          });
+
+          if (decryptedResult.status === "success" && decryptedResult.env?.value) {
+            console.log("[DEBUG Vercel SDK] Successfully decrypted:", env.key, "value length:", decryptedResult.env.value.length);
+            return {
+              ...env,
+              value: decryptedResult.env.value,
+            };
+          }
+        }
+        return env;
+      })
+    );
+
+    console.log(
+      "[DEBUG Vercel SDK] Sample env var:",
+      envsWithDecryption.find((e: any) => e.key === "AI_GATEWAY_API_KEY")
+        ? {
+            key: envsWithDecryption.find((e: any) => e.key === "AI_GATEWAY_API_KEY")?.key,
+            value:
+              envsWithDecryption
+                .find((e: any) => e.key === "AI_GATEWAY_API_KEY")
+                ?.value?.substring(0, 15) + "...",
+            type: envsWithDecryption.find((e: any) => e.key === "AI_GATEWAY_API_KEY")
+              ?.type,
+          }
+        : "not found"
     );
 
     return {
       status: "success",
-      envs: data.envs,
+      envs: envsWithDecryption.map((env: any) => ({
+        id: env.id || "",
+        key: env.key || "",
+        value: env.value || "",
+        type:
+          (env.type as "plain" | "secret" | "encrypted" | "system") || "plain",
+        target:
+          (env.target as Array<"production" | "preview" | "development">) || [],
+      })),
     };
   } catch (error) {
+    console.error("[DEBUG Vercel SDK] Error fetching env vars:", error);
     return {
       status: "error",
       error: error instanceof Error ? error.message : "Unknown error",
@@ -444,56 +569,75 @@ export async function setEnvironmentVariable(
       };
     }
 
+    const vercel = new Vercel({
+      bearerToken: params.apiToken,
+    });
+
     // Check if the environment variable already exists
-    const existingEnvs = await getEnvironmentVariables({
-      projectId: params.projectId,
-      apiToken: params.apiToken,
+    const existingEnvs = await vercel.projects.filterProjectEnvs({
+      idOrName: params.projectId,
       teamId: params.teamId,
     });
 
-    if (existingEnvs.status === "success" && existingEnvs.envs) {
-      const existingEnv = existingEnvs.envs.find((e) => e.key === params.key);
+    const envList = (existingEnvs as any).envs || [];
+    if (envList) {
+      const existingEnv = envList.find((e: any) => e.key === params.key);
 
       // If it exists, delete it first
-      if (existingEnv) {
-        await vercelRequest(
-          `/v9/projects/${params.projectId}/env/${existingEnv.id}`,
-          params.apiToken,
-          {
-            method: "DELETE",
-          },
-          params.teamId
-        );
+      if (existingEnv?.id) {
+        await vercel.projects.removeProjectEnv({
+          idOrName: params.projectId,
+          id: existingEnv.id,
+          teamId: params.teamId,
+        });
       }
     }
 
-    // Create the new environment variable
-    const env = await vercelRequest<{
-      id: string;
-      key: string;
-      value: string;
-      type: "plain" | "secret" | "encrypted" | "system";
-      target: Array<"production" | "preview" | "development">;
-    }>(
-      `/v10/projects/${params.projectId}/env`,
-      params.apiToken,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          key: params.key,
-          value: params.value,
-          target: params.target || ["production", "preview", "development"],
-          type: params.type || "encrypted",
-        }),
+    // Create the new environment variable using upsert
+    const response = await vercel.projects.createProjectEnv({
+      idOrName: params.projectId,
+      teamId: params.teamId,
+      upsert: "true",
+      requestBody: {
+        key: params.key,
+        value: params.value,
+        target: params.target || ["production", "preview", "development"],
+        type: params.type || "encrypted", // Use "encrypted" type for maximum security
       },
-      params.teamId
-    );
+    });
+
+    if (!response.created) {
+      return {
+        status: "error",
+        error: "Failed to create environment variable",
+      };
+    }
+
+    // Handle response which can be an array or object
+    const createdEnv = Array.isArray(response.created)
+      ? response.created[0]
+      : response.created;
 
     return {
       status: "success",
-      env,
+      env: {
+        id: (createdEnv as any)?.id || "",
+        key: (createdEnv as any)?.key || "",
+        value: (createdEnv as any)?.value || "",
+        type:
+          ((createdEnv as any)?.type as
+            | "plain"
+            | "secret"
+            | "encrypted"
+            | "system") || "secret",
+        target:
+          ((createdEnv as any)?.target as Array<
+            "production" | "preview" | "development"
+          >) || [],
+      },
     };
   } catch (error) {
+    console.error("[DEBUG Vercel SDK] Error setting env var:", error);
     return {
       status: "error",
       error: error instanceof Error ? error.message : "Unknown error",

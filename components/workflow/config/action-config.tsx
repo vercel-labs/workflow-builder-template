@@ -47,6 +47,8 @@ const ACTION_INTEGRATION_MAP: Record<string, { name: string; label: string }> =
     "Send Slack Message": { name: "slack", label: "Slack" },
     "Create Ticket": { name: "linear", label: "Linear" },
     "Find Issues": { name: "linear", label: "Linear" },
+    "Generate Text": { name: "ai-gateway", label: "AI Gateway" },
+    "Generate Image": { name: "ai-gateway", label: "AI Gateway" },
   };
 
 // Send Email fields component
