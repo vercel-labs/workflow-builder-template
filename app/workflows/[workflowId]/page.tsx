@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { generate } from "@/app/actions/ai/generate";
+import { execute } from "@/app/actions/workflow/execute";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -212,22 +213,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     [nodes, updateNodeData]
   );
 
-  // Helper to execute workflow API call
-  const executeWorkflowApi = useCallback(async (wfId: string) => {
-    const response = await fetch(`/api/workflows/${wfId}/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input: {} }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to execute workflow");
-    }
-
-    return await response.json();
-  }, []);
-
   const handleRun = useCallback(async () => {
     if (
       isExecuting ||
@@ -244,13 +229,23 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     updateAllNodeStatuses("idle");
 
     try {
-      const result = await executeWorkflowApi(currentWorkflowId);
+      const result = await execute(currentWorkflowId, {});
+
+      if (result.status === "error") {
+        toast.error(result.error || "Workflow execution failed");
+      } else {
+        toast.success("Test run completed successfully");
+      }
 
       // Update all nodes based on result
-      const resultStatus = result.status === "error" ? "error" : "success";
+      const resultStatus: "idle" | "running" | "success" | "error" =
+        result.status === "error" ? "error" : "success";
       updateAllNodeStatuses(resultStatus);
     } catch (error) {
       console.error("Failed to execute workflow:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to execute workflow"
+      );
       updateAllNodeStatuses("error");
     } finally {
       setIsExecuting(false);
@@ -262,7 +257,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     currentWorkflowId,
     setIsExecuting,
     updateAllNodeStatuses,
-    executeWorkflowApi,
   ]);
 
   // Helper to check if target is an input element

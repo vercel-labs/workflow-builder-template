@@ -241,7 +241,10 @@ export function generateWorkflowCode(
   }
 
   // Helper to process @nodeId:DisplayName.field format for JavaScript expressions (not template strings)
-  function processAtFormatForExpression(trimmed: string, match: string): string {
+  function processAtFormatForExpression(
+    trimmed: string,
+    match: string
+  ): string {
     const withoutAt = trimmed.substring(1);
     const colonIndex = withoutAt.indexOf(":");
     if (colonIndex === -1) {
@@ -267,7 +270,10 @@ export function generateWorkflowCode(
   }
 
   // Helper to process $nodeId.field format for JavaScript expressions (not template strings)
-  function processDollarFormatForExpression(trimmed: string, match: string): string {
+  function processDollarFormatForExpression(
+    trimmed: string,
+    match: string
+  ): string {
     const withoutDollar = trimmed.substring(1);
     const parts = withoutDollar.split(".");
     const nodeId = parts[0];
@@ -490,7 +496,10 @@ export function generateWorkflowCode(
     const config = node.data.config || {};
     const dbQuery = (config.dbQuery as string) || "";
     const dataSource = (config.dataSource as string) || "";
-    const tableName = (config.dbTable as string) || (config.tableName as string) || "your_table";
+    const tableName =
+      (config.dbTable as string) ||
+      (config.tableName as string) ||
+      "your_table";
 
     const lines = [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -508,9 +517,10 @@ export function generateWorkflowCode(
       // Convert template references in SQL query
       const convertedQuery = convertTemplateToJS(dbQuery);
       const hasTemplateRefs = convertedQuery.includes("${");
-      
+
       // Escape backticks and template literal syntax for SQL query
-      const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
+      const escapeForOuterTemplate = (str: string) =>
+        str.replace(/\$\{/g, "$${");
       const queryValue = hasTemplateRefs
         ? `\`${escapeForOuterTemplate(convertedQuery).replace(/`/g, "\\`")}\``
         : `\`${dbQuery.replace(/`/g, "\\`")}\``;
