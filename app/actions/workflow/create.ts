@@ -13,7 +13,7 @@ function createDefaultTriggerNode() {
   return {
     id: nanoid(),
     type: "trigger" as const,
-    position: { x: 250, y: 150 },
+    position: { x: 0, y: 0 },
     data: {
       label: "Trigger",
       description: "Start your workflow",
@@ -37,7 +37,7 @@ export async function create(
     throw new Error("Name, nodes, and edges are required");
   }
 
-  // Ensure there's always a trigger node
+  // Ensure there's always a trigger node (only add one if nodes array is empty)
   let nodes = data.nodes;
   if (nodes.length === 0) {
     nodes = [createDefaultTriggerNode()];

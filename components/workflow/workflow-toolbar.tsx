@@ -325,6 +325,19 @@ function useWorkflowState() {
     setNewWorkflowName(workflowName);
   }, [workflowName]);
 
+  // Load all workflows on mount
+  useEffect(() => {
+    const loadAllWorkflows = async () => {
+      try {
+        const workflows = await workflowApi.getAll();
+        setAllWorkflows(workflows);
+      } catch (error) {
+        console.error("Failed to load workflows:", error);
+      }
+    };
+    loadAllWorkflows();
+  }, []);
+
   return {
     nodes,
     edges,

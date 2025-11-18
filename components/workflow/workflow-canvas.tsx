@@ -112,7 +112,7 @@ export function WorkflowCanvas() {
     if (!currentWorkflowId) {
       setViewportReady(true);
       setDefaultViewport(undefined);
-      setShouldFitView(false);
+      setShouldFitView(true); // Enable fitView for landing page to center the trigger node
       viewportInitialized.current = true;
       return;
     }
