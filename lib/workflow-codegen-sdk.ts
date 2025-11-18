@@ -1,5 +1,7 @@
 import "server-only";
 
+import fs from "node:fs";
+import path from "node:path";
 import {
   ARRAY_INDEX_PATTERN,
   analyzeNodeUsage,
@@ -11,6 +13,52 @@ import {
   sanitizeVarName,
 } from "./workflow-codegen-shared";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
+
+/**
+ * Load step implementation from lib/steps/ directory
+ */
+const FUNCTION_BODY_REGEX =
+  /export\s+(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{([\s\S]*)\}/;
+
+function loadStepImplementation(actionType: string): string | null {
+  const stepFileMap: Record<string, string> = {
+    "Send Email": "send-email.ts",
+    "Send Slack Message": "send-slack-message.ts",
+    "Create Ticket": "create-ticket.ts",
+    "Find Issues": "create-ticket.ts", // Uses same file for now
+    "Generate Text": "generate-text.ts",
+    "Generate Image": "generate-image.ts",
+    "Database Query": "database-query.ts",
+    "HTTP Request": "http-request.ts",
+    Condition: "condition.ts",
+  };
+
+  const fileName = stepFileMap[actionType];
+  if (!fileName) {
+    return null;
+  }
+
+  try {
+    const stepFilePath = path.join(process.cwd(), "lib", "steps", fileName);
+    const fileContent = fs.readFileSync(stepFilePath, "utf-8");
+
+    // Extract just the function body (remove imports and export statement)
+    // This regex matches the function declaration and its body
+    const functionMatch = fileContent.match(FUNCTION_BODY_REGEX);
+
+    if (functionMatch) {
+      return functionMatch[1].trim();
+    }
+
+    return null;
+  } catch (error) {
+    console.error(
+      `Failed to load step implementation for ${actionType}:`,
+      error
+    );
+    return null;
+  }
+}
 
 /**
  * Process new format ID references (@nodeId:DisplayName)
@@ -109,7 +157,7 @@ function convertTemplateToJS(template: string): string {
 }
 
 // Helper to generate Send Email step body
-function generateSendEmailStepBody(
+function _generateSendEmailStepBody(
   config: Record<string, unknown>,
   imports: Set<string>
 ): string {
@@ -141,7 +189,7 @@ function generateSendEmailStepBody(
 }
 
 // Helper to generate Send Slack Message step body
-function generateSendSlackMessageStepBody(
+function _generateSendSlackMessageStepBody(
   config: Record<string, unknown>,
   imports: Set<string>
 ): string {
@@ -167,7 +215,7 @@ function generateSendSlackMessageStepBody(
 }
 
 // Helper to generate Create Ticket step body
-function generateCreateTicketStepBody(
+function _generateCreateTicketStepBody(
   config: Record<string, unknown>,
   imports: Set<string>
 ): string {
@@ -194,7 +242,7 @@ function generateCreateTicketStepBody(
 }
 
 // Helper to generate Generate Text step body
-function generateGenerateTextStepBody(
+function _generateGenerateTextStepBody(
   config: Record<string, unknown>,
   imports: Set<string>
 ): string {
@@ -221,7 +269,7 @@ function generateGenerateTextStepBody(
 }
 
 // Helper to generate Generate Image step body
-function generateGenerateImageStepBody(
+function _generateGenerateImageStepBody(
   config: Record<string, unknown>,
   imports: Set<string>
 ): string {
@@ -247,7 +295,7 @@ function generateGenerateImageStepBody(
 }
 
 // Helper to generate Database Query step body
-function generateDatabaseQueryStepBody(
+function _generateDatabaseQueryStepBody(
   config: Record<string, unknown>
 ): string {
   const dbQuery = (config.dbQuery as string) || "SELECT 1";
@@ -272,7 +320,7 @@ function generateDatabaseQueryStepBody(
 }
 
 // Helper to generate HTTP Request step body
-function generateHTTPRequestStepBody(config: Record<string, unknown>): string {
+function _generateHTTPRequestStepBody(config: Record<string, unknown>): string {
   let headersCode = "'Content-Type': 'application/json'";
   if (config.httpHeaders) {
     try {
@@ -394,45 +442,124 @@ export function generateWorkflowSDKCode(
 
     let stepBody = "";
 
-    switch (node.data.type) {
-      case "action":
-        switch (actionType) {
-          case "Send Email":
-            stepBody = generateSendEmailStepBody(config, imports);
-            break;
-          case "Send Slack Message":
-            stepBody = generateSendSlackMessageStepBody(config, imports);
-            break;
-          case "Create Ticket":
-            stepBody = generateCreateTicketStepBody(config, imports);
-            break;
-          case "Generate Text":
-            stepBody = generateGenerateTextStepBody(config, imports);
-            break;
-          case "Generate Image":
-            stepBody = generateGenerateImageStepBody(config, imports);
-            break;
-          case "Database Query":
-            stepBody = generateDatabaseQueryStepBody(config);
-            break;
-          case "HTTP Request":
-            stepBody = generateHTTPRequestStepBody(config);
-            break;
-          case "Condition":
-            stepBody = `  // Evaluate condition
-  const condition = ${config.condition || "true"};
-  console.log('Condition evaluated:', condition);
-  return { condition };`;
-            break;
-          default:
-            stepBody = `  console.log('Executing ${node.data.label}');
-  return { success: true };`;
-        }
-        break;
+    // Try to load implementation from lib/steps/
+    const stepImplementation = loadStepImplementation(actionType);
 
-      default:
-        stepBody = `  console.log('Executing ${node.data.label}');
-  return input;`;
+    if (stepImplementation && node.data.type === "action") {
+      // Build the input object with processed config values
+      const inputParams: string[] = [];
+
+      // Map config fields to step function parameters
+      switch (actionType) {
+        case "Send Email":
+          imports.add("import { Resend } from 'resend';");
+          inputParams.push(
+            `fromEmail: process.env.RESEND_FROM_EMAIL || 'noreply@example.com'`
+          );
+          inputParams.push(
+            `emailTo: \`${convertTemplateToJS((config.emailTo as string) || "user@example.com")}\``
+          );
+          inputParams.push(
+            `emailSubject: \`${convertTemplateToJS((config.emailSubject as string) || "Notification")}\``
+          );
+          inputParams.push(
+            `emailBody: \`${convertTemplateToJS((config.emailBody as string) || "No content")}\``
+          );
+          inputParams.push("apiKey: process.env.RESEND_API_KEY!");
+          break;
+
+        case "Send Slack Message":
+          imports.add("import { WebClient } from '@slack/web-api';");
+          inputParams.push(
+            `slackChannel: \`${convertTemplateToJS((config.slackChannel as string) || "#general")}\``
+          );
+          inputParams.push(
+            `slackMessage: \`${convertTemplateToJS((config.slackMessage as string) || "No message")}\``
+          );
+          inputParams.push("apiKey: process.env.SLACK_API_KEY!");
+          break;
+
+        case "Create Ticket":
+          imports.add("import { LinearClient } from '@linear/sdk';");
+          inputParams.push(
+            `ticketTitle: \`${convertTemplateToJS((config.ticketTitle as string) || "New Issue")}\``
+          );
+          inputParams.push(
+            `ticketDescription: \`${convertTemplateToJS((config.ticketDescription as string) || "")}\``
+          );
+          inputParams.push("apiKey: process.env.LINEAR_API_KEY!");
+          if (config.teamId) {
+            inputParams.push(`teamId: "${config.teamId}"`);
+          }
+          break;
+
+        case "Generate Text": {
+          imports.add("import { generateText } from 'ai';");
+          const modelId = (config.aiModel as string) || "gpt-4o-mini";
+          const provider =
+            modelId.startsWith("gpt-") || modelId.startsWith("o1-")
+              ? "openai"
+              : "anthropic";
+          inputParams.push(`model: "${provider}/${modelId}"`);
+          inputParams.push(
+            `prompt: \`${convertTemplateToJS((config.aiPrompt as string) || "")}\``
+          );
+          inputParams.push("apiKey: process.env.OPENAI_API_KEY!");
+          break;
+        }
+
+        case "Generate Image": {
+          imports.add("import OpenAI from 'openai';");
+          const imageModel = (config.imageModel as string) || "dall-e-3";
+          inputParams.push(`model: "${imageModel}"`);
+          inputParams.push(
+            `prompt: \`${convertTemplateToJS((config.imagePrompt as string) || "")}\``
+          );
+          inputParams.push("apiKey: process.env.OPENAI_API_KEY!");
+          break;
+        }
+
+        case "Database Query":
+          inputParams.push(
+            `query: \`${convertTemplateToJS((config.dbQuery as string) || "SELECT 1")}\``
+          );
+          inputParams.push("databaseUrl: process.env.DATABASE_URL!");
+          break;
+
+        case "HTTP Request":
+          inputParams.push(
+            `url: "${config.endpoint || "https://api.example.com/endpoint"}"`
+          );
+          inputParams.push(`method: "${config.httpMethod || "POST"}"`);
+          inputParams.push(`headers: ${config.httpHeaders || "{}"}`);
+          if (config.httpBody) {
+            inputParams.push(`body: ${config.httpBody}`);
+          }
+          break;
+
+        case "Condition":
+          inputParams.push(
+            `condition: ${convertTemplateToJS((config.condition as string) || "true")}`
+          );
+          break;
+
+        default:
+          // Unknown action type - no special input params needed
+          break;
+      }
+
+      // Wrap the step body with proper input construction
+      stepBody = `  // Call step function with constructed input
+  const stepInput = {
+    ${inputParams.join(",\n    ")}
+  };
+
+  // Execute step implementation
+  ${stepImplementation}`;
+    } else {
+      // Fallback to default implementation
+      stepBody = `  console.log('Executing ${label}');
+  return { success: true };`;
     }
 
     return `async function ${stepName}(input: Record<string, unknown> & { outputs?: Record<string, { label: string; data: unknown }> }) {
