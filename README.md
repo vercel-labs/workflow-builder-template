@@ -64,21 +64,25 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 ## Workflow Types
 
 ### Trigger Nodes
+
 - Webhook
 - Schedule
 - Manual
 - Database Event
 
 ### Action Nodes
+
 - **Send Email** - Send emails via Resend
 - **Create Ticket** - Create Linear tickets
 - **Database Query** - Query or update PostgreSQL
 - **HTTP Request** - Call external APIs
 
 ### Condition Nodes
+
 - Conditional branching based on data
 
 ### Transform Nodes
+
 - Data transformation and mapping
 
 ## Code Generation
@@ -86,22 +90,20 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 Workflows can be converted to executable TypeScript code with the `"use workflow"` directive:
 
 ```typescript
-export async function welcome(userId: string) {
+export async function welcome(email: string, name: string, plan: string) {
   "use workflow";
-  
-  const user = await getUser(userId);
-  
+
   const { subject, body } = await generateEmail({
-    name: user.name,
-    plan: user.plan
+    name,
+    plan,
   });
-  
+
   const { status } = await sendEmail({
-    to: user.email,
+    to: email,
     subject,
     body,
   });
-  
+
   return { status, subject, body };
 }
 ```
@@ -114,6 +116,7 @@ GET /api/workflows/{id}/generate-code
 ```
 
 The generated code includes:
+
 - Type-safe TypeScript
 - Real integration calls
 - Error handling
@@ -122,6 +125,7 @@ The generated code includes:
 ## API Endpoints
 
 ### Workflow Management
+
 - `GET /api/workflows` - List all workflows
 - `POST /api/workflows` - Create a new workflow
 - `GET /api/workflows/{id}` - Get workflow by ID
@@ -129,20 +133,24 @@ The generated code includes:
 - `DELETE /api/workflows/{id}` - Delete workflow
 
 ### Workflow Execution
+
 - `POST /api/workflows/{id}/execute` - Execute a workflow
 - `GET /api/workflows/{id}/executions` - Get execution history
 - `GET /api/workflows/executions/{executionId}/logs` - Get detailed execution logs
 
 ### Code Generation
+
 - `GET /api/workflows/{id}/generate-code` - Generate TypeScript code
 - `POST /api/workflows/{id}/generate-code` - Generate with custom options
 
 ### AI Generation
+
 - `POST /api/ai/generate-workflow` - Generate workflow from prompt
 
 ## Database Schema
 
 ### Tables
+
 - `user` - User accounts
 - `session` - User sessions
 - `workflows` - Workflow definitions
@@ -178,50 +186,54 @@ pnpm db:studio    # Open Drizzle Studio
 ## Integrations
 
 ### Resend (Email)
+
 Send transactional emails with Resend's API.
 
 ```typescript
-import { sendEmail } from '@/lib/integrations/resend';
+import { sendEmail } from "@/lib/integrations/resend";
 
 await sendEmail({
-  to: 'user@example.com',
-  subject: 'Welcome!',
-  body: 'Welcome to our platform',
+  to: "user@example.com",
+  subject: "Welcome!",
+  body: "Welcome to our platform",
 });
 ```
 
 ### Linear (Tickets)
+
 Create and manage Linear issues.
 
 ```typescript
-import { createTicket } from '@/lib/integrations/linear';
+import { createTicket } from "@/lib/integrations/linear";
 
 await createTicket({
-  title: 'Bug Report',
-  description: 'Something is broken',
+  title: "Bug Report",
+  description: "Something is broken",
   priority: 1,
 });
 ```
 
 ### PostgreSQL
+
 Direct database access for queries and updates.
 
 ```typescript
-import { queryData } from '@/lib/integrations/database';
+import { queryData } from "@/lib/integrations/database";
 
-await queryData('users', { email: 'user@example.com' });
+await queryData("users", { email: "user@example.com" });
 ```
 
 ### External APIs
+
 Make HTTP requests to any API.
 
 ```typescript
-import { callApi } from '@/lib/integrations/api';
+import { callApi } from "@/lib/integrations/api";
 
 await callApi({
-  url: 'https://api.example.com/endpoint',
-  method: 'POST',
-  body: { data: 'value' },
+  url: "https://api.example.com/endpoint",
+  method: "POST",
+  body: { data: "value" },
 });
 ```
 

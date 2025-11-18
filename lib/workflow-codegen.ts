@@ -63,7 +63,9 @@ export function generateWorkflowCode(
 
   // Helper functions to generate code for different action types
   function generateEmailActionCode(indent: string, varName: string): string[] {
-    imports.add("import { sendEmail, generateEmail } from './integrations';");
+    imports.add(
+      "import { sendEmail, generateEmail } from './integrations/resend';"
+    );
     return [
       `${indent}const ${varName} = await sendEmail({`,
       `${indent}  to: input.email as string,`,
@@ -74,7 +76,7 @@ export function generateWorkflowCode(
   }
 
   function generateTicketActionCode(indent: string, varName: string): string[] {
-    imports.add("import { createTicket } from './integrations';");
+    imports.add("import { createTicket } from './integrations/linear';");
     return [
       `${indent}const ${varName} = await createTicket({`,
       `${indent}  title: input.title as string || 'New Ticket',`,
@@ -88,7 +90,7 @@ export function generateWorkflowCode(
     varName: string
   ): string[] {
     imports.add(
-      "import { executeQuery, insertData, queryData } from './integrations';"
+      "import { executeQuery, insertData, queryData } from './integrations/database';"
     );
     return [`${indent}const ${varName} = await queryData('your_table', {});`];
   }
@@ -98,7 +100,7 @@ export function generateWorkflowCode(
     varName: string,
     endpoint?: string
   ): string[] {
-    imports.add("import { callApi } from './integrations';");
+    imports.add("import { callApi } from './integrations/api';");
     return [
       `${indent}const ${varName} = await callApi({`,
       `${indent}  url: '${endpoint || "https://api.example.com/endpoint"}',`,
@@ -196,7 +198,6 @@ export function generateWorkflowCode(
       lines.push(`${indent}// ${node.data.description}`);
     }
     lines.push(`${indent}const ${varName} = { triggered: true, data: input };`);
-    imports.add("import { getUser } from './integrations';");
     return lines;
   }
 
