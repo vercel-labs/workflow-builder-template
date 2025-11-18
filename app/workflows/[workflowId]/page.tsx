@@ -24,6 +24,7 @@ import {
   nodesAtom,
   selectedNodeAtom,
   updateNodeDataAtom,
+  type WorkflowNode,
   workflowNotFoundAtom,
 } from "@/lib/workflow-store";
 
@@ -116,7 +117,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setHasUnsavedChanges(false);
       setWorkflowNotFound(false);
 
-      const selectedNode = workflow.nodes.find((n) => n.selected);
+      const selectedNode = workflow.nodes.find((n: WorkflowNode) => n.selected);
       if (selectedNode) {
         setSelectedNodeId(selectedNode.id);
       }

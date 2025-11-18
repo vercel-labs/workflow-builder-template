@@ -845,10 +845,10 @@ class ServerWorkflowExecutor {
       return this.executeHTTPRequestAction(processedConfig, endpoint);
     }
 
-    return {
+    return Promise.resolve({
       success: true,
       data: { status: 200, message: "Action executed successfully" },
-    };
+    });
   }
 
   private executeConditionNode(

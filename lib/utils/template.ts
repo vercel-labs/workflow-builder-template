@@ -274,9 +274,12 @@ function resolveExpressionById(
     const arrayMatch = part.match(ARRAY_ACCESS_PATTERN);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
-      current = (current as Record<string, unknown>)?.[field]?.[
-        Number.parseInt(index, 10)
-      ];
+      const fieldValue = (current as Record<string, unknown>)?.[field];
+      if (Array.isArray(fieldValue)) {
+        current = fieldValue[Number.parseInt(index, 10)];
+      } else {
+        current = undefined;
+      }
     } else if (Array.isArray(current)) {
       // If current is an array and we're trying to access a field,
       // map over the array and extract that field from each element
@@ -341,9 +344,12 @@ function resolveExpression(
     const arrayMatch = part.match(ARRAY_ACCESS_PATTERN);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
-      current = (current as Record<string, unknown>)?.[field]?.[
-        Number.parseInt(index, 10)
-      ];
+      const fieldValue = (current as Record<string, unknown>)?.[field];
+      if (Array.isArray(fieldValue)) {
+        current = fieldValue[Number.parseInt(index, 10)];
+      } else {
+        current = undefined;
+      }
     } else if (Array.isArray(current)) {
       // If current is an array and we're trying to access a field,
       // map over the array and extract that field from each element
