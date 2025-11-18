@@ -326,27 +326,29 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
       <WorkflowToolbar workflowId={workflowId} />
-      <main className="relative size-full overflow-hidden">
+      <main className="relative flex size-full overflow-hidden">
         <ReactFlowProvider>
-          <WorkflowCanvas />
-        </ReactFlowProvider>
+          <div className="relative flex-1 overflow-hidden">
+            <WorkflowCanvas />
 
-        {workflowNotFound && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
-              <h1 className="mb-2 font-semibold text-2xl">
-                Workflow Not Found
-              </h1>
-              <p className="mb-6 text-muted-foreground">
-                The workflow you're looking for doesn't exist or has been
-                deleted.
-              </p>
-              <Button onClick={() => router.push("/")}>New Workflow</Button>
-            </div>
+            {workflowNotFound && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
+                  <h1 className="mb-2 font-semibold text-2xl">
+                    Workflow Not Found
+                  </h1>
+                  <p className="mb-6 text-muted-foreground">
+                    The workflow you're looking for doesn't exist or has been
+                    deleted.
+                  </p>
+                  <Button onClick={() => router.push("/")}>New Workflow</Button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          <NodeConfigPanel />
+        </ReactFlowProvider>
       </main>
-      <NodeConfigPanel />
     </div>
   );
 };

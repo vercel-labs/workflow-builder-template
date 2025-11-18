@@ -64,6 +64,7 @@ import {
   isSavingAtom,
   nodesAtom,
   redoAtom,
+  selectedNodeAtom,
   showClearDialogAtom,
   showDeleteDialogAtom,
   undoAtom,
@@ -1064,6 +1065,8 @@ function WorkflowDialogsComponent({
 export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const state = useWorkflowState();
   const actions = useWorkflowActions(state);
+  const [selectedNodeId] = useAtom(selectedNodeAtom);
+  const isSidebarOpen = !!selectedNodeId;
 
   return (
     <>
@@ -1081,6 +1084,7 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
       <Panel
         className="flex flex-col-reverse items-end gap-2 border-none bg-transparent p-0 lg:flex-row lg:items-center"
         position="top-right"
+        style={isSidebarOpen ? { right: '400px' } : undefined}
       >
         <ToolbarActions
           actions={actions}

@@ -893,6 +893,7 @@ export const NodeConfigPanel = () => {
 
   return (
     <>
+      {/* Mobile: Drawer */}
       <div className="md:hidden">
         <Drawer>
           <DrawerTrigger asChild>
@@ -908,7 +909,8 @@ export const NodeConfigPanel = () => {
         </Drawer>
       </div>
 
-      <div className="absolute top-20 right-4 bottom-48 hidden w-89 flex-col rounded-lg border bg-background/80 backdrop-blur-sm md:flex">
+      {/* Desktop: Docked sidebar */}
+      <div className="hidden w-96 flex-col border-l bg-background md:flex">
         <PanelInner />
       </div>
     </>

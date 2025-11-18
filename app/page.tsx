@@ -282,13 +282,15 @@ const Home = () => {
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
-      <main className="relative size-full overflow-hidden">
+      <main className="relative flex size-full overflow-hidden">
         <ReactFlowProvider>
-          <WorkflowToolbar workflowId={currentWorkflowId ?? undefined} />
-          <WorkflowCanvas />
+          <div className="relative flex-1 overflow-hidden">
+            <WorkflowToolbar workflowId={currentWorkflowId ?? undefined} />
+            <WorkflowCanvas />
+          </div>
+          <NodeConfigPanel />
         </ReactFlowProvider>
       </main>
-      <NodeConfigPanel />
     </div>
   );
 };
