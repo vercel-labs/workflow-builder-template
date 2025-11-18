@@ -1,17 +1,16 @@
 import "server-only";
 
-import { GoogleGenAI } from "@google/genai";
-import { generateObject, generateText } from "ai";
 import { eq } from "drizzle-orm";
-import OpenAI from "openai";
 import { z } from "zod";
 import type { SchemaField } from "../components/workflow/config/schema-builder";
 import { db } from "./db";
 import { projects, workflowExecutionLogs } from "./db/schema";
-import { callApi } from "./integrations/api";
-import { createTicket, findIssues } from "./integrations/linear";
-import { sendEmail } from "./integrations/resend";
-import { sendSlackMessage } from "./integrations/slack";
+import { getStep, hasStep } from "./steps";
+import {
+  type EnvVarConfig,
+  enrichStepInput,
+  getCredentials,
+} from "./steps/credentials";
 import { type NodeOutputs, processConfigTemplates } from "./utils/template";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
@@ -31,13 +30,6 @@ export type WorkflowExecutionContext = {
   userId?: string;
   projectId?: string;
   input?: Record<string, unknown>;
-};
-
-type ProjectIntegrations = {
-  resendApiKey?: string | null;
-  resendFromEmail?: string | null;
-  linearApiKey?: string | null;
-  slackApiKey?: string | null;
 };
 
 /**
@@ -129,8 +121,8 @@ class ServerWorkflowExecutor {
   private readonly results: Map<string, ExecutionResult>;
   private readonly nodeOutputs: NodeOutputs = {};
   private readonly context: WorkflowExecutionContext;
-  private projectIntegrations: ProjectIntegrations = {};
   private readonly executionLogs: Map<string, NodeExecutionLog> = new Map();
+  private credentials: EnvVarConfig = {};
 
   constructor(
     nodes: WorkflowNode[],
@@ -184,9 +176,6 @@ class ServerWorkflowExecutor {
         const resendApiKey =
           envResult.envs.find((env) => env.key === "RESEND_API_KEY")?.value ||
           null;
-        const resendFromEmail =
-          envResult.envs.find((env) => env.key === "RESEND_FROM_EMAIL")
-            ?.value || null;
         const linearApiKey =
           envResult.envs.find((env) => env.key === "LINEAR_API_KEY")?.value ||
           null;
@@ -194,15 +183,24 @@ class ServerWorkflowExecutor {
           envResult.envs.find((env) => env.key === "SLACK_API_KEY")?.value ||
           null;
 
-        this.projectIntegrations = {
-          resendApiKey,
-          resendFromEmail,
-          linearApiKey,
-          slackApiKey,
-        };
+        // Set up credentials for step execution
+        // For test runs, use user's stored credentials
+        this.credentials = getCredentials("user", {
+          RESEND_API_KEY: resendApiKey || undefined,
+          LINEAR_API_KEY: linearApiKey || undefined,
+          SLACK_API_KEY: slackApiKey || undefined,
+          OPENAI_API_KEY:
+            envResult.envs.find((env) => env.key === "OPENAI_API_KEY")?.value ||
+            undefined,
+          DATABASE_URL:
+            envResult.envs.find((env) => env.key === "DATABASE_URL")?.value ||
+            undefined,
+        });
       }
     } catch (error) {
       console.error("Failed to load project integrations:", error);
+      // Fallback to system credentials for production
+      this.credentials = getCredentials("system");
     }
   }
 
@@ -314,541 +312,116 @@ class ServerWorkflowExecutor {
     }
   }
 
-  private async executeSendEmailAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    if (!this.projectIntegrations.resendApiKey) {
-      return {
-        success: false,
-        error: "Resend API key not configured. Please configure in settings.",
-      };
-    }
-
-    const emailParams = {
-      to: (processedConfig?.emailTo as string) || "user@example.com",
-      subject: (processedConfig?.emailSubject as string) || "Notification",
-      body: (processedConfig?.emailBody as string) || "No content",
-      apiKey: this.projectIntegrations.resendApiKey,
-      fromEmail: this.projectIntegrations.resendFromEmail || undefined,
-    };
-
-    const emailResult = await sendEmail(emailParams);
-    return {
-      success: emailResult.status === "success",
-      data: emailResult,
-      error: emailResult.status === "error" ? emailResult.error : undefined,
-    };
-  }
-
-  private async executeSendSlackMessageAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    if (!this.projectIntegrations.slackApiKey) {
-      return {
-        success: false,
-        error: "Slack API key not configured. Please configure in settings.",
-      };
-    }
-
-    const slackParams = {
-      channel: (processedConfig?.slackChannel as string) || "#general",
-      text: (processedConfig?.slackMessage as string) || "No message",
-      apiKey: this.projectIntegrations.slackApiKey,
-    };
-
-    const slackResult = await sendSlackMessage(slackParams);
-    return {
-      success: slackResult.status === "success",
-      data: slackResult,
-      error: slackResult.status === "error" ? slackResult.error : undefined,
-    };
-  }
-
-  private async executeCreateTicketAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    if (!this.projectIntegrations.linearApiKey) {
-      return {
-        success: false,
-        error: "Linear API key not configured. Please configure in settings.",
-      };
-    }
-
-    const ticketParams = {
-      title: (processedConfig?.ticketTitle as string) || "New Ticket",
-      description: (processedConfig?.ticketDescription as string) || "",
-      priority: processedConfig?.ticketPriority
-        ? Number.parseInt(processedConfig.ticketPriority as string, 10)
-        : undefined,
-      apiKey: this.projectIntegrations.linearApiKey,
-    };
-
-    const ticketResult = await createTicket(ticketParams);
-    return {
-      success: ticketResult.status === "success",
-      data: ticketResult,
-      error: ticketResult.status === "error" ? ticketResult.error : undefined,
-    };
-  }
-
-  private async executeFindIssuesAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    if (!this.projectIntegrations.linearApiKey) {
-      return {
-        success: false,
-        error: "Linear API key not configured. Please configure in settings.",
-      };
-    }
-
-    const findParams = {
-      assigneeId: processedConfig?.linearAssigneeId as string | undefined,
-      teamId: processedConfig?.linearTeamId as string | undefined,
-      status: processedConfig?.linearStatus as string | undefined,
-      label: processedConfig?.linearLabel as string | undefined,
-      apiKey: this.projectIntegrations.linearApiKey,
-    };
-
-    const findResult = await findIssues(findParams);
-    return {
-      success: findResult.status === "success",
-      data: findResult,
-      error: findResult.status === "error" ? findResult.error : undefined,
-    };
-  }
-
-  // Helper to validate database query input
-  private validateDatabaseQueryInput(
-    dbQuery: string | undefined,
-    dataSourceId: string | undefined
-  ): ExecutionResult | null {
-    if (!dbQuery || dbQuery.trim() === "") {
-      return {
-        success: false,
-        error: "SQL query is required for Database Query action",
-      };
-    }
-
-    if (!dataSourceId || dataSourceId === "") {
-      return {
-        success: false,
-        error:
-          "Data source not configured. Please add a data source in settings and select it in the action configuration.",
-      };
-    }
-
-    return null;
-  }
-
-  // Helper to validate data against schema
-  private validateAgainstSchema(
-    data: unknown,
-    dbSchema: string
-  ): ExecutionResult | null {
-    try {
-      const schemaFields = JSON.parse(dbSchema) as SchemaField[];
-      if (schemaFields.length > 0) {
-        const zodSchema = schemaFieldsToZod(schemaFields);
-
-        if (Array.isArray(data)) {
-          const validatedData = data.map((row) => zodSchema.parse(row));
-          return { success: true, data: validatedData };
-        }
-
-        const validatedData = zodSchema.parse(data);
-        return { success: true, data: validatedData };
-      }
-
-      return { success: true, data };
-    } catch (schemaError) {
-      return {
-        success: false,
-        error: `Schema validation error: ${schemaError instanceof Error ? schemaError.message : "Invalid data structure"}`,
-      };
-    }
-  }
-
-  private async executeDatabaseQueryAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    const dbQuery = processedConfig?.dbQuery as string;
-    const dataSourceId = processedConfig?.dataSourceId as string;
-    const dbSchema = processedConfig?.dbSchema as string | undefined;
-
-    // Validate input
-    const validationError = this.validateDatabaseQueryInput(
-      dbQuery,
-      dataSourceId
-    );
-    if (validationError) {
-      return validationError;
-    }
-
-    // Execute query
-    const { executeQuery } = await import("./integrations/database");
-    const dbResult = await executeQuery({ query: dbQuery });
-
-    // Handle validation with schema
-    if (dbSchema && dbResult.status === "success") {
-      const schemaResult = this.validateAgainstSchema(dbResult.data, dbSchema);
-      if (schemaResult) {
-        return schemaResult;
-      }
-    }
-
-    // Return result
-    if (dbResult.status === "success") {
-      return { success: true, data: dbResult.data };
-    }
-
-    return {
-      success: false,
-      data: undefined,
-      error: dbResult.error,
-    };
-  }
-
-  // Helper to log Generate Text action debug info
-  private logGenerateTextDebugInfo(nodeConfig: Record<string, unknown>): void {
-    console.log("[Executor] ===== GENERATE TEXT ACTION =====");
-    console.log(
-      "[Executor] Original aiPrompt (before processing):",
-      nodeConfig.aiPrompt
-    );
-    console.log(
-      "[Executor] Available node outputs:",
-      Object.entries(this.nodeOutputs).map(([id, output]) => ({
-        id,
-        label: output.label,
-        dataPreview: JSON.stringify(output.data).substring(0, 200),
-      }))
-    );
-  }
-
-  // Helper to get model string from model ID
-  private getModelString(modelId: string): string {
-    if (modelId.startsWith("gpt-") || modelId.startsWith("o1-")) {
-      return `openai/${modelId}`;
-    }
-    if (modelId.startsWith("claude-")) {
-      return `anthropic/${modelId}`;
-    }
-    return modelId;
-  }
-
-  // Helper to generate object with schema
-  private async generateObjectWithSchema(
-    modelString: string,
-    prompt: string,
-    aiSchema: string
-  ): Promise<ExecutionResult> {
-    try {
-      const schemaFields = JSON.parse(aiSchema) as SchemaField[];
-      const zodSchema = schemaFieldsToZod(schemaFields);
-
-      const { object } = await generateObject({
-        model: modelString,
-        schema: zodSchema,
-        prompt,
-      });
-
-      return { success: true, data: object };
-    } catch (schemaError) {
-      return {
-        success: false,
-        error: `Schema error: ${schemaError instanceof Error ? schemaError.message : "Invalid schema"}`,
-      };
-    }
-  }
-
-  private async executeGenerateTextAction(
-    nodeConfig: Record<string, unknown>,
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    this.logGenerateTextDebugInfo(nodeConfig);
-
-    try {
-      const modelId = (processedConfig?.aiModel as string) || "gpt-4o-mini";
-      const prompt = (processedConfig?.aiPrompt as string) || "";
-      const aiFormat = (processedConfig?.aiFormat as string) || "text";
-      const aiSchema = processedConfig?.aiSchema as string | undefined;
-
-      console.log("[Executor] Using model ID:", modelId);
-      console.log(
-        "[Executor] Processed prompt (after template processing):",
-        prompt
-      );
-
-      if (!prompt) {
-        return {
-          success: false,
-          error: "Prompt is required for Generate Text action",
-        };
-      }
-
-      const modelString = this.getModelString(modelId);
-
-      // Handle object format with schema
-      if (aiFormat === "object" && aiSchema) {
-        return await this.generateObjectWithSchema(
-          modelString,
-          prompt,
-          aiSchema
-        );
-      }
-
-      // Generate text
-      const { text } = await generateText({
-        model: modelString,
-        prompt,
-      });
-
-      return {
-        success: true,
-        data: { text, model: modelId },
-      };
-    } catch (error) {
-      console.error("[Executor] Generate Text error:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to generate text",
-      };
-    }
-  }
-
-  private async executeGenerateImageAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    console.log("[Executor] ===== GENERATE IMAGE ACTION =====");
-
-    try {
-      const modelId =
-        (processedConfig?.imageModel as string) || "openai/dall-e-3";
-      const prompt = (processedConfig?.imagePrompt as string) || "";
-
-      if (!prompt) {
-        return {
-          success: false,
-          error: "Prompt is required for Generate Image action",
-        };
-      }
-
-      const [provider, modelName] = modelId.split("/");
-      let base64Image: string;
-
-      if (provider === "openai") {
-        const openai = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-          baseURL: process.env.AI_GATEWAY_URL,
-        });
-
-        const response = await openai.images.generate({
-          model: modelName,
-          prompt,
-          n: 1,
-          response_format: "b64_json",
-        });
-
-        if (!response.data?.[0]?.b64_json) {
-          throw new Error("No image data in OpenAI response");
-        }
-
-        base64Image = response.data[0].b64_json;
-      } else if (provider === "google") {
-        const genai = new GoogleGenAI({
-          apiKey: process.env.GOOGLE_API_KEY,
-        });
-
-        const response = await genai.models.generateContent({
-          model: modelName,
-          contents: prompt,
-        });
-
-        const imagePart = response.candidates?.[0]?.content?.parts?.find(
-          (part) => part.inlineData
-        );
-
-        if (imagePart?.inlineData?.data) {
-          base64Image = imagePart.inlineData.data;
-        } else {
-          throw new Error("No image data in Google response");
-        }
-      } else {
-        return {
-          success: false,
-          error: `Unsupported provider: ${provider}. Use "openai" or "google".`,
-        };
-      }
-
-      return {
-        success: true,
-        data: { base64: base64Image, model: modelId },
-      };
-    } catch (error) {
-      console.error("[Executor] Generate Image error:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to generate image",
-      };
-    }
-  }
-
-  private async executeCodeAction(
-    processedConfig: Record<string, unknown>
-  ): Promise<ExecutionResult> {
-    console.log("[Executor] ===== EXECUTE CODE ACTION =====");
-
-    try {
-      const code = (processedConfig?.code as string) || "";
-      const _codeLanguage =
-        (processedConfig?.codeLanguage as string) || "javascript";
-
-      if (code.trim() === "") {
-        return {
-          success: false,
-          error: "Code is required for Execute Code action",
-        };
-      }
-
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Required to get AsyncFunction constructor
-      const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
-
-      const safeContext = {
-        outputs: this.nodeOutputs,
-        console: {
-          log: (...args: unknown[]) => {
-            console.log("[UserCode]", ...args);
-          },
-          error: (...args: unknown[]) => {
-            console.error("[UserCode]", ...args);
-          },
-          warn: (...args: unknown[]) => {
-            console.warn("[UserCode]", ...args);
-          },
-        },
-      };
-
-      const userFunction = new (
-        AsyncFunction as new (
-          ...params: string[]
-        ) => (...values: unknown[]) => Promise<unknown>
-      )(
-        "outputs",
-        "console",
-        `
-        "use strict";
-        ${code}
-      `
-      );
-
-      const executionResult = await userFunction(
-        safeContext.outputs,
-        safeContext.console
-      );
-
-      return { success: true, data: executionResult };
-    } catch (error) {
-      console.error("[Executor] Execute Code error:", error);
-      return {
-        success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to execute code",
-      };
-    }
-  }
-
-  private async executeHTTPRequestAction(
-    processedConfig: Record<string, unknown>,
-    endpoint?: string
-  ): Promise<ExecutionResult> {
-    const httpMethod = (processedConfig?.httpMethod as string) || "POST";
-    const httpHeaders = processedConfig?.httpHeaders
-      ? JSON.parse((processedConfig.httpHeaders as string) || "{}")
-      : {};
-    let httpBody = processedConfig?.httpBody
-      ? JSON.parse((processedConfig.httpBody as string) || "{}")
-      : this.context.input;
-
-    if (httpMethod === "GET") {
-      httpBody = undefined;
-    }
-
-    const apiResult = await callApi({
-      url: endpoint || "https://api.example.com/endpoint",
-      method: httpMethod as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
-      headers: httpHeaders,
-      body: httpBody,
-    });
-
-    return {
-      success: apiResult.status === "success",
-      data: apiResult,
-      error: apiResult.status === "error" ? apiResult.error : undefined,
-    };
-  }
-
-  private executeActionNode(
-    node: WorkflowNode,
+  private async executeActionNode(
+    _node: WorkflowNode,
     actionType: string,
-    nodeConfig: Record<string, unknown>,
+    _nodeConfig: Record<string, unknown>,
     processedConfig: Record<string, unknown>
   ): Promise<ExecutionResult> {
-    const endpoint = processedConfig?.endpoint as string;
+    try {
+      // Check if we have a step function for this action type
+      if (hasStep(actionType)) {
+        const stepFn = getStep(actionType);
+        if (!stepFn) {
+          return {
+            success: false,
+            error: `Step function not found for action type: ${actionType}`,
+          };
+        }
 
-    if (
-      actionType === "Send Email" ||
-      node.data.label.toLowerCase().includes("email")
-    ) {
-      return this.executeSendEmailAction(processedConfig);
+        // Enrich the processed config with credentials
+        const enrichedInput = enrichStepInput(
+          actionType,
+          processedConfig,
+          this.credentials
+        );
+
+        console.log(`[Executor] Executing step: ${actionType}`);
+        console.log("[Executor] Enriched input:", enrichedInput);
+
+        // Execute the step function
+        const result = await stepFn(enrichedInput);
+
+        return {
+          success: true,
+          data: result,
+        };
+      }
+
+      // Fallback for actions without step functions
+      return {
+        success: true,
+        data: { status: 200, message: "Action executed successfully" },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  private buildConditionVariables(): {
+    idToVarName: Map<string, string>;
+  } {
+    const idToVarName = new Map<string, string>();
+
+    for (const [nodeId, output] of Object.entries(this.nodeOutputs)) {
+      // Create a safe variable name from the node label, or use node ID if label is empty
+      const baseName = output.label.trim() || `node_${nodeId}`;
+      const varName = baseName.replace(/[^a-zA-Z0-9_$]/g, "_");
+
+      // Store mapping for node ID
+      idToVarName.set(nodeId, varName);
     }
 
-    if (
-      actionType === "Send Slack Message" ||
-      node.data.label.toLowerCase().includes("slack")
-    ) {
-      return this.executeSendSlackMessageAction(processedConfig);
+    return { idToVarName };
+  }
+
+  private transformConditionExpression(
+    condition: string,
+    labelToVarName: Map<string, string>,
+    idToVarName: Map<string, string>
+  ): string {
+    let transformedCondition = condition;
+
+    // First, handle template syntax: {{@nodeId:Label.field}} or {{@nodeId:Label}}
+    const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
+    transformedCondition = transformedCondition.replace(
+      templatePattern,
+      (match, nodeId, rest) => {
+        // Get the variable name for this node ID
+        const varName = idToVarName.get(nodeId);
+        if (!varName) {
+          console.warn(
+            `[Executor] Node ID "${nodeId}" not found in outputs, keeping original: ${match}`
+          );
+          return match;
+        }
+
+        // Check if there's a field path after the label
+        const dotIndex = rest.indexOf(".");
+        if (dotIndex === -1) {
+          // No field path, just return the variable
+          return varName;
+        }
+
+        // Extract field path (everything after the first dot, which comes after the label)
+        const fieldPath = rest.substring(dotIndex + 1);
+        return `${varName}.${fieldPath}`;
+      }
+    );
+
+    // Then handle node label references (legacy format)
+    for (const [label, varName] of labelToVarName.entries()) {
+      // Escape special regex characters in the label
+      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Replace the label with the variable name (word boundary to avoid partial matches)
+      const regex = new RegExp(`\\b${escapedLabel}\\b`, "g");
+      transformedCondition = transformedCondition.replace(regex, varName);
     }
 
-    if (
-      actionType === "Create Ticket" ||
-      node.data.label.toLowerCase().includes("ticket")
-    ) {
-      return this.executeCreateTicketAction(processedConfig);
-    }
-
-    if (actionType === "Find Issues") {
-      return this.executeFindIssuesAction(processedConfig);
-    }
-
-    if (
-      actionType === "Database Query" ||
-      node.data.label.toLowerCase().includes("database")
-    ) {
-      return this.executeDatabaseQueryAction(processedConfig);
-    }
-
-    if (actionType === "Generate Text") {
-      return this.executeGenerateTextAction(nodeConfig, processedConfig);
-    }
-
-    if (actionType === "Generate Image") {
-      return this.executeGenerateImageAction(processedConfig);
-    }
-
-    if (actionType === "Execute Code") {
-      return this.executeCodeAction(processedConfig);
-    }
-
-    if (actionType === "HTTP Request" || endpoint) {
-      return this.executeHTTPRequestAction(processedConfig, endpoint);
-    }
-
-    return Promise.resolve({
-      success: true,
-      data: { status: 200, message: "Action executed successfully" },
-    });
+    return transformedCondition;
   }
 
   private executeConditionNode(
@@ -864,17 +437,47 @@ class ServerWorkflowExecutor {
     }
 
     try {
+      // Process the condition expression to replace template variables
+      const { idToVarName } = this.buildConditionVariables();
+      const transformedCondition = this.transformConditionExpression(
+        condition,
+        new Map(), // labelToVarName not needed anymore
+        idToVarName
+      );
+
+      console.log("[Executor] Original condition:", condition);
+      console.log("[Executor] Transformed condition:", transformedCondition);
+
+      // Use a simple safe evaluator for the condition
+      // We'll evaluate the transformed expression directly
       let conditionResult = false;
-      const trimmed = condition.trim();
+      const trimmed = transformedCondition.trim();
 
       if (trimmed === "true") {
         conditionResult = true;
       } else if (trimmed === "false") {
         conditionResult = false;
       } else {
+        // For more complex conditions, we need to safely evaluate them
+        // Create a safe evaluation context with node outputs
+        const evalContext: Record<string, unknown> = {};
+        for (const [nodeId, output] of Object.entries(this.nodeOutputs)) {
+          const varName = idToVarName.get(nodeId);
+          if (varName) {
+            evalContext[varName] = output.data;
+          }
+        }
+
+        // Use a simple expression evaluator
+        // For now, we'll use Function but pass data as parameters (safer than building code strings)
         try {
-          const evalFn = new Function(`"use strict"; return (${condition});`);
-          conditionResult = Boolean(evalFn());
+          const paramNames = Object.keys(evalContext);
+          const paramValues = Object.values(evalContext);
+          const evalFn = new Function(
+            ...paramNames,
+            `return (${transformedCondition});`
+          );
+          conditionResult = Boolean(evalFn(...paramValues));
         } catch (evalError) {
           console.error("[Executor] Condition evaluation error:", evalError);
           return {
@@ -903,6 +506,7 @@ class ServerWorkflowExecutor {
     configToProcess.actionType = undefined;
     configToProcess.aiModel = undefined;
     configToProcess.imageModel = undefined;
+    configToProcess.condition = undefined; // Don't process condition - we'll handle it specially
 
     const processedConfig = processConfigTemplates(
       configToProcess as Record<string, unknown>,
@@ -916,6 +520,9 @@ class ServerWorkflowExecutor {
     }
     if (nodeConfig.imageModel) {
       processedConfig.imageModel = nodeConfig.imageModel;
+    }
+    if (nodeConfig.condition) {
+      processedConfig.condition = nodeConfig.condition; // Keep original condition
     }
 
     return processedConfig;

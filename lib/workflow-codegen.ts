@@ -472,26 +472,6 @@ export function generateWorkflowCode(
     ];
   }
 
-  function generateExecuteCodeActionCode(
-    node: WorkflowNode,
-    indent: string,
-    varName: string
-  ): string[] {
-    imports.add("import { executeCode } from './integrations/code';");
-    const code =
-      (node.data.config?.code as string) || "return { result: 'success' }";
-    const codeLanguage =
-      (node.data.config?.codeLanguage as string) || "javascript";
-
-    return [
-      `${indent}// Execute ${codeLanguage} code`,
-      `${indent}const ${varName} = await executeCode({`,
-      `${indent}  language: "${codeLanguage}",`,
-      `${indent}  code: \`${code}\`,`,
-      `${indent}});`,
-    ];
-  }
-
   function generateLinearActionCode(indent: string, varName: string): string[] {
     imports.add("import { createLinearIssue } from './integrations/linear';");
     return [
@@ -612,10 +592,6 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
       );
-    } else if (actionType === "Execute Code") {
-      lines.push(
-        ...wrapActionCall(generateExecuteCodeActionCode(node, indent, varName))
-      );
     } else if (actionType === "HTTP Request" || endpoint) {
       lines.push(
         ...wrapActionCall(generateHTTPActionCode(indent, varName, endpoint))
@@ -646,10 +622,6 @@ export function generateWorkflowCode(
     } else if (label.includes("database")) {
       lines.push(
         ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
-      );
-    } else if (label.includes("execute code")) {
-      lines.push(
-        ...wrapActionCall(generateExecuteCodeActionCode(node, indent, varName))
       );
     } else if (label.includes("ticket")) {
       lines.push(...wrapActionCall(generateTicketActionCode(indent, varName)));

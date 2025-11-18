@@ -41,13 +41,6 @@ const actions: ActionType[] = [
     icon: Database,
   },
   {
-    id: "Execute Code",
-    label: "Execute Code",
-    description: "Run custom JavaScript code",
-    category: "System",
-    icon: Settings,
-  },
-  {
     id: "Condition",
     label: "Condition",
     description: "Branch based on a condition",

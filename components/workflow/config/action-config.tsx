@@ -572,66 +572,6 @@ function GenerateImageFields({
   );
 }
 
-// Execute Code fields component
-function ExecuteCodeFields({
-  config,
-  onUpdateConfig,
-  disabled,
-}: {
-  config: Record<string, unknown>;
-  onUpdateConfig: (key: string, value: string) => void;
-  disabled: boolean;
-}) {
-  return (
-    <>
-      <div className="space-y-2">
-        <Label htmlFor="codeLanguage">Language</Label>
-        <Select
-          disabled={disabled}
-          onValueChange={(value) => onUpdateConfig("codeLanguage", value)}
-          value={(config?.codeLanguage as string) || "javascript"}
-        >
-          <SelectTrigger className="w-full" id="codeLanguage">
-            <SelectValue placeholder="Select language" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="javascript">JavaScript</SelectItem>
-            <SelectItem value="typescript">TypeScript</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="code">Code</Label>
-        <div className="overflow-hidden rounded-md border">
-          <CodeEditor
-            defaultLanguage={(config?.codeLanguage as string) || "javascript"}
-            height="300px"
-            onChange={(value) => onUpdateConfig("code", value || "")}
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-              fontSize: 12,
-              readOnly: disabled,
-              wordWrap: "off",
-            }}
-            value={(config?.code as string) || ""}
-          />
-        </div>
-        <p className="text-muted-foreground text-xs">
-          Write your code here. Access previous node outputs using the{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">outputs</code>{" "}
-          object (e.g.,{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-xs">
-            outputs.NodeName
-          </code>
-          ). Return a value to use it in subsequent nodes.
-        </p>
-      </div>
-    </>
-  );
-}
-
 // Condition fields component
 function ConditionFields({
   config,
@@ -711,7 +651,6 @@ export function ActionConfig({
               </SelectLabel>
               <SelectItem value="HTTP Request">HTTP Request</SelectItem>
               <SelectItem value="Database Query">Database Query</SelectItem>
-              <SelectItem value="Execute Code">Execute Code</SelectItem>
               <SelectItem value="Condition">Condition</SelectItem>
             </SelectGroup>
             <SelectGroup>
@@ -838,15 +777,6 @@ export function ActionConfig({
       {/* Generate Image fields */}
       {config?.actionType === "Generate Image" && (
         <GenerateImageFields
-          config={config}
-          disabled={disabled}
-          onUpdateConfig={onUpdateConfig}
-        />
-      )}
-
-      {/* Execute Code fields */}
-      {config?.actionType === "Execute Code" && (
-        <ExecuteCodeFields
           config={config}
           disabled={disabled}
           onUpdateConfig={onUpdateConfig}
