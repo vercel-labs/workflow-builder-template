@@ -194,8 +194,7 @@ export async function findIssues(
     const client = new LinearClient({ apiKey: params.apiKey });
 
     // Build filter object
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filter: any = {};
+    const filter: Record<string, unknown> = {};
 
     if (params.assigneeId) {
       filter.assignee = { id: { eq: params.assigneeId } };

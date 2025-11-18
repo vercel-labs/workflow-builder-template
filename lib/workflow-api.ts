@@ -16,22 +16,22 @@ let autosaveTimeout: NodeJS.Timeout | null = null;
 
 export const workflowApi = {
   // Get all workflows
-  async getAll(): Promise<SavedWorkflow[]> {
+  getAll(): Promise<SavedWorkflow[]> {
     return getAll();
   },
 
   // Get a specific workflow
-  async getById(id: string): Promise<SavedWorkflow | null> {
+  getById(id: string): Promise<SavedWorkflow | null> {
     return get(id);
   },
 
   // Create a new workflow
-  async create(_workflow: Omit<WorkflowData, "id">): Promise<SavedWorkflow> {
+  create(_workflow: Omit<WorkflowData, "id">): Promise<SavedWorkflow> {
     return create(_workflow);
   },
 
   // Update a workflow
-  async update(
+  update(
     _id: string,
     _workflow: Partial<WorkflowData>
   ): Promise<SavedWorkflow> {
@@ -39,12 +39,12 @@ export const workflowApi = {
   },
 
   // Delete a workflow
-  async delete(id: string): Promise<void> {
+  delete(id: string): Promise<void> {
     return deleteWorkflow(id);
   },
 
   // Get current workflow state
-  async getCurrent(): Promise<WorkflowData> {
+  getCurrent(): Promise<WorkflowData> {
     return getCurrent();
   },
 

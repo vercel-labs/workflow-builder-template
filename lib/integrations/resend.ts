@@ -63,11 +63,11 @@ export async function sendEmail(
 /**
  * Generate email content using AI
  */
-export async function generateEmail(params: {
+export function generateEmail(params: {
   name: string;
   plan?: string;
   context?: string;
-}): Promise<{ subject: string; body: string }> {
+}): { subject: string; body: string } {
   // This could integrate with OpenAI or another LLM
   // For now, return a template-based approach
   const { name, plan = "Free", context = "welcome" } = params;

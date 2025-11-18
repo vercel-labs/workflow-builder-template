@@ -5,6 +5,11 @@ import ms from "ms";
 import { generateWorkflowSDKCode } from "./workflow-codegen-sdk";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
+// Regex constants for deployment URL extraction
+const HTTPS_URL_PATTERN = /https:\/\/[^\s]+/;
+const VERCEL_APP_URL_PATTERN = /https:\/\/[^\s]+\.vercel\.app/;
+const NUMERIC_START_PATTERN = /^[0-9]/;
+
 export type DeploymentOptions = {
   workflows: Array<{
     id: string;
@@ -24,6 +29,149 @@ export type DeploymentResult = {
   logs?: string[];
 };
 
+// Helper function to create sandbox config
+function createSandboxConfig(options: DeploymentOptions) {
+  const sandboxConfig: {
+    token: string;
+    resources: { vcpus: number };
+    timeout: number;
+    ports: number[];
+    runtime: "node22";
+    teamId?: string;
+    projectId?: string;
+  } = {
+    token: options.vercelToken,
+    resources: { vcpus: 4 },
+    timeout: ms("10m"),
+    ports: [3000],
+    runtime: "node22",
+  };
+
+  if (options.vercelTeamId) {
+    sandboxConfig.teamId = options.vercelTeamId;
+  }
+
+  if (options.vercelProjectId) {
+    sandboxConfig.projectId = options.vercelProjectId;
+  }
+
+  return sandboxConfig;
+}
+
+// Helper function to handle sandbox creation errors
+function handleSandboxError(sandboxError: unknown): never {
+  const errorMsg =
+    sandboxError instanceof Error ? sandboxError.message : String(sandboxError);
+
+  if (errorMsg.includes("404")) {
+    throw new Error(
+      "Failed to create Vercel Sandbox (404). Please verify:\n" +
+        "1. Your Vercel API token is valid and has the correct permissions\n" +
+        "2. Your team ID is correct (if using a team)\n" +
+        "3. The project ID exists and you have access to it\n" +
+        "4. You have access to create sandboxes on your Vercel plan"
+    );
+  }
+
+  if (
+    errorMsg.includes("Missing credentials") ||
+    errorMsg.includes("projectId")
+  ) {
+    throw new Error(
+      "Vercel Sandbox requires a project ID. Please:\n" +
+        "1. Create a Vercel project first\n" +
+        "2. Link this workflow to a Vercel project in the workflow settings\n" +
+        "3. Or create a new project via the Vercel dashboard"
+    );
+  }
+
+  throw sandboxError;
+}
+
+// Helper function to extract deployment URL from output
+function extractDeploymentUrl(deployOutput: string): string {
+  const lines = deployOutput.split("\n");
+  const productionLine = lines.find((line) => line.includes("Production:"));
+
+  if (productionLine) {
+    const urlMatch = productionLine.match(HTTPS_URL_PATTERN);
+    if (urlMatch) {
+      return urlMatch[0];
+    }
+  }
+
+  // Fallback: try to find any https URL in the output
+  const urlMatch = deployOutput.match(VERCEL_APP_URL_PATTERN);
+  return urlMatch ? urlMatch[0] : "";
+}
+
+// Helper function to run install command
+async function runInstall(sandbox: Sandbox, logs: string[]) {
+  logs.push("Installing dependencies...");
+  const install = await sandbox.runCommand({
+    cmd: "npm",
+    args: ["install", "--loglevel", "info"],
+  });
+
+  if (install.exitCode !== 0) {
+    const stderrOutput = install.stderr
+      ? await install.stderr()
+      : "Unknown error";
+    throw new Error(`Failed to install dependencies: ${stderrOutput}`);
+  }
+  logs.push("Dependencies installed successfully");
+}
+
+// Helper function to run build command
+async function runBuild(sandbox: Sandbox, logs: string[]) {
+  logs.push("Building Next.js project...");
+  const build = await sandbox.runCommand({
+    cmd: "npm",
+    args: ["run", "build"],
+  });
+
+  if (build.exitCode !== 0) {
+    const stderrOutput = build.stderr ? await build.stderr() : "Unknown error";
+    throw new Error(`Build failed: ${stderrOutput}`);
+  }
+  logs.push("Project built successfully");
+}
+
+// Helper function to run deploy command
+async function runDeploy(
+  sandbox: Sandbox,
+  options: DeploymentOptions,
+  logs: string[]
+): Promise<string> {
+  logs.push("Deploying to Vercel...");
+  const deployArgs = [
+    "vercel",
+    "deploy",
+    "--prod",
+    "--yes",
+    "--token",
+    options.vercelToken,
+  ];
+  if (options.vercelTeamId) {
+    deployArgs.push("--scope", options.vercelTeamId);
+  }
+
+  const deploy = await sandbox.runCommand({
+    cmd: "npx",
+    args: deployArgs,
+  });
+
+  if (deploy.exitCode !== 0) {
+    const stderrOutput = deploy.stderr
+      ? await deploy.stderr()
+      : "Unknown error";
+    throw new Error(`Deployment failed: ${stderrOutput}`);
+  }
+
+  const deployOutput = deploy.stdout ? await deploy.stdout() : "";
+  return extractDeploymentUrl(deployOutput);
+}
+
 /**
  * Deploy a workflow to Vercel using Sandbox
  */
@@ -38,7 +186,7 @@ export async function deployWorkflowToVercel(
     logs.push(`Deploying ${options.workflows.length} workflow(s)...`);
 
     // Get all project files with all workflows
-    const files = await generateProjectFiles(options);
+    const files = generateProjectFiles(options);
     logs.push(`Generated code for ${options.workflows.length} workflow(s)`);
 
     // Add Vercel project configuration to link to the specific project
@@ -67,66 +215,15 @@ export async function deployWorkflowToVercel(
 
     // Create sandbox environment
     logs.push("Creating Vercel sandbox...");
-
-    // Build sandbox config - only include teamId/projectId if they exist
-    const sandboxConfig: {
-      token: string;
-      resources: { vcpus: number };
-      timeout: number;
-      ports: number[];
-      runtime: "node22";
-      teamId?: string;
-      projectId?: string;
-    } = {
-      token: options.vercelToken,
-      resources: { vcpus: 4 },
-      timeout: ms("10m"),
-      ports: [3000],
-      runtime: "node22",
-    };
-
-    if (options.vercelTeamId) {
-      sandboxConfig.teamId = options.vercelTeamId;
-    }
-
-    if (options.vercelProjectId) {
-      sandboxConfig.projectId = options.vercelProjectId;
-    }
+    const sandboxConfig = createSandboxConfig(options);
 
     try {
       console.log("Creating sandbox with config:", sandboxConfig);
       sandbox = await Sandbox.create(sandboxConfig);
       logs.push("Sandbox created successfully");
     } catch (sandboxError) {
-      const errorMsg =
-        sandboxError instanceof Error
-          ? sandboxError.message
-          : String(sandboxError);
-      logs.push(`Failed to create sandbox: ${errorMsg}`);
-
-      if (errorMsg.includes("404")) {
-        throw new Error(
-          "Failed to create Vercel Sandbox (404). Please verify:\n" +
-            "1. Your Vercel API token is valid and has the correct permissions\n" +
-            "2. Your team ID is correct (if using a team)\n" +
-            "3. The project ID exists and you have access to it\n" +
-            "4. You have access to create sandboxes on your Vercel plan"
-        );
-      }
-
-      if (
-        errorMsg.includes("Missing credentials") ||
-        errorMsg.includes("projectId")
-      ) {
-        throw new Error(
-          "Vercel Sandbox requires a project ID. Please:\n" +
-            "1. Create a Vercel project first\n" +
-            "2. Link this workflow to a Vercel project in the workflow settings\n" +
-            "3. Or create a new project via the Vercel dashboard"
-        );
-      }
-
-      throw sandboxError;
+      logs.push(`Failed to create sandbox: ${String(sandboxError)}`);
+      handleSandboxError(sandboxError);
     }
 
     // Write all project files to sandbox
@@ -138,92 +235,17 @@ export async function deployWorkflowToVercel(
     await sandbox.writeFiles(fileEntries);
     logs.push("Files written successfully");
 
-    // Install dependencies
-    logs.push("Installing dependencies...");
-    const install = await sandbox.runCommand({
-      cmd: "npm",
-      args: ["install", "--loglevel", "info"],
-    });
-
-    if (install.exitCode !== 0) {
-      const stderrOutput = install.stderr
-        ? await install.stderr()
-        : "Unknown error";
-      throw new Error(`Failed to install dependencies: ${stderrOutput}`);
-    }
-    logs.push("Dependencies installed successfully");
-
-    // Build the project
-    logs.push("Building Next.js project...");
-    const build = await sandbox.runCommand({
-      cmd: "npm",
-      args: ["run", "build"],
-    });
-
-    if (build.exitCode !== 0) {
-      const stderrOutput = build.stderr
-        ? await build.stderr()
-        : "Unknown error";
-      throw new Error(`Build failed: ${stderrOutput}`);
-    }
-    logs.push("Project built successfully");
-
-    // Deploy to Vercel
-    logs.push("Deploying to Vercel...");
-    const deployArgs = [
-      "vercel",
-      "deploy",
-      "--prod",
-      "--yes", // Non-interactive confirmation
-      "--token",
-      options.vercelToken,
-    ];
-    if (options.vercelTeamId) {
-      deployArgs.push("--scope", options.vercelTeamId);
-    }
-
-    const deploy = await sandbox.runCommand({
-      cmd: "npx",
-      args: deployArgs,
-    });
-
-    if (deploy.exitCode !== 0) {
-      const stderrOutput = deploy.stderr
-        ? await deploy.stderr()
-        : "Unknown error";
-      throw new Error(`Deployment failed: ${stderrOutput}`);
-    }
-
-    // Parse deployment output to get the production URL
-    const deployOutput = deploy.stdout ? await deploy.stdout() : "";
-    const lines = deployOutput.split("\n");
-
-    // Look for the Production URL line
-    const productionLine = lines.find((line) => line.includes("Production:"));
-    let deploymentUrl = "";
-
-    if (productionLine) {
-      // Extract URL from line like "Production: https://my-app.vercel.app [1s]"
-      const urlMatch = productionLine.match(/https:\/\/[^\s]+/);
-      if (urlMatch) {
-        deploymentUrl = urlMatch[0];
-      }
-    }
-
-    if (!deploymentUrl) {
-      // Fallback: try to find any https URL in the output
-      const urlMatch = deployOutput.match(/https:\/\/[^\s]+\.vercel\.app/);
-      if (urlMatch) {
-        deploymentUrl = urlMatch[0];
-      }
-    }
+    // Install dependencies, build, and deploy
+    await runInstall(sandbox, logs);
+    await runBuild(sandbox, logs);
+    const deploymentUrl = await runDeploy(sandbox, options, logs);
 
     logs.push(`Deployment successful: ${deploymentUrl}`);
     logs.push(`Deployed ${options.workflows.length} workflow(s) to production`);
 
     return {
       success: true,
-      deploymentUrl, // Store the base deployment URL
+      deploymentUrl,
       logs,
     };
   } catch (error) {
@@ -247,9 +269,9 @@ export async function deployWorkflowToVercel(
 /**
  * Generate all project files for the Next.js workflow app
  */
-async function generateProjectFiles(
+function generateProjectFiles(
   options: DeploymentOptions
-): Promise<Record<string, string>> {
+): Record<string, string> {
   const files: Record<string, string> = {};
 
   // Generate code for each workflow
@@ -449,7 +471,7 @@ function getIntegrationDependencies(
 function sanitizeFunctionName(name: string): string {
   return name
     .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(/^[0-9]/, "_$&")
+    .replace(NUMERIC_START_PATTERN, "_$&")
     .replace(/_+/g, "_");
 }
 

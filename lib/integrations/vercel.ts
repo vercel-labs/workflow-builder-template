@@ -452,12 +452,12 @@ export async function setEnvironmentVariable(
     });
 
     if (existingEnvs.status === "success" && existingEnvs.envs) {
-      const existing = existingEnvs.envs.find((env) => env.key === params.key);
+      const existingEnv = existingEnvs.envs.find((e) => e.key === params.key);
 
       // If it exists, delete it first
-      if (existing) {
+      if (existingEnv) {
         await vercelRequest(
-          `/v9/projects/${params.projectId}/env/${existing.id}`,
+          `/v9/projects/${params.projectId}/env/${existingEnv.id}`,
           params.apiToken,
           {
             method: "DELETE",

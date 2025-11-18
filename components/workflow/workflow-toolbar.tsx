@@ -68,6 +68,7 @@ import {
   showDeleteDialogAtom,
   undoAtom,
   updateNodeDataAtom,
+  type WorkflowNode,
 } from "@/lib/workflow-store";
 import { Panel } from "../ai-elements/panel";
 import { WorkflowIcon } from "../ui/workflow-icon";
@@ -77,6 +78,95 @@ import { NodeToolbar } from "./node-toolbar";
 type WorkflowToolbarProps = {
   workflowId?: string;
 };
+
+// Helper functions to reduce complexity
+function updateNodesStatus(
+  nodes: WorkflowNode[],
+  updateNodeData: (update: {
+    id: string;
+    data: { status?: "idle" | "running" | "success" | "error" };
+  }) => void,
+  status: "idle" | "running" | "success" | "error"
+) {
+  for (const node of nodes) {
+    updateNodeData({ id: node.id, data: { status } });
+  }
+}
+
+async function triggerProductionWorkflow(
+  workflowName: string,
+  deploymentUrl: string
+) {
+  const workflowFileName = workflowName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  const workflowApiUrl = `${deploymentUrl}/api/workflows/${workflowFileName}`;
+
+  const response = await fetch(workflowApiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to trigger production workflow");
+  }
+
+  return response.json();
+}
+
+async function executeTestWorkflow(
+  workflowId: string,
+  nodes: WorkflowNode[],
+  updateNodeData: (update: {
+    id: string;
+    data: { status?: "idle" | "running" | "success" | "error" };
+  }) => void
+) {
+  // Set all nodes to idle first
+  updateNodesStatus(nodes, updateNodeData, "idle");
+
+  try {
+    const result = await execute(workflowId, {});
+
+    if (result.status === "error") {
+      toast.error(result.error || "Workflow execution failed");
+    } else {
+      toast.success("Test run completed successfully");
+    }
+
+    // Update all nodes based on result
+    const finalStatus: "idle" | "running" | "success" | "error" =
+      result.status === "error" ? "error" : "success";
+    updateNodesStatus(nodes, updateNodeData, finalStatus);
+  } catch (error) {
+    console.error("Failed to execute workflow:", error);
+    toast.error(
+      error instanceof Error ? error.message : "Failed to execute workflow"
+    );
+    updateNodesStatus(nodes, updateNodeData, "error");
+  }
+}
+
+function showDeploymentSuccessToast(deploymentUrl: string) {
+  toast.success(
+    <div className="flex items-center gap-2">
+      <span>Deployed to:</span>
+      <a
+        className="flex items-center gap-1 underline"
+        href={deploymentUrl}
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        {deploymentUrl}
+        <ExternalLink className="h-3 w-3" />
+      </a>
+    </div>,
+    { duration: 10_000 }
+  );
+}
 
 export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
   const [nodes] = useAtom(nodesAtom);
@@ -146,7 +236,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     }
 
     if (mode === "production") {
-      // Production run = call the deployed workflow's API
       if (!deploymentUrl) {
         toast.error("No deployment found. Deploy the workflow first.");
         return;
@@ -155,27 +244,10 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
       setIsExecuting(true);
       try {
         toast.info("Triggering production workflow...");
-
-        // Construct the workflow-specific API endpoint
-        const workflowFileName = workflowName
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "-")
-          .replace(/-+/g, "-")
-          .replace(/^-|-$/g, "");
-        const workflowApiUrl = `${deploymentUrl}/api/workflows/${workflowFileName}`;
-
-        // Call the deployed workflow's API endpoint
-        const response = await fetch(workflowApiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}), // Empty input for now
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to trigger production workflow");
-        }
-
-        const result = await response.json();
+        const result = await triggerProductionWorkflow(
+          workflowName,
+          deploymentUrl
+        );
         toast.success("Production workflow triggered successfully");
         console.log("Production workflow result:", result);
       } catch (error) {
@@ -193,43 +265,8 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
 
     // Test run = execute locally
     setIsExecuting(true);
-
-    // Set all nodes to idle first
-    for (const node of nodes) {
-      updateNodeData({ id: node.id, data: { status: "idle" } });
-    }
-
-    try {
-      // Call the server action to execute the workflow
-      const result = await execute(currentWorkflowId, {});
-
-      if (result.status === "error") {
-        toast.error(result.error || "Workflow execution failed");
-      } else {
-        toast.success("Test run completed successfully");
-      }
-
-      // Update all nodes to success (in production, we'd stream status updates)
-      // For now, just mark them all as success or check the result
-      for (const node of nodes) {
-        updateNodeData({
-          id: node.id,
-          data: { status: result.status === "error" ? "error" : "success" },
-        });
-      }
-    } catch (error) {
-      console.error("Failed to execute workflow:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to execute workflow"
-      );
-
-      // Mark all nodes as error
-      for (const node of nodes) {
-        updateNodeData({ id: node.id, data: { status: "error" } });
-      }
-    } finally {
-      setIsExecuting(false);
-    }
+    await executeTestWorkflow(currentWorkflowId, nodes, updateNodeData);
+    setIsExecuting(false);
   };
 
   const handleSave = async () => {
@@ -317,29 +354,15 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
     try {
       const result = await deploy(currentWorkflowId);
 
-      if (result.success) {
-        setDeploymentUrl(result.deploymentUrl || null);
-        toast.success("Workflow deployed successfully!");
-
-        if (result.deploymentUrl) {
-          toast.success(
-            <div className="flex items-center gap-2">
-              <span>Deployed to:</span>
-              <a
-                className="flex items-center gap-1 underline"
-                href={result.deploymentUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {result.deploymentUrl}
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>,
-            { duration: 10_000 }
-          );
-        }
-      } else {
+      if (!result.success) {
         throw new Error(result.error || "Deployment failed");
+      }
+
+      setDeploymentUrl(result.deploymentUrl || null);
+      toast.success("Workflow deployed successfully!");
+
+      if (result.deploymentUrl) {
+        showDeploymentSuccessToast(result.deploymentUrl);
       }
     } catch (error) {
       console.error("Failed to deploy workflow:", error);

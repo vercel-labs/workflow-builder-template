@@ -8,15 +8,6 @@ const nanoid = customAlphabet(
   21
 );
 
-// Type definition for JSON values
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
-
 // Better Auth tables
 export const user = pgTable("user", {
   id: text("id").primaryKey(),

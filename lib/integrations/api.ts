@@ -81,7 +81,7 @@ export async function callApi(params: ApiCallParams): Promise<ApiCallResult> {
 /**
  * Make a GET request
  */
-export async function get(
+export function get(
   url: string,
   headers?: Record<string, string>
 ): Promise<ApiCallResult> {
@@ -91,7 +91,7 @@ export async function get(
 /**
  * Make a POST request
  */
-export async function post(
+export function post(
   url: string,
   body: unknown,
   headers?: Record<string, string>
@@ -102,7 +102,7 @@ export async function post(
 /**
  * Make a PUT request
  */
-export async function put(
+export function put(
   url: string,
   body: unknown,
   headers?: Record<string, string>
@@ -113,7 +113,7 @@ export async function put(
 /**
  * Make a PATCH request
  */
-export async function patch(
+export function patch(
   url: string,
   body: unknown,
   headers?: Record<string, string>
@@ -124,7 +124,7 @@ export async function patch(
 /**
  * Make a DELETE request
  */
-export async function del(
+export function del(
   url: string,
   headers?: Record<string, string>
 ): Promise<ApiCallResult> {

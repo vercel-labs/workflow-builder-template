@@ -4,12 +4,104 @@
  * New format: {{@nodeId:DisplayName.field}} for ID-based references with display names
  */
 
+// Regex constants for performance
+const TEMPLATE_PATTERN = /\{\{([^}]+)\}\}/g;
+const ARRAY_ACCESS_PATTERN = /^([^[]+)\[(\d+)\]$/;
+
 export type NodeOutputs = {
   [nodeId: string]: {
     label: string;
     data: unknown;
   };
 };
+
+// Helper function to process new format references (@nodeId:DisplayName)
+function processNewFormatReference(
+  trimmed: string,
+  nodeOutputs: NodeOutputs,
+  match: string
+): string {
+  const withoutAt = trimmed.substring(1);
+  const colonIndex = withoutAt.indexOf(":");
+
+  if (colonIndex === -1) {
+    console.warn(
+      `[Template] Invalid format: "${trimmed}". Expected @nodeId:DisplayName`
+    );
+    return match;
+  }
+
+  const nodeId = withoutAt.substring(0, colonIndex);
+  const rest = withoutAt.substring(colonIndex + 1);
+  const dotIndex = rest.indexOf(".");
+  const fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
+
+  if (!fieldPath) {
+    const nodeOutput = nodeOutputs[nodeId];
+    if (nodeOutput) {
+      return formatValue(nodeOutput.data);
+    }
+    console.warn(`[Template] Node with ID "${nodeId}" not found in outputs`);
+    return match;
+  }
+
+  const value = resolveFieldPath(nodeOutputs[nodeId]?.data, fieldPath);
+  if (value !== undefined && value !== null) {
+    return formatValue(value);
+  }
+
+  return match;
+}
+
+// Helper function to process legacy $ references ($nodeId)
+function processLegacyDollarReference(
+  trimmed: string,
+  nodeOutputs: NodeOutputs,
+  match: string
+): string {
+  const withoutDollar = trimmed.substring(1);
+
+  if (!(withoutDollar.includes(".") || withoutDollar.includes("["))) {
+    const nodeOutput = nodeOutputs[withoutDollar];
+    if (nodeOutput) {
+      return formatValue(nodeOutput.data);
+    }
+    console.warn(
+      `[Template] Node with ID "${withoutDollar}" not found in outputs`
+    );
+    return match;
+  }
+
+  const value = resolveExpressionById(withoutDollar, nodeOutputs);
+  if (value !== undefined && value !== null) {
+    return formatValue(value);
+  }
+
+  return match;
+}
+
+// Helper function to process legacy label references
+function processLegacyLabelReference(
+  trimmed: string,
+  nodeOutputs: NodeOutputs,
+  match: string
+): string {
+  if (!(trimmed.includes(".") || trimmed.includes("["))) {
+    const nodeOutput = findNodeOutputByLabel(trimmed, nodeOutputs);
+    if (nodeOutput) {
+      return formatValue(nodeOutput.data);
+    }
+    console.warn(`[Template] Node "${trimmed}" not found in outputs`);
+    return match;
+  }
+
+  const value = resolveExpression(trimmed, nodeOutputs);
+  if (value !== undefined && value !== null) {
+    return formatValue(value);
+  }
+
+  return match;
+}
 
 /**
  * Replace template variables in a string with actual values from node outputs
@@ -28,97 +120,23 @@ export function processTemplate(
     return template;
   }
 
-  // Match {{...}} patterns
-  const pattern = /\{\{([^}]+)\}\}/g;
-
-  return template.replace(pattern, (match, expression) => {
+  return template.replace(TEMPLATE_PATTERN, (match, expression) => {
     const trimmed = expression.trim();
 
-    // Check if this is a new format ID reference (starts with @)
-    const isNewFormat = trimmed.startsWith("@");
-
-    if (isNewFormat) {
-      // Format: @nodeId:DisplayName or @nodeId:DisplayName.field
-      const withoutAt = trimmed.substring(1);
-      const colonIndex = withoutAt.indexOf(":");
-
-      if (colonIndex === -1) {
-        console.warn(
-          `[Template] Invalid format: "${trimmed}". Expected @nodeId:DisplayName`
-        );
-        return match;
-      }
-
-      const nodeId = withoutAt.substring(0, colonIndex);
-      const rest = withoutAt.substring(colonIndex + 1);
-
-      // Check if there's a field accessor after the display name
-      const dotIndex = rest.indexOf(".");
-      const fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
-
-      // Handle special case: {{@nodeId:DisplayName}} (entire output)
-      if (!fieldPath) {
-        const nodeOutput = nodeOutputs[nodeId];
-        if (nodeOutput) {
-          return formatValue(nodeOutput.data);
-        }
-        console.warn(
-          `[Template] Node with ID "${nodeId}" not found in outputs`
-        );
-        return match;
-      }
-
-      // Parse field expression like "field.nested" or "items[0]"
-      const value = resolveFieldPath(nodeOutputs[nodeId]?.data, fieldPath);
-      if (value !== undefined && value !== null) {
-        return formatValue(value);
-      }
-    }
-    // Check if this is a legacy node ID reference (starts with $)
-    else if (trimmed.startsWith("$")) {
-      const withoutDollar = trimmed.substring(1);
-
-      // Handle special case: {{$nodeId}} (entire output)
-      if (!(withoutDollar.includes(".") || withoutDollar.includes("["))) {
-        const nodeOutput = nodeOutputs[withoutDollar];
-        if (nodeOutput) {
-          return formatValue(nodeOutput.data);
-        }
-        console.warn(
-          `[Template] Node with ID "${withoutDollar}" not found in outputs`
-        );
-        return match;
-      }
-
-      // Parse expression like "$nodeId.field.nested" or "$nodeId.items[0]"
-      const value = resolveExpressionById(withoutDollar, nodeOutputs);
-      if (value !== undefined && value !== null) {
-        return formatValue(value);
-      }
+    let result: string;
+    if (trimmed.startsWith("@")) {
+      result = processNewFormatReference(trimmed, nodeOutputs, match);
+    } else if (trimmed.startsWith("$")) {
+      result = processLegacyDollarReference(trimmed, nodeOutputs, match);
     } else {
-      // Legacy label-based references
-      // Handle special case: {{nodeName}} (entire output)
-      if (!(trimmed.includes(".") || trimmed.includes("["))) {
-        const nodeOutput = findNodeOutputByLabel(trimmed, nodeOutputs);
-        if (nodeOutput) {
-          return formatValue(nodeOutput.data);
-        }
-        console.warn(`[Template] Node "${trimmed}" not found in outputs`);
-        return match;
-      }
-
-      // Parse expression like "nodeName.field.nested" or "nodeName.items[0]"
-      const value = resolveExpression(trimmed, nodeOutputs);
-      if (value !== undefined && value !== null) {
-        return formatValue(value);
-      }
+      result = processLegacyLabelReference(trimmed, nodeOutputs, match);
     }
 
-    // Log warning for debugging
-    console.warn(`[Template] Could not resolve "${trimmed}" in node outputs`);
+    if (result === match) {
+      console.warn(`[Template] Could not resolve "${trimmed}" in node outputs`);
+    }
 
-    // Return original template if value not found
-    return match;
+    return result;
   });
 }
 
@@ -160,8 +178,7 @@ function resolveFieldPath(data: unknown, fieldPath: string): unknown {
   }
 
   const parts = fieldPath.split(".");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let current: any = data;
+  let current: unknown = data;
 
   for (const part of parts) {
     const trimmedPart = part.trim();
@@ -171,18 +188,21 @@ function resolveFieldPath(data: unknown, fieldPath: string): unknown {
     }
 
     // Handle array access like "items[0]"
-    const arrayMatch = trimmedPart.match(/^([^[]+)\[(\d+)\]$/);
+    const arrayMatch = trimmedPart.match(ARRAY_ACCESS_PATTERN);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
-      current = current?.[field]?.[Number.parseInt(index, 10)];
-    } else {
+      const fieldValue = (current as Record<string, unknown>)?.[field];
+      if (Array.isArray(fieldValue)) {
+        current = fieldValue[Number.parseInt(index, 10)];
+      } else {
+        current = undefined;
+      }
+    } else if (Array.isArray(current)) {
       // If current is an array and we're trying to access a field,
       // map over the array and extract that field from each element
-      if (Array.isArray(current)) {
-        current = current.map((item) => item?.[trimmedPart]);
-      } else {
-        current = current?.[trimmedPart];
-      }
+      current = current.map((item) => item?.[trimmedPart]);
+    } else {
+      current = (current as Record<string, unknown>)?.[trimmedPart];
     }
 
     if (current === undefined || current === null) {
@@ -252,7 +272,7 @@ function resolveExpressionById(
     }
 
     // Handle array access like "items[0]"
-    const arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+    const arrayMatch = part.match(ARRAY_ACCESS_PATTERN);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
       current = current?.[field]?.[Number.parseInt(index, 10)];
@@ -318,7 +338,7 @@ function resolveExpression(
     }
 
     // Handle array access like "items[0]"
-    const arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+    const arrayMatch = part.match(ARRAY_ACCESS_PATTERN);
     if (arrayMatch) {
       const [, field, index] = arrayMatch;
       current = current?.[field]?.[Number.parseInt(index, 10)];

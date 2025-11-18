@@ -977,7 +977,7 @@ class ServerWorkflowExecutor {
                 // Create a safe evaluation function
                 // Only allow reading from context, no assignments
                 const evalFn = new Function(
-                  '"use strict"; return (' + condition + ");"
+                  `"use strict"; return (${condition});`
                 );
                 conditionResult = Boolean(evalFn());
               } catch (evalError) {
