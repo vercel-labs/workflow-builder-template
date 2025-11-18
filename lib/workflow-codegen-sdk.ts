@@ -6,6 +6,7 @@ import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 const ARRAY_PATTERN = /^([^[]+)\[(\d+)\]$/;
 const WHITESPACE_PATTERN = /\s+/;
 const NUMBER_START_PATTERN = /^[0-9]/;
+const TEMPLATE_REF_PATTERN = /\{\{([^}]+)\}\}/g;
 
 /**
  * Process new format ID references (@nodeId:DisplayName)
@@ -341,12 +342,11 @@ function findNodeReferences(template: string): Set<string> {
     return refs;
   }
 
-  const pattern = /\{\{([^}]+)\}\}/g;
   let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(template)) !== null) {
+  // biome-ignore lint/suspicious/noAssignInExpressions: pattern.exec() is the standard way to iterate regex matches
+  while ((match = TEMPLATE_REF_PATTERN.exec(template)) !== null) {
     const expression = match[1].trim();
-    
+
     // Handle @nodeId:DisplayName.field format
     if (expression.startsWith("@")) {
       const withoutAt = expression.substring(1);
@@ -369,26 +369,36 @@ function findNodeReferences(template: string): Set<string> {
   return refs;
 }
 
+// Helper to extract node references from a config value
+function extractRefsFromConfigValue(value: unknown): Set<string> {
+  const refs = new Set<string>();
+  if (typeof value === "string") {
+    const foundRefs = findNodeReferences(value);
+    for (const ref of foundRefs) {
+      refs.add(ref);
+    }
+  }
+  return refs;
+}
+
 // Helper to analyze which node outputs are used
 function analyzeNodeUsage(nodes: WorkflowNode[]): Set<string> {
   const usedNodes = new Set<string>();
 
   for (const node of nodes) {
-    if (node.data.type === "action") {
-      const config = node.data.config || {};
-      
-      // Check all config values for template references
-      for (const value of Object.values(config)) {
-        if (typeof value === "string") {
-          const refs = findNodeReferences(value);
-          for (const ref of refs) {
-            usedNodes.add(ref);
-          }
-        }
+    if (node.data.type !== "action") {
+      continue;
+    }
+
+    const config = node.data.config || {};
+    for (const value of Object.values(config)) {
+      const refs = extractRefsFromConfigValue(value);
+      for (const ref of refs) {
+        usedNodes.add(ref);
       }
     }
   }
-  
+
   // Always mark the last node as used (it's returned)
   const lastNode = nodes.at(-1);
   if (lastNode) {
@@ -457,7 +467,7 @@ export function generateWorkflowSDKCode(
 
   // Find trigger nodes
   const triggerNodes = findTriggerNodes(nodes, edges);
-  
+
   // Analyze which node outputs are actually used
   const usedNodeOutputs = analyzeNodeUsage(nodes);
 
@@ -539,7 +549,7 @@ ${stepBody}
     if (!usedNodeOutputs.has(nodeId)) {
       return [`${indent}// Trigger (outputs not used)`];
     }
-    
+
     const varName = `result_${sanitizeVarName(nodeId)}`;
     return [
       `${indent}// Triggered`,
@@ -561,10 +571,10 @@ ${stepBody}
       nodeToStepName.get(nodeId) || sanitizeStepName(nodeLabel);
 
     const lines: string[] = [`${indent}// ${nodeLabel}`];
-    
+
     // Check if this node's output is used by any downstream node
     const outputIsUsed = usedNodeOutputs.has(nodeId);
-    
+
     if (outputIsUsed) {
       const varName = `result_${sanitizeVarName(nodeId)}`;
       lines.push(
