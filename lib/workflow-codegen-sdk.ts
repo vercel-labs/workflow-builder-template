@@ -1,12 +1,16 @@
 import "server-only";
 
+import {
+  ARRAY_INDEX_PATTERN,
+  analyzeNodeUsage,
+  buildEdgeMap,
+  escapeForTemplateLiteral,
+  findTriggerNodes,
+  sanitizeFunctionName,
+  sanitizeStepName,
+  sanitizeVarName,
+} from "./workflow-codegen-shared";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
-
-// Regex constants at top level for performance
-const ARRAY_PATTERN = /^([^[]+)\[(\d+)\]$/;
-const WHITESPACE_PATTERN = /\s+/;
-const NUMBER_START_PATTERN = /^[0-9]/;
-const TEMPLATE_REF_PATTERN = /\{\{([^}]+)\}\}/g;
 
 /**
  * Process new format ID references (@nodeId:DisplayName)
@@ -33,7 +37,7 @@ function processNewFormatID(trimmed: string, match: string): string {
   const accessPath = fieldPath
     .split(".")
     .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_PATTERN);
+      const arrayMatch = part.match(ARRAY_INDEX_PATTERN);
       if (arrayMatch) {
         return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
       }
@@ -67,7 +71,7 @@ function processLegacyDollarRef(trimmed: string): string {
   const accessPath = fieldPath
     .split(".")
     .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_PATTERN);
+      const arrayMatch = part.match(ARRAY_INDEX_PATTERN);
       if (arrayMatch) {
         return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
       }
@@ -102,19 +106,6 @@ function convertTemplateToJS(template: string): string {
 
     return match;
   });
-}
-
-/**
- * Escape a string for safe use in template literals
- * Only escapes backslashes and backticks
- */
-function escapeForTemplateLiteral(str: string): string {
-  if (!str) {
-    return "";
-  }
-  return str
-    .replace(/\\/g, "\\\\") // Escape backslashes first
-    .replace(/`/g, "\\`"); // Escape backticks
 }
 
 // Helper to generate Send Email step body
@@ -313,91 +304,9 @@ function generateHTTPRequestStepBody(config: Record<string, unknown>): string {
   return data;`;
 }
 
-// Helper to build edge map
-function buildEdgeMap(edges: WorkflowEdge[]): Map<string, string[]> {
-  const edgesBySource = new Map<string, string[]>();
-  for (const edge of edges) {
-    const targets = edgesBySource.get(edge.source) || [];
-    targets.push(edge.target);
-    edgesBySource.set(edge.source, targets);
-  }
-  return edgesBySource;
-}
-
-// Helper to find trigger nodes
-function findTriggerNodes(
-  nodes: WorkflowNode[],
-  edges: WorkflowEdge[]
-): WorkflowNode[] {
-  const nodesWithIncoming = new Set(edges.map((e) => e.target));
-  return nodes.filter(
-    (node) => node.data.type === "trigger" && !nodesWithIncoming.has(node.id)
-  );
-}
-
-// Helper to find all node references in templates
-function findNodeReferences(template: string): Set<string> {
-  const refs = new Set<string>();
-  if (!template || typeof template !== "string") {
-    return refs;
-  }
-
-  let match: RegExpExecArray | null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: pattern.exec() is the standard way to iterate regex matches
-  while ((match = TEMPLATE_REF_PATTERN.exec(template)) !== null) {
-    const expression = match[1].trim();
-
-    // Handle @nodeId:DisplayName.field format
-    if (expression.startsWith("@")) {
-      const withoutAt = expression.substring(1);
-      const colonIndex = withoutAt.indexOf(":");
-      if (colonIndex !== -1) {
-        const nodeId = withoutAt.substring(0, colonIndex);
-        refs.add(nodeId);
-      }
-    }
-    // Handle $nodeId.field format
-    else if (expression.startsWith("$")) {
-      const withoutDollar = expression.substring(1);
-      const parts = withoutDollar.split(".");
-      if (parts.length > 0) {
-        refs.add(parts[0]);
-      }
-    }
-  }
-
-  return refs;
-}
-
-// Helper to extract node references from a config value
-function extractRefsFromConfigValue(value: unknown): Set<string> {
-  const refs = new Set<string>();
-  if (typeof value === "string") {
-    const foundRefs = findNodeReferences(value);
-    for (const ref of foundRefs) {
-      refs.add(ref);
-    }
-  }
-  return refs;
-}
-
-// Helper to analyze which node outputs are used
-function analyzeNodeUsage(nodes: WorkflowNode[]): Set<string> {
-  const usedNodes = new Set<string>();
-
-  for (const node of nodes) {
-    if (node.data.type !== "action") {
-      continue;
-    }
-
-    const config = node.data.config || {};
-    for (const value of Object.values(config)) {
-      const refs = extractRefsFromConfigValue(value);
-      for (const ref of refs) {
-        usedNodes.add(ref);
-      }
-    }
-  }
+// Helper to analyze which node outputs are used (extended from shared for SDK)
+function analyzeNodeUsageSDK(nodes: WorkflowNode[]): Set<string> {
+  const usedNodes = analyzeNodeUsage(nodes);
 
   // Always mark the last node as used (it's returned)
   const lastNode = nodes.at(-1);
@@ -469,7 +378,7 @@ export function generateWorkflowSDKCode(
   const triggerNodes = findTriggerNodes(nodes, edges);
 
   // Analyze which node outputs are actually used
-  const usedNodeOutputs = analyzeNodeUsage(nodes);
+  const usedNodeOutputs = analyzeNodeUsageSDK(nodes);
 
   // Always import sleep and FatalError
   imports.add("import { sleep, FatalError } from 'workflow';");
@@ -736,49 +645,4 @@ ${mainFunction}
 `;
 
   return code;
-}
-
-function sanitizeFunctionName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(NUMBER_START_PATTERN, "_$&")
-    .replace(/_+/g, "_");
-}
-
-function sanitizeStepName(name: string): string {
-  // Create a more readable function name from the label
-  // e.g., "Find Issues" -> "findIssuesStep", "Generate Email Text" -> "generateEmailTextStep"
-  const result = name
-    .split(WHITESPACE_PATTERN) // Split by whitespace
-    .filter((word) => word.length > 0) // Remove empty strings
-    .map((word, index) => {
-      // Remove non-alphanumeric characters
-      const cleaned = word.replace(/[^a-zA-Z0-9]/g, "");
-      if (!cleaned) {
-        return "";
-      }
-
-      // Capitalize first letter of each word except the first
-      if (index === 0) {
-        return cleaned.toLowerCase();
-      }
-      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
-    })
-    .filter((word) => word.length > 0) // Remove empty results
-    .join("");
-
-  // Ensure we have a valid identifier
-  if (!result || result.length === 0) {
-    return "unnamedStep";
-  }
-
-  // Prefix with underscore if starts with number
-  const sanitized = result.replace(NUMBER_START_PATTERN, "_$&");
-
-  // Add "Step" suffix to avoid conflicts with imports (e.g., generateText from 'ai')
-  return `${sanitized}Step`;
-}
-
-function sanitizeVarName(id: string): string {
-  return id.replace(/[^a-zA-Z0-9]/g, "_");
 }

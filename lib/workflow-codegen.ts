@@ -1,3 +1,12 @@
+import {
+  analyzeNodeUsage,
+  buildAccessPath,
+  getStepInfo,
+  removeInvisibleChars,
+  TEMPLATE_PATTERN,
+  toFriendlyVarName,
+  toTypeScriptLiteral,
+} from "./workflow-codegen-shared";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 type CodeGenOptions = {
@@ -12,80 +21,8 @@ type GeneratedCode = {
   imports: string[];
 };
 
-// Regex patterns at top level for performance
-const TEMPLATE_PATTERN = /\{\{([^}]+)\}\}/g;
-const WHITESPACE_PATTERN = /\s+/;
-const NON_ALPHANUMERIC_PATTERN = /[^a-zA-Z0-9]/g;
-const ARRAY_INDEX_PATTERN = /^([^[]+)\[(\d+)\]$/;
-const VALID_IDENTIFIER_PATTERN = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+// Local constants not shared
 const CONST_ASSIGNMENT_PATTERN = /^(\s*)(const\s+\w+\s*=\s*)(.*)$/;
-
-// Helper to find all node references in templates
-function findNodeReferences(template: string): Set<string> {
-  const refs = new Set<string>();
-  if (!template || typeof template !== "string") {
-    return refs;
-  }
-
-  let match: RegExpExecArray | null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: pattern.exec() is the standard way to iterate regex matches
-  while ((match = TEMPLATE_PATTERN.exec(template)) !== null) {
-    const expression = match[1].trim();
-
-    // Handle @nodeId:DisplayName.field format
-    if (expression.startsWith("@")) {
-      const withoutAt = expression.substring(1);
-      const colonIndex = withoutAt.indexOf(":");
-      if (colonIndex !== -1) {
-        const nodeId = withoutAt.substring(0, colonIndex);
-        refs.add(nodeId);
-      }
-    }
-    // Handle $nodeId.field format
-    else if (expression.startsWith("$")) {
-      const withoutDollar = expression.substring(1);
-      const parts = withoutDollar.split(".");
-      if (parts.length > 0) {
-        refs.add(parts[0]);
-      }
-    }
-  }
-
-  return refs;
-}
-
-// Helper to extract node references from a config value
-function extractRefsFromConfigValue(value: unknown): Set<string> {
-  const refs = new Set<string>();
-  if (typeof value === "string") {
-    const foundRefs = findNodeReferences(value);
-    for (const ref of foundRefs) {
-      refs.add(ref);
-    }
-  }
-  return refs;
-}
-
-// Helper to analyze which node outputs are used
-function analyzeNodeUsage(nodes: WorkflowNode[]): Set<string> {
-  const usedNodes = new Set<string>();
-
-  for (const node of nodes) {
-    if (node.data.type !== "action") {
-      continue;
-    }
-
-    const config = node.data.config || {};
-    for (const value of Object.values(config)) {
-      const refs = extractRefsFromConfigValue(value);
-      for (const ref of refs) {
-        usedNodes.add(ref);
-      }
-    }
-  }
-
-  return usedNodes;
-}
 
 /**
  * Generate TypeScript code from workflow JSON with "use workflow" directive
@@ -127,31 +64,6 @@ export function generateWorkflowCode(
   codeLines.push(`  "use workflow";`);
   codeLines.push("");
 
-  // Helper to convert label or action type to a friendly variable name
-  function toFriendlyVarName(label: string, actionType?: string): string {
-    // Use label if available, otherwise fall back to action type
-    const baseName = label || actionType || "result";
-
-    // Convert to camelCase: "Generate Friendly Greeting Email" -> "generateFriendlyGreetingEmail"
-    const camelCase = baseName
-      .split(WHITESPACE_PATTERN)
-      .map((word, index) => {
-        const cleaned = word.replace(NON_ALPHANUMERIC_PATTERN, "");
-        if (!cleaned) {
-          return "";
-        }
-        if (index === 0) {
-          return cleaned.toLowerCase();
-        }
-        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
-      })
-      .filter((word) => word.length > 0)
-      .join("");
-
-    // Add "Result" suffix
-    return `${camelCase}Result`;
-  }
-
   // Build a map of nodeId to variable name for template references
   const nodeIdToVarName = new Map<string, string>();
   const usedVarNames = new Set<string>();
@@ -178,20 +90,6 @@ export function generateWorkflowCode(
     }
 
     nodeIdToVarName.set(node.id, varName);
-  }
-
-  // Helper to build access path from field path
-  function buildAccessPath(fieldPath: string): string {
-    return fieldPath
-      .split(".")
-      .map((part: string) => {
-        const arrayMatch = ARRAY_INDEX_PATTERN.exec(part);
-        if (arrayMatch) {
-          return `.${arrayMatch[1]}[${arrayMatch[2]}]`;
-        }
-        return `.${part}`;
-      })
-      .join("");
   }
 
   // Helper to process @nodeId:DisplayName.field format for template strings
@@ -313,14 +211,6 @@ export function generateWorkflowCode(
     });
   }
 
-  // Helper to remove invisible characters (non-breaking spaces, etc.)
-  function removeInvisibleChars(str: string): string {
-    // Replace non-breaking space (U+00a0) and other invisible spaces with regular space
-    return str
-      .replace(/\u00a0/g, " ") // Non-breaking space
-      .replace(/[\u2000-\u200B\u2028\u2029]/g, " "); // Various invisible space characters
-  }
-
   // Helper to convert template variables to JavaScript expressions (not template literal syntax)
   function convertConditionToJS(condition: string): string {
     if (!condition || typeof condition !== "string") {
@@ -347,84 +237,6 @@ export function generateWorkflowCode(
 
     // Final cleanup to ensure no non-breaking spaces remain
     return removeInvisibleChars(converted);
-  }
-
-  // Helper to convert a JavaScript value to TypeScript object literal syntax
-  function toTypeScriptLiteral(value: unknown): string {
-    if (value === null) {
-      return "null";
-    }
-    if (value === undefined) {
-      return "undefined";
-    }
-    if (typeof value === "string") {
-      return JSON.stringify(value);
-    }
-    if (typeof value === "number" || typeof value === "boolean") {
-      return String(value);
-    }
-    if (Array.isArray(value)) {
-      const items = value.map((item) => toTypeScriptLiteral(item));
-      return `[${items.join(", ")}]`;
-    }
-    if (typeof value === "object") {
-      const entries = Object.entries(value).map(([key, val]) => {
-        // Use quoted key only if it's not a valid identifier
-        const keyStr = VALID_IDENTIFIER_PATTERN.test(key)
-          ? key
-          : JSON.stringify(key);
-        return `${keyStr}: ${toTypeScriptLiteral(val)}`;
-      });
-      return `{${entries.join(", ")}}`;
-    }
-    return String(value);
-  }
-
-  // Helper to convert action type to step function name and import path
-  function getStepInfo(actionType: string): {
-    functionName: string;
-    importPath: string;
-  } {
-    const stepMap: Record<
-      string,
-      { functionName: string; importPath: string }
-    > = {
-      "Generate Text": {
-        functionName: "generateTextStep",
-        importPath: "./steps/generate-text-step",
-      },
-      "Send Email": {
-        functionName: "sendEmailStep",
-        importPath: "./steps/send-email-step",
-      },
-      "Send Slack Message": {
-        functionName: "sendSlackMessageStep",
-        importPath: "./steps/send-slack-message-step",
-      },
-      "Create Ticket": {
-        functionName: "createTicketStep",
-        importPath: "./steps/create-ticket-step",
-      },
-      "Generate Image": {
-        functionName: "generateImageStep",
-        importPath: "./steps/generate-image-step",
-      },
-      "Database Query": {
-        functionName: "databaseQueryStep",
-        importPath: "./steps/database-query-step",
-      },
-      "HTTP Request": {
-        functionName: "httpRequestStep",
-        importPath: "./steps/http-request-step",
-      },
-    };
-
-    return (
-      stepMap[actionType] || {
-        functionName: "unknownStep",
-        importPath: "./steps/unknown-step",
-      }
-    );
   }
 
   // Helper functions to generate code for different action types
