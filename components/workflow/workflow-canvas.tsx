@@ -35,6 +35,7 @@ import {
   type WorkflowNodeType,
 } from "@/lib/workflow-store";
 import { Edge } from "../ai-elements/edge";
+import { Panel } from "../ai-elements/panel";
 import { ActionNode } from "./nodes/action-node";
 import { TriggerNode } from "./nodes/trigger-node";
 
@@ -355,7 +356,12 @@ export function WorkflowCanvas({ showMinimap = true }: WorkflowCanvasProps) {
         onPaneClick={onPaneClick}
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
-        <Controls />
+        <Panel
+          className="border-none bg-transparent p-0"
+          position="bottom-left"
+        >
+          <Controls />
+        </Panel>
         {showMinimap && (
           <MiniMap
             bgColor="var(--sidebar)"
