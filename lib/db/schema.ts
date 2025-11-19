@@ -3,10 +3,7 @@ import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { customAlphabet } from "nanoid";
 
 // Create a nanoid generator with URL-safe characters
-const nanoid = customAlphabet(
-  "0123456789abcdefghijklmnopqrstuvwxyz",
-  21
-);
+const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 21);
 
 // Better Auth tables
 export const users = pgTable("users", {
