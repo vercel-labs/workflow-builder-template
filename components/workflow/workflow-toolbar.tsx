@@ -7,7 +7,6 @@ import {
   ExternalLink,
   FlaskConical,
   Loader2,
-  MoreHorizontal,
   Play,
   Redo2,
   Rocket,
@@ -841,9 +840,6 @@ function WorkflowMenuComponent({
             {!workflowId && <Check className="size-4 shrink-0" />}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-muted-foreground text-xs uppercase">
-            Recent Workflows
-          </DropdownMenuLabel>
           {state.allWorkflows.length === 0 ? (
             <DropdownMenuItem disabled>No workflows found</DropdownMenuItem>
           ) : (
@@ -864,36 +860,6 @@ function WorkflowMenuComponent({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {workflowId && (
-        <>
-          <div className="h-full w-px bg-border" />
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex h-full cursor-pointer items-center px-2 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem
-                disabled={!state.currentWorkflowId}
-                onClick={() => state.setShowRenameDialog(true)}
-              >
-                <span>Rename</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={state.nodes.length === 0}
-                onClick={() => state.setShowClearDialog(true)}
-              >
-                <span>Clear</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!state.currentWorkflowId}
-                onClick={() => state.setShowDeleteDialog(true)}
-              >
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      )}
     </div>
   );
 }
