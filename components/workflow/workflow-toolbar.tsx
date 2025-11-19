@@ -4,6 +4,7 @@ import { useAtom, useSetAtom } from "jotai";
 import {
   Check,
   ChevronDown,
+  Download,
   ExternalLink,
   FlaskConical,
   Loader2,
@@ -17,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { deploy } from "@/app/actions/workflow/deploy";
+import { prepareWorkflowDownload } from "@/app/actions/workflow/download";
 import { execute } from "@/app/actions/workflow/execute";
 import { getDeploymentStatus } from "@/app/actions/workflow/get-deployment-status";
 import {
@@ -292,6 +294,7 @@ function useWorkflowState() {
   const { data: session } = useSession();
 
   const [isDeploying, setIsDeploying] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
@@ -363,6 +366,8 @@ function useWorkflowState() {
     session,
     isDeploying,
     setIsDeploying,
+    isDownloading,
+    setIsDownloading,
     deploymentUrl,
     setDeploymentUrl,
     showCodeDialog,
@@ -398,6 +403,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     newWorkflowName,
     setShowRenameDialog,
     setIsDeploying,
+    setIsDownloading,
     setDeploymentUrl,
     generatedCode,
   } = state;
@@ -513,15 +519,16 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       return;
     }
 
-    const saved = await saveBeforeDeploy();
-    if (!saved) {
-      return;
-    }
-
     setIsDeploying(true);
-    toast.info("Starting deployment to Vercel...");
+    toast.info("Preparing deployment...");
 
     try {
+      const saved = await saveBeforeDeploy();
+      if (!saved) {
+        return;
+      }
+
+      toast.info("Starting deployment to Vercel...");
       await executeDeployment(currentWorkflowId);
     } catch (error) {
       toast.error(
@@ -529,6 +536,58 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       );
     } finally {
       setIsDeploying(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!currentWorkflowId) {
+      toast.error("Please save the workflow before downloading");
+      return;
+    }
+
+    setIsDownloading(true);
+    toast.info("Preparing workflow files for download...");
+
+    try {
+      const result = await prepareWorkflowDownload(currentWorkflowId);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to prepare download");
+      }
+
+      if (!result.files) {
+        throw new Error("No files to download");
+      }
+
+      // Import JSZip dynamically
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+
+      // Add all files to the zip
+      for (const [path, content] of Object.entries(result.files)) {
+        zip.file(path, content);
+      }
+
+      // Generate the zip file
+      const blob = await zip.generateAsync({ type: "blob" });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${workflowName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-workflow.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success("Workflow downloaded successfully!");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to download workflow"
+      );
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -560,6 +619,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     handleNewWorkflow,
     handleRenameWorkflow,
     handleDeploy,
+    handleDownload,
     loadWorkflows,
     handleCopyCode,
   };
@@ -632,6 +692,7 @@ function ToolbarActions({
       {/* Save/Deploy - Mobile Vertical */}
       <ButtonGroup className="flex lg:hidden" orientation="vertical">
         <SaveButton handleSave={actions.handleSave} state={state} />
+        <DownloadButton handleDownload={actions.handleDownload} state={state} />
         <DeployButton handleDeploy={actions.handleDeploy} state={state} />
         {state.deploymentUrl && (
           <Button
@@ -651,6 +712,7 @@ function ToolbarActions({
       {/* Save/Deploy - Desktop Horizontal */}
       <ButtonGroup className="hidden lg:flex" orientation="horizontal">
         <SaveButton handleSave={actions.handleSave} state={state} />
+        <DownloadButton handleDownload={actions.handleDownload} state={state} />
         <DeployButton handleDeploy={actions.handleDeploy} state={state} />
         {state.deploymentUrl && (
           <Button
@@ -733,6 +795,41 @@ function DeployButton({
         <Loader2 className="size-4 animate-spin" />
       ) : (
         <Rocket className="size-4" />
+      )}
+    </Button>
+  );
+}
+
+// Download Button Component
+function DownloadButton({
+  state,
+  handleDownload,
+}: {
+  state: ReturnType<typeof useWorkflowState>;
+  handleDownload: () => Promise<void>;
+}) {
+  return (
+    <Button
+      className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
+      disabled={
+        state.isDownloading ||
+        state.nodes.length === 0 ||
+        state.isGenerating ||
+        !state.currentWorkflowId
+      }
+      onClick={handleDownload}
+      size="icon"
+      title={
+        state.isDownloading
+          ? "Preparing download..."
+          : "Download workflow files"
+      }
+      variant="secondary"
+    >
+      {state.isDownloading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Download className="size-4" />
       )}
     </Button>
   );
