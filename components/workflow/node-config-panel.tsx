@@ -87,10 +87,10 @@ const MultiSelectionPanel = ({
   return (
     <>
       <div className="flex size-full flex-col">
-        <div className="h-auto w-full border-b bg-transparent p-3">
+        <div className="h-auto w-full border-b bg-transparent p-4">
           <h2 className="font-semibold text-foreground">Properties</h2>
         </div>
-        <div className="flex-1 space-y-4 overflow-y-auto p-3">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <div className="space-y-2">
             <Label>Selection</Label>
             <p className="text-muted-foreground text-sm">
@@ -137,7 +137,7 @@ const PanelInner = () => {
   const [isGenerating] = useAtom(isGeneratingAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const [currentWorkflowName, setCurrentWorkflowName] = useAtom(
-    currentWorkflowNameAtom
+    currentWorkflowNameAtom,
   );
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
@@ -287,10 +287,10 @@ const PanelInner = () => {
     return (
       <>
         <div className="flex size-full flex-col">
-          <div className="h-auto w-full border-b bg-transparent p-3">
+          <div className="h-auto w-full border-b bg-transparent p-4">
             <h2 className="font-semibold text-foreground">Properties</h2>
           </div>
-          <div className="flex-1 space-y-4 overflow-y-auto p-3">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <div className="space-y-2">
               <Label htmlFor="edge-id">Edge ID</Label>
               <Input disabled id="edge-id" value={selectedEdge.id} />
@@ -344,7 +344,7 @@ const PanelInner = () => {
     return (
       <>
         <Tabs className="size-full" defaultValue="properties">
-          <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-3">
+          <TabsList className="h-14 w-full rounded-none border-b bg-transparent px-4 py-2.5">
             <TabsTrigger
               className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
               value="properties"
@@ -368,9 +368,11 @@ const PanelInner = () => {
             className="flex flex-col overflow-hidden"
             value="properties"
           >
-            <div className="flex-1 space-y-4 overflow-y-auto p-3">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
               <div className="space-y-2">
-                <Label htmlFor="workspace-name">Workspace Name</Label>
+                <Label className="ml-1" htmlFor="workspace-name">
+                  Workspace Name
+                </Label>
                 <Input
                   id="workspace-name"
                   onChange={(e) => handleUpdateWorkspaceName(e.target.value)}
@@ -378,7 +380,9 @@ const PanelInner = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="workspace-id">Workspace ID</Label>
+                <Label className="ml-1" htmlFor="workspace-id">
+                  Workspace ID
+                </Label>
                 <Input
                   disabled
                   id="workspace-id"
@@ -404,7 +408,7 @@ const PanelInner = () => {
             </div>
           </TabsContent>
           <TabsContent className="flex flex-col overflow-hidden" value="runs">
-            <div className="flex-1 space-y-4 overflow-y-auto p-3">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
               <WorkflowRuns onRefreshRef={refreshRunsRef} />
             </div>
             <div className="flex shrink-0 items-center gap-2 border-t p-4">
@@ -497,7 +501,7 @@ const PanelInner = () => {
   return (
     <>
       <Tabs className="size-full" defaultValue="properties">
-        <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-3">
+        <TabsList className="h-auto w-full rounded-none border-b bg-transparent p-4">
           <TabsTrigger
             className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
             value="properties"
@@ -518,7 +522,7 @@ const PanelInner = () => {
           className="flex flex-col overflow-hidden"
           value="properties"
         >
-          <div className="flex-1 space-y-4 overflow-y-auto p-3">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {selectedNode.data.type === "trigger" && (
               <TriggerConfig
                 config={selectedNode.data.config || {}}
@@ -689,7 +693,7 @@ export const NodeConfigPanel = () => {
       </div>
 
       {/* Desktop: Docked sidebar - now resizable */}
-      <div className="hidden size-full flex-col border-l bg-background md:flex">
+      <div className="hidden size-full flex-col bg-background md:flex">
         <PanelInner />
       </div>
     </>

@@ -99,7 +99,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
         setCurrentWorkflowName(workflowData.name || "AI Generated Workflow");
 
         const selectedNode = workflowData.nodes?.find(
-          (n: { selected?: boolean }) => n.selected
+          (n: { selected?: boolean }) => n.selected,
         );
         if (selectedNode) {
           setSelectedNodeId(selectedNode.id);
@@ -126,7 +126,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setNodes,
       setEdges,
       setSelectedNodeId,
-    ]
+    ],
   );
 
   // Helper function to load existing workflow
@@ -235,7 +235,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
         updateNodeData({ id: node.id, data: { status } });
       }
     },
-    [nodes, updateNodeData]
+    [nodes, updateNodeData],
   );
 
   const handleRun = useCallback(async () => {
@@ -269,7 +269,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     } catch (error) {
       console.error("Failed to execute workflow:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to execute workflow"
+        error instanceof Error ? error.message : "Failed to execute workflow",
       );
       updateAllNodeStatuses("error");
     } finally {
@@ -288,13 +288,13 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const isInputElement = useCallback(
     (target: HTMLElement) =>
       target.tagName === "INPUT" || target.tagName === "TEXTAREA",
-    []
+    [],
   );
 
   // Helper to check if we're in Monaco editor
   const isInMonacoEditor = useCallback(
     (target: HTMLElement) => target.closest(".monaco-editor") !== null,
-    []
+    [],
   );
 
   // Helper to handle save shortcut
@@ -308,7 +308,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       }
       return false;
     },
-    [handleSave]
+    [handleSave],
   );
 
   // Helper to handle run shortcut
@@ -324,7 +324,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       }
       return false;
     },
-    [handleRun, isInputElement, isInMonacoEditor]
+    [handleRun, isInputElement, isInMonacoEditor],
   );
 
   useEffect(() => {

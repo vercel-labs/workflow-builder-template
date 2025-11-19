@@ -116,8 +116,10 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="action-filter">Search Actions</Label>
+      <div className="space-y-1">
+        <Label className="ml-1" htmlFor="action-filter">
+          Search Actions
+        </Label>
         <div className="relative">
           <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
@@ -136,7 +138,7 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
           <button
             className={cn(
               "flex flex-col items-center justify-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-accent",
-              disabled && "pointer-events-none opacity-50"
+              disabled && "pointer-events-none opacity-50",
             )}
             disabled={disabled}
             key={action.id}

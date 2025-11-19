@@ -54,23 +54,17 @@ export function DataSourcesSettings({
     <>
       <Card className="border-0 py-0 shadow-none">
         <CardHeader className="px-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Data Sources</CardTitle>
-              <CardDescription>
-                Manage your database connections
-              </CardDescription>
-            </div>
-            <Button onClick={() => onShowAddSource(true)} size="sm">
-              <Plus className="size-4" />
-              Add Source
-            </Button>
-          </div>
+          <CardTitle>Data Sources</CardTitle>
+          <CardDescription>Manage your database connections</CardDescription>
         </CardHeader>
         <CardContent className="px-0">
           {dataSources.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground text-sm">
-              No data sources configured. Add one to get started.
+            <div className="py-8 text-center text-muted-foreground text-sm flex flex-col gap-4 max-w-xs mx-auto">
+              No data sources configured.
+              <Button onClick={() => onShowAddSource(true)} size="sm">
+                <Plus className="size-4" />
+                Add Source
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">

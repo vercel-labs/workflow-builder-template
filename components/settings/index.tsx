@@ -80,7 +80,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           ...source,
           createdAt: source.createdAt.toISOString(),
           updatedAt: source.updatedAt.toISOString(),
-        }))
+        })),
       );
     } catch (error) {
       console.error("Failed to load data sources:", error);
