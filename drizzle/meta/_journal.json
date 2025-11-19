@@ -8,6 +8,13 @@
       "when": 1763413155536,
       "tag": "0000_wild_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763522902586,
+      "tag": "0001_milky_night_nurse",
+      "breakpoints": true
     }
   ]
 }

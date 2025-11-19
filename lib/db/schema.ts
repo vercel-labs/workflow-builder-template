@@ -148,22 +148,6 @@ export const workflowExecutionLogs = pgTable("workflow_execution_logs", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
-// Data sources table for user-configured database connections
-export const dataSources = pgTable("data_sources", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id),
-  name: text("name").notNull(),
-  type: text("type").notNull().$type<"postgresql" | "mysql" | "mongodb">(),
-  connectionString: text("connection_string").notNull(),
-  isDefault: boolean("is_default").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
 // Relations (1-to-1 between workflow and project)
 export const workflowsRelations = relations(workflows, ({ one }) => ({
   vercelProject: one(projects, {
@@ -199,5 +183,3 @@ export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
 export type NewWorkflowExecution = typeof workflowExecutions.$inferInsert;
 export type WorkflowExecutionLog = typeof workflowExecutionLogs.$inferSelect;
 export type NewWorkflowExecutionLog = typeof workflowExecutionLogs.$inferInsert;
-export type DataSource = typeof dataSources.$inferSelect;
-export type NewDataSource = typeof dataSources.$inferInsert;

@@ -2,8 +2,7 @@
 
 import { useAtom, useAtomValue } from "jotai";
 import { AlertTriangle, Settings } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getAll as getAllDataSources } from "@/app/actions/data-source/get-all";
+import { useState } from "react";
 import { ProjectIntegrationsDialog } from "@/components/settings/project-integrations-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,14 +33,6 @@ type ActionConfigProps = {
   disabled: boolean;
 };
 
-type DataSource = {
-  id: string;
-  name: string;
-  type: string;
-  connectionString: string;
-  isDefault: boolean;
-};
-
 // Map action types to their required integrations
 const ACTION_INTEGRATION_MAP: Record<string, { name: string; label: string }> =
   {
@@ -51,6 +42,7 @@ const ACTION_INTEGRATION_MAP: Record<string, { name: string; label: string }> =
     "Find Issues": { name: "linear", label: "Linear" },
     "Generate Text": { name: "ai-gateway", label: "AI Gateway" },
     "Generate Image": { name: "ai-gateway", label: "AI Gateway" },
+    "Database Query": { name: "database", label: "Database" },
   };
 
 // Send Email fields component
@@ -264,59 +256,13 @@ function DatabaseQueryFields({
   config,
   onUpdateConfig,
   disabled,
-  dataSources,
-  loadingDataSources,
 }: {
   config: Record<string, unknown>;
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
-  dataSources: DataSource[];
-  loadingDataSources: boolean;
 }) {
-  const renderDataSourceSelector = () => {
-    if (loadingDataSources) {
-      return (
-        <div className="space-y-2">
-          <Label>Loading data sources...</Label>
-        </div>
-      );
-    }
-    if (dataSources.length === 0) {
-      return (
-        <Alert>
-          <AlertDescription>
-            No data sources configured. Please add a data source in Settings to
-            query databases.
-          </AlertDescription>
-        </Alert>
-      );
-    }
-    return (
-      <div className="space-y-2">
-        <Label htmlFor="dataSourceId">Data Source</Label>
-        <Select
-          disabled={disabled}
-          onValueChange={(value) => onUpdateConfig("dataSourceId", value)}
-          value={(config?.dataSourceId as string) || ""}
-        >
-          <SelectTrigger className="w-full" id="dataSourceId">
-            <SelectValue placeholder="Select a data source" />
-          </SelectTrigger>
-          <SelectContent>
-            {dataSources.map((source) => (
-              <SelectItem key={source.id} value={source.id}>
-                {source.name} {source.isDefault && "(Default)"}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  };
-
   return (
     <>
-      {renderDataSourceSelector()}
       <div className="space-y-2">
         <Label htmlFor="dbQuery">SQL Query</Label>
         <div className="overflow-hidden rounded-md border">
@@ -335,6 +281,10 @@ function DatabaseQueryFields({
             value={(config?.dbQuery as string) || ""}
           />
         </div>
+        <p className="text-muted-foreground text-xs">
+          The DATABASE_URL from your project integrations will be used to
+          execute this query.
+        </p>
       </div>
       <div className="space-y-2">
         <Label>Schema (Optional)</Label>
@@ -612,26 +562,7 @@ export function ActionConfig({
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [projectId] = useAtom(currentVercelProjectIdAtom);
   const [projectName] = useAtom(currentVercelProjectNameAtom);
-  const [dataSources, setDataSources] = useState<DataSource[]>([]);
-  const [loadingDataSources, setLoadingDataSources] = useState(false);
   const integrations = useAtomValue(projectIntegrationsAtom);
-
-  // Load data sources when the component mounts or when actionType is Database Query
-  useEffect(() => {
-    if (config?.actionType === "Database Query") {
-      setLoadingDataSources(true);
-      getAllDataSources()
-        .then((sources) => {
-          setDataSources(sources as DataSource[]);
-        })
-        .catch((err) => {
-          console.error("Failed to load data sources:", err);
-        })
-        .finally(() => {
-          setLoadingDataSources(false);
-        });
-    }
-  }, [config?.actionType]);
 
   const actionType = (config?.actionType as string) || "";
   const requiredIntegration = ACTION_INTEGRATION_MAP[actionType];
@@ -656,6 +587,8 @@ export function ActionConfig({
       case "Generate Text":
       case "Generate Image":
         return integrations.hasAiGatewayKey;
+      case "Database Query":
+        return integrations.hasDatabaseUrl;
       default:
         return true;
     }
@@ -804,9 +737,7 @@ export function ActionConfig({
       {config?.actionType === "Database Query" && (
         <DatabaseQueryFields
           config={config}
-          dataSources={dataSources}
           disabled={disabled}
-          loadingDataSources={loadingDataSources}
           onUpdateConfig={onUpdateConfig}
         />
       )}

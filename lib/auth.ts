@@ -4,7 +4,6 @@ import { anonymous } from "better-auth/plugins";
 import { db } from "./db";
 import {
   account,
-  dataSources,
   projects,
   projectsRelations,
   session,
@@ -27,7 +26,6 @@ const schema = {
   projects,
   workflowExecutions,
   workflowExecutionLogs,
-  dataSources,
   workflowsRelations,
   projectsRelations,
   workflowExecutionsRelations,

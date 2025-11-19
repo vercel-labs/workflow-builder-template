@@ -13,6 +13,7 @@ export type UpdateProjectIntegrationsInput = {
   linearApiKey?: string | null;
   slackApiKey?: string | null;
   aiGatewayApiKey?: string | null;
+  databaseUrl?: string | null;
 };
 
 export async function updateProjectIntegrations(
@@ -58,6 +59,7 @@ export async function updateProjectIntegrations(
     { key: "LINEAR_API_KEY", value: data.linearApiKey },
     { key: "SLACK_API_KEY", value: data.slackApiKey },
     { key: "AI_GATEWAY_API_KEY", value: data.aiGatewayApiKey },
+    { key: "DATABASE_URL", value: data.databaseUrl },
   ];
 
   for (const { key, value } of keyValuePairs) {

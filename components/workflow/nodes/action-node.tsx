@@ -22,7 +22,7 @@ const getIntegrationFromActionType = (actionType: string): string => {
     "Create Ticket": "Linear",
     "Find Issues": "Linear",
     "HTTP Request": "System",
-    "Database Query": "System",
+    "Database Query": "Database",
     "Generate Text": "AI Gateway",
     "Generate Image": "AI Gateway",
     Condition: "Condition",
@@ -39,6 +39,7 @@ const requiresIntegration = (actionType: string): boolean => {
     "Find Issues",
     "Generate Text",
     "Generate Image",
+    "Database Query",
   ];
   return requiresIntegrationActions.includes(actionType);
 };
@@ -65,6 +66,8 @@ const isIntegrationConfigured = (
     case "Generate Text":
     case "Generate Image":
       return integrations.hasAiGatewayKey;
+    case "Database Query":
+      return integrations.hasDatabaseUrl;
     default:
       return true;
   }

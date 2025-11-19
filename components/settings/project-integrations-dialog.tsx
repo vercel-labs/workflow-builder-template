@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getProjectIntegrations } from "@/app/actions/vercel-project/get-integrations";
 import { updateProjectIntegrations } from "@/app/actions/vercel-project/update-integrations";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +13,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "../ui/spinner";
 import { AiGatewaySettings } from "./ai-gateway-settings";
+import { DatabaseSettings } from "./database-settings";
+import { IntegrationTabContent } from "./integration-tab-content";
 import { LinearSettings } from "./linear-settings";
 import { ResendSettings } from "./resend-settings";
 import { SlackSettings } from "./slack-settings";
@@ -24,10 +25,12 @@ type ProjectIntegrations = {
   linearApiKey: string | null;
   slackApiKey: string | null;
   aiGatewayApiKey: string | null;
+  databaseUrl: string | null;
   hasResendKey: boolean;
   hasLinearKey: boolean;
   hasSlackKey: boolean;
   hasAiGatewayKey: boolean;
+  hasDatabaseUrl: boolean;
 };
 
 type ProjectIntegrationsDialogProps = {
@@ -36,6 +39,126 @@ type ProjectIntegrationsDialogProps = {
   projectId: string | null;
   projectName: string | null;
 };
+
+// Helper functions extracted outside component to reduce complexity
+function buildResendUpdates(
+  apiKey: string,
+  fromEmail: string
+): Record<string, string | null> {
+  const updates: Record<string, string | null> = {};
+  if (apiKey && apiKey !== "••••••••") {
+    updates.resendApiKey = apiKey;
+  }
+  if (fromEmail) {
+    updates.resendFromEmail = fromEmail;
+  }
+  return updates;
+}
+
+function buildLinearUpdates(apiKey: string): Record<string, string | null> {
+  const updates: Record<string, string | null> = {};
+  if (apiKey && apiKey !== "••••••••") {
+    updates.linearApiKey = apiKey;
+  }
+  return updates;
+}
+
+function buildSlackUpdates(apiKey: string): Record<string, string | null> {
+  const updates: Record<string, string | null> = {};
+  if (apiKey && apiKey !== "••••••••") {
+    updates.slackApiKey = apiKey;
+  }
+  return updates;
+}
+
+function buildAiGatewayUpdates(apiKey: string): Record<string, string | null> {
+  const updates: Record<string, string | null> = {};
+  if (apiKey && apiKey !== "••••••••") {
+    updates.aiGatewayApiKey = apiKey;
+  }
+  return updates;
+}
+
+function buildDatabaseUpdates(url: string): Record<string, string | null> {
+  const updates: Record<string, string | null> = {};
+  if (url && url !== "••••••••") {
+    updates.databaseUrl = url;
+  }
+  return updates;
+}
+
+function buildUpdatesForSave(
+  type: string,
+  state: {
+    resendApiKey: string;
+    resendFromEmail: string;
+    linearApiKey: string;
+    slackApiKey: string;
+    aiGatewayApiKey: string;
+    databaseUrl: string;
+  }
+): Record<string, string | null> {
+  if (type === "resend") {
+    return buildResendUpdates(state.resendApiKey, state.resendFromEmail);
+  }
+  if (type === "linear") {
+    return buildLinearUpdates(state.linearApiKey);
+  }
+  if (type === "slack") {
+    return buildSlackUpdates(state.slackApiKey);
+  }
+  if (type === "ai-gateway") {
+    return buildAiGatewayUpdates(state.aiGatewayApiKey);
+  }
+  if (type === "database") {
+    return buildDatabaseUpdates(state.databaseUrl);
+  }
+  return {};
+}
+
+function buildUpdatesForRemove(type: string): Record<string, null> {
+  const updates: Record<string, null> = {};
+
+  if (type === "resend") {
+    updates.resendApiKey = null;
+    updates.resendFromEmail = null;
+  } else if (type === "linear") {
+    updates.linearApiKey = null;
+  } else if (type === "slack") {
+    updates.slackApiKey = null;
+  } else if (type === "ai-gateway") {
+    updates.aiGatewayApiKey = null;
+  } else if (type === "database") {
+    updates.databaseUrl = null;
+  }
+
+  return updates;
+}
+
+function clearFormFields(
+  type: string,
+  setters: {
+    setResendApiKey: (value: string) => void;
+    setResendFromEmail: (value: string) => void;
+    setLinearApiKey: (value: string) => void;
+    setSlackApiKey: (value: string) => void;
+    setAiGatewayApiKey: (value: string) => void;
+    setDatabaseUrl: (value: string) => void;
+  }
+) {
+  if (type === "resend") {
+    setters.setResendApiKey("");
+    setters.setResendFromEmail("");
+  } else if (type === "linear") {
+    setters.setLinearApiKey("");
+  } else if (type === "slack") {
+    setters.setSlackApiKey("");
+  } else if (type === "ai-gateway") {
+    setters.setAiGatewayApiKey("");
+  } else if (type === "database") {
+    setters.setDatabaseUrl("");
+  }
+}
 
 export function ProjectIntegrationsDialog({
   open,
@@ -55,6 +178,7 @@ export function ProjectIntegrationsDialog({
   const [linearApiKey, setLinearApiKey] = useState("");
   const [slackApiKey, setSlackApiKey] = useState("");
   const [aiGatewayApiKey, setAiGatewayApiKey] = useState("");
+  const [databaseUrl, setDatabaseUrl] = useState("");
   const [savingIntegrations, setSavingIntegrations] = useState(false);
 
   const loadIntegrations = useCallback(async () => {
@@ -72,6 +196,7 @@ export function ProjectIntegrationsDialog({
       setLinearApiKey(data.hasLinearKey ? "••••••••" : "");
       setSlackApiKey(data.hasSlackKey ? "••••••••" : "");
       setAiGatewayApiKey(data.hasAiGatewayKey ? "••••••••" : "");
+      setDatabaseUrl(data.hasDatabaseUrl ? "••••••••" : "");
     } catch (error) {
       console.error("Failed to load project integrations:", error);
       toast.error("Failed to load integrations");
@@ -85,64 +210,6 @@ export function ProjectIntegrationsDialog({
     }
   }, [open, projectId, loadIntegrations]);
 
-  const buildResendUpdates = (
-    apiKey: string,
-    fromEmail: string
-  ): Record<string, string | null> => {
-    const updates: Record<string, string | null> = {};
-    if (apiKey && apiKey !== "••••••••") {
-      updates.resendApiKey = apiKey;
-    }
-    if (fromEmail) {
-      updates.resendFromEmail = fromEmail;
-    }
-    return updates;
-  };
-
-  const buildLinearUpdates = (
-    apiKey: string
-  ): Record<string, string | null> => {
-    const updates: Record<string, string | null> = {};
-    if (apiKey && apiKey !== "••••••••") {
-      updates.linearApiKey = apiKey;
-    }
-    return updates;
-  };
-
-  const buildSlackUpdates = (apiKey: string): Record<string, string | null> => {
-    const updates: Record<string, string | null> = {};
-    if (apiKey && apiKey !== "••••••••") {
-      updates.slackApiKey = apiKey;
-    }
-    return updates;
-  };
-
-  const buildAiGatewayUpdates = (
-    apiKey: string
-  ): Record<string, string | null> => {
-    const updates: Record<string, string | null> = {};
-    if (apiKey && apiKey !== "••••••••") {
-      updates.aiGatewayApiKey = apiKey;
-    }
-    return updates;
-  };
-
-  const buildUpdatesForSave = (type: string): Record<string, string | null> => {
-    if (type === "resend") {
-      return buildResendUpdates(resendApiKey, resendFromEmail);
-    }
-    if (type === "linear") {
-      return buildLinearUpdates(linearApiKey);
-    }
-    if (type === "slack") {
-      return buildSlackUpdates(slackApiKey);
-    }
-    if (type === "ai-gateway") {
-      return buildAiGatewayUpdates(aiGatewayApiKey);
-    }
-    return {};
-  };
-
   const handleSaveIntegrations = async (type: string) => {
     if (!projectId) {
       return;
@@ -150,7 +217,14 @@ export function ProjectIntegrationsDialog({
 
     setSavingIntegrations(true);
     try {
-      const updates = buildUpdatesForSave(type);
+      const updates = buildUpdatesForSave(type, {
+        resendApiKey,
+        resendFromEmail,
+        linearApiKey,
+        slackApiKey,
+        aiGatewayApiKey,
+        databaseUrl,
+      });
       await updateProjectIntegrations(projectId, updates);
       await loadIntegrations();
       toast.success("Integrations updated successfully");
@@ -159,36 +233,6 @@ export function ProjectIntegrationsDialog({
       toast.error("Failed to save integrations");
     } finally {
       setSavingIntegrations(false);
-    }
-  };
-
-  const buildUpdatesForRemove = (type: string): Record<string, null> => {
-    const updates: Record<string, null> = {};
-
-    if (type === "resend") {
-      updates.resendApiKey = null;
-      updates.resendFromEmail = null;
-    } else if (type === "linear") {
-      updates.linearApiKey = null;
-    } else if (type === "slack") {
-      updates.slackApiKey = null;
-    } else if (type === "ai-gateway") {
-      updates.aiGatewayApiKey = null;
-    }
-
-    return updates;
-  };
-
-  const clearFormFields = (type: string) => {
-    if (type === "resend") {
-      setResendApiKey("");
-      setResendFromEmail("");
-    } else if (type === "linear") {
-      setLinearApiKey("");
-    } else if (type === "slack") {
-      setSlackApiKey("");
-    } else if (type === "ai-gateway") {
-      setAiGatewayApiKey("");
     }
   };
 
@@ -202,7 +246,14 @@ export function ProjectIntegrationsDialog({
       const updates = buildUpdatesForRemove(type);
       await updateProjectIntegrations(projectId, updates);
       await loadIntegrations();
-      clearFormFields(type);
+      clearFormFields(type, {
+        setResendApiKey,
+        setResendFromEmail,
+        setLinearApiKey,
+        setSlackApiKey,
+        setAiGatewayApiKey,
+        setDatabaseUrl,
+      });
       toast.success("Integration removed successfully");
     } catch (error) {
       console.error("Failed to remove integration:", error);
@@ -229,113 +280,89 @@ export function ProjectIntegrationsDialog({
           </div>
         ) : (
           <Tabs onValueChange={setActiveTab} value={activeTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="resend">Resend</TabsTrigger>
               <TabsTrigger value="linear">Linear</TabsTrigger>
               <TabsTrigger value="slack">Slack</TabsTrigger>
               <TabsTrigger value="ai-gateway">AI Gateway</TabsTrigger>
+              <TabsTrigger value="database">Database</TabsTrigger>
             </TabsList>
 
             <TabsContent value="resend">
-              <ResendSettings
-                apiKey={resendApiKey}
-                fromEmail={resendFromEmail}
+              <IntegrationTabContent
                 hasKey={integrations?.hasResendKey}
-                onApiKeyChange={setResendApiKey}
-                onFromEmailChange={setResendFromEmail}
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                {integrations?.hasResendKey && (
-                  <Button
-                    disabled={savingIntegrations}
-                    onClick={() => handleRemoveIntegration("resend")}
-                    variant="outline"
-                  >
-                    Remove
-                  </Button>
-                )}
-                <Button
-                  disabled={savingIntegrations}
-                  onClick={() => handleSaveIntegrations("resend")}
-                >
-                  {savingIntegrations ? "Saving..." : "Save"}
-                </Button>
-              </div>
+                onRemove={() => handleRemoveIntegration("resend")}
+                onSave={() => handleSaveIntegrations("resend")}
+                saving={savingIntegrations}
+              >
+                <ResendSettings
+                  apiKey={resendApiKey}
+                  fromEmail={resendFromEmail}
+                  hasKey={integrations?.hasResendKey}
+                  onApiKeyChange={setResendApiKey}
+                  onFromEmailChange={setResendFromEmail}
+                />
+              </IntegrationTabContent>
             </TabsContent>
 
             <TabsContent value="linear">
-              <LinearSettings
-                apiKey={linearApiKey}
+              <IntegrationTabContent
                 hasKey={integrations?.hasLinearKey}
-                onApiKeyChange={setLinearApiKey}
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                {integrations?.hasLinearKey && (
-                  <Button
-                    disabled={savingIntegrations}
-                    onClick={() => handleRemoveIntegration("linear")}
-                    variant="outline"
-                  >
-                    Remove
-                  </Button>
-                )}
-                <Button
-                  disabled={savingIntegrations}
-                  onClick={() => handleSaveIntegrations("linear")}
-                >
-                  {savingIntegrations ? "Saving..." : "Save"}
-                </Button>
-              </div>
+                onRemove={() => handleRemoveIntegration("linear")}
+                onSave={() => handleSaveIntegrations("linear")}
+                saving={savingIntegrations}
+              >
+                <LinearSettings
+                  apiKey={linearApiKey}
+                  hasKey={integrations?.hasLinearKey}
+                  onApiKeyChange={setLinearApiKey}
+                />
+              </IntegrationTabContent>
             </TabsContent>
 
             <TabsContent value="slack">
-              <SlackSettings
-                apiKey={slackApiKey}
+              <IntegrationTabContent
                 hasKey={integrations?.hasSlackKey}
-                onApiKeyChange={setSlackApiKey}
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                {integrations?.hasSlackKey && (
-                  <Button
-                    disabled={savingIntegrations}
-                    onClick={() => handleRemoveIntegration("slack")}
-                    variant="outline"
-                  >
-                    Remove
-                  </Button>
-                )}
-                <Button
-                  disabled={savingIntegrations}
-                  onClick={() => handleSaveIntegrations("slack")}
-                >
-                  {savingIntegrations ? "Saving..." : "Save"}
-                </Button>
-              </div>
+                onRemove={() => handleRemoveIntegration("slack")}
+                onSave={() => handleSaveIntegrations("slack")}
+                saving={savingIntegrations}
+              >
+                <SlackSettings
+                  apiKey={slackApiKey}
+                  hasKey={integrations?.hasSlackKey}
+                  onApiKeyChange={setSlackApiKey}
+                />
+              </IntegrationTabContent>
             </TabsContent>
 
             <TabsContent value="ai-gateway">
-              <AiGatewaySettings
-                apiKey={aiGatewayApiKey}
+              <IntegrationTabContent
                 hasKey={integrations?.hasAiGatewayKey}
-                onApiKeyChange={setAiGatewayApiKey}
-              />
-              <div className="mt-4 flex justify-end gap-2">
-                {integrations?.hasAiGatewayKey && (
-                  <Button
-                    disabled={savingIntegrations}
-                    onClick={() => handleRemoveIntegration("ai-gateway")}
-                    variant="outline"
-                  >
-                    Remove
-                  </Button>
-                )}
-                <Button
-                  disabled={savingIntegrations}
-                  onClick={() => handleSaveIntegrations("ai-gateway")}
-                >
-                  {savingIntegrations ? "Saving..." : "Save"}
-                </Button>
-              </div>
+                onRemove={() => handleRemoveIntegration("ai-gateway")}
+                onSave={() => handleSaveIntegrations("ai-gateway")}
+                saving={savingIntegrations}
+              >
+                <AiGatewaySettings
+                  apiKey={aiGatewayApiKey}
+                  hasKey={integrations?.hasAiGatewayKey}
+                  onApiKeyChange={setAiGatewayApiKey}
+                />
+              </IntegrationTabContent>
+            </TabsContent>
+
+            <TabsContent value="database">
+              <IntegrationTabContent
+                hasKey={integrations?.hasDatabaseUrl}
+                onRemove={() => handleRemoveIntegration("database")}
+                onSave={() => handleSaveIntegrations("database")}
+                saving={savingIntegrations}
+              >
+                <DatabaseSettings
+                  databaseUrl={databaseUrl}
+                  hasDatabaseUrl={integrations?.hasDatabaseUrl}
+                  onDatabaseUrlChange={setDatabaseUrl}
+                />
+              </IntegrationTabContent>
             </TabsContent>
           </Tabs>
         )}

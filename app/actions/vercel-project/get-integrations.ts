@@ -13,10 +13,12 @@ export type ProjectIntegrations = {
   linearApiKey: string | null;
   slackApiKey: string | null;
   aiGatewayApiKey: string | null;
+  databaseUrl: string | null;
   hasResendKey: boolean;
   hasLinearKey: boolean;
   hasSlackKey: boolean;
   hasAiGatewayKey: boolean;
+  hasDatabaseUrl: boolean;
 };
 
 export async function getProjectIntegrations(
@@ -53,10 +55,12 @@ export async function getProjectIntegrations(
       linearApiKey: null,
       slackApiKey: null,
       aiGatewayApiKey: null,
+      databaseUrl: null,
       hasResendKey: false,
       hasLinearKey: false,
       hasSlackKey: false,
       hasAiGatewayKey: false,
+      hasDatabaseUrl: false,
     };
   }
 
@@ -75,10 +79,12 @@ export async function getProjectIntegrations(
       linearApiKey: null,
       slackApiKey: null,
       aiGatewayApiKey: null,
+      databaseUrl: null,
       hasResendKey: false,
       hasLinearKey: false,
       hasSlackKey: false,
       hasAiGatewayKey: false,
+      hasDatabaseUrl: false,
     };
   }
 
@@ -95,6 +101,8 @@ export async function getProjectIntegrations(
   const aiGatewayApiKey =
     envResult.envs.find((env) => env.key === "AI_GATEWAY_API_KEY")?.value ||
     null;
+  const databaseUrl =
+    envResult.envs.find((env) => env.key === "DATABASE_URL")?.value || null;
 
   console.log(
     "[DEBUG] AI_GATEWAY_API_KEY:",
@@ -107,9 +115,11 @@ export async function getProjectIntegrations(
     linearApiKey,
     slackApiKey,
     aiGatewayApiKey,
+    databaseUrl,
     hasResendKey: !!resendApiKey,
     hasLinearKey: !!linearApiKey,
     hasSlackKey: !!slackApiKey,
     hasAiGatewayKey: !!aiGatewayApiKey,
+    hasDatabaseUrl: !!databaseUrl,
   };
 }
