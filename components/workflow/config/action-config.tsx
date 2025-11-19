@@ -623,18 +623,18 @@ export function ActionConfig({
   return (
     <>
       {integrationMissing && (
-        <Alert className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+        <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
           <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <AlertDescription className="text-sm">
             <span className="font-semibold text-orange-900 dark:text-orange-100">
               Integration Required
             </span>
-            <p className="mt-1 text-orange-800 dark:text-orange-200">
+            <p className="mt-1 text-orange-800 dark:text-orange-400 text-xs">
               This action requires {requiredIntegration.label} to be configured.
               Add your API key in the project integrations to use this action.
             </p>
             <Button
-              className="mt-3"
+              className="mt-2.5"
               onClick={() => setShowIntegrationsDialog(true)}
               size="sm"
               variant="outline"
@@ -646,7 +646,9 @@ export function ActionConfig({
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="actionType">Action Type</Label>
+        <Label className="ml-1" htmlFor="actionType">
+          Action Type
+        </Label>
         <Select
           disabled={disabled}
           onValueChange={(value) => onUpdateConfig("actionType", value)}
