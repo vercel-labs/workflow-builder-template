@@ -4,7 +4,7 @@ import { customAlphabet } from "nanoid";
 
 // Create a nanoid generator with URL-safe characters
 const nanoid = customAlphabet(
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  "0123456789abcdefghijklmnopqrstuvwxyz",
   21
 );
 
