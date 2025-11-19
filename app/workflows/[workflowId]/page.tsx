@@ -21,8 +21,6 @@ import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
 import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import { workflowApi } from "@/lib/workflow-api";
 import {
-  currentVercelProjectIdAtom,
-  currentVercelProjectNameAtom,
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
   edgesAtom,
@@ -54,8 +52,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setEdges = useSetAtom(edgesAtom);
   const setCurrentWorkflowId = useSetAtom(currentWorkflowIdAtom);
   const setCurrentWorkflowName = useSetAtom(currentWorkflowNameAtom);
-  const setCurrentVercelProjectId = useSetAtom(currentVercelProjectIdAtom);
-  const setCurrentVercelProjectName = useSetAtom(currentVercelProjectNameAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const setSelectedNodeId = useSetAtom(selectedNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
@@ -66,18 +62,8 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   useEffect(() => {
     const loadIntegrations = async () => {
       try {
-        const workflow = await workflowApi.getById(workflowId);
-        if (workflow?.vercelProjectId) {
-          // Find the project by vercelProjectId
-          const { getProjectByVercelId } = await import(
-            "@/app/actions/project/get-by-vercel-id"
-          );
-          const project = await getProjectByVercelId(workflow.vercelProjectId);
-          if (project) {
-            const integrations = await getProjectIntegrations(project.id);
-            setProjectIntegrations(integrations);
-          }
-        }
+        const integrations = await getProjectIntegrations(workflowId);
+        setProjectIntegrations(integrations);
       } catch (error) {
         console.error("Failed to load integrations:", error);
       }
@@ -145,8 +131,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setEdges(workflow.edges);
       setCurrentWorkflowId(workflow.id);
       setCurrentWorkflowName(workflow.name);
-      setCurrentVercelProjectId(workflow.vercelProjectId || null);
-      setCurrentVercelProjectName(workflow.vercelProject?.name || null);
       setHasUnsavedChanges(false);
       setWorkflowNotFound(false);
 
@@ -164,8 +148,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setEdges,
     setCurrentWorkflowId,
     setCurrentWorkflowName,
-    setCurrentVercelProjectId,
-    setCurrentVercelProjectName,
     setHasUnsavedChanges,
     setWorkflowNotFound,
     setSelectedNodeId,

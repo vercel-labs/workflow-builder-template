@@ -14,9 +14,6 @@ export async function get(id: string): Promise<SavedWorkflow | null> {
 
   const workflow = await db.query.workflows.findFirst({
     where: and(eq(workflows.id, id), eq(workflows.userId, session.user.id)),
-    with: {
-      vercelProject: true,
-    },
   });
 
   if (!workflow) {
@@ -28,12 +25,5 @@ export async function get(id: string): Promise<SavedWorkflow | null> {
     createdAt: workflow.createdAt.toISOString(),
     updatedAt: workflow.updatedAt.toISOString(),
     lastDeployedAt: workflow.lastDeployedAt?.toISOString() || null,
-    vercelProject: workflow.vercelProject
-      ? {
-          ...workflow.vercelProject,
-          createdAt: workflow.vercelProject.createdAt.toISOString(),
-          updatedAt: workflow.vercelProject.updatedAt.toISOString(),
-        }
-      : null,
   } as SavedWorkflow;
 }

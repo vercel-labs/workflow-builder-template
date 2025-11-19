@@ -101,12 +101,12 @@ export const WorkflowSettings = ({
 
           <div className="flex flex-col gap-6 py-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="workflow-name">Project Name</Label>
+              <Label htmlFor="workflow-name">Workflow Name</Label>
               <Input
                 disabled={isSaving}
                 id="workflow-name"
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter project name"
+                placeholder="Enter workflow name"
                 value={name}
               />
             </div>
@@ -125,7 +125,7 @@ export const WorkflowSettings = ({
                   variant="destructive"
                 >
                   <Trash2 className="size-4" />
-                  Delete Project
+                  Delete Workflow
                 </Button>
               </div>
             </div>

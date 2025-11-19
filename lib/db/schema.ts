@@ -61,7 +61,7 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updatedAt"),
 });
 
-// Workflows table with user association (1-to-1 with project)
+// Workflows table with user association
 export const workflows = pgTable("workflows", {
   id: text("id")
     .primaryKey()
@@ -71,7 +71,8 @@ export const workflows = pgTable("workflows", {
   userId: text("userId")
     .notNull()
     .references(() => user.id),
-  vercelProjectId: text("vercel_project_id").notNull().unique(), // 1-to-1 enforced with unique constraint
+  vercelProjectId: text("vercel_project_id").notNull().unique(), // Vercel project ID from API
+  vercelProjectName: text("vercel_project_name").notNull(), // workflow-builder-[workflowId]
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - structure validated at application level
   nodes: jsonb("nodes").notNull().$type<any[]>(),
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - structure validated at application level
@@ -81,20 +82,6 @@ export const workflows = pgTable("workflows", {
     .default("none"),
   deploymentUrl: text("deployment_url"),
   lastDeployedAt: timestamp("last_deployed_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-
-// Projects table (simplified, now created alongside workflows)
-export const projects = pgTable("projects", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => nanoid()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id),
-  vercelProjectId: text("vercel_project_id").notNull(),
-  name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -148,21 +135,7 @@ export const workflowExecutionLogs = pgTable("workflow_execution_logs", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
-// Relations (1-to-1 between workflow and project)
-export const workflowsRelations = relations(workflows, ({ one }) => ({
-  vercelProject: one(projects, {
-    fields: [workflows.vercelProjectId],
-    references: [projects.id],
-  }),
-}));
-
-export const projectsRelations = relations(projects, ({ one }) => ({
-  workflow: one(workflows, {
-    fields: [projects.id],
-    references: [workflows.vercelProjectId],
-  }),
-}));
-
+// Relations
 export const workflowExecutionsRelations = relations(
   workflowExecutions,
   ({ one }) => ({
@@ -175,8 +148,6 @@ export const workflowExecutionsRelations = relations(
 
 export type User = typeof user.$inferSelect;
 export type Session = typeof session.$inferSelect;
-export type Project = typeof projects.$inferSelect;
-export type NewProject = typeof projects.$inferInsert;
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;

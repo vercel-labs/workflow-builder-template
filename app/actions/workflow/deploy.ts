@@ -1,8 +1,8 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { projects, workflows } from "@/lib/db/schema";
+import { workflows } from "@/lib/db/schema";
 import { deployWorkflowToVercel } from "@/lib/vercel-deployment";
 import { getSession, verifyWorkflowOwnership } from "./utils";
 
@@ -26,60 +26,33 @@ export async function deploy(id: string): Promise<{
     throw new Error("Vercel API token not configured");
   }
 
-  // Check if workflow is linked to a Vercel project
+  // Check if workflow has Vercel project
   if (!workflow.vercelProjectId) {
-    throw new Error(
-      'This workflow is not linked to a Vercel project. Please link it to a project first using the "Change Project" option.'
-    );
+    throw new Error("This workflow is not linked to a Vercel project.");
   }
 
-  // Store vercelProjectId for type narrowing
-  const vercelProjectId = workflow.vercelProjectId;
-
-  // Get the actual Vercel project
-  const vercelProject = await db.query.projects.findFirst({
-    where: eq(projects.id, vercelProjectId),
-  });
-
-  if (!vercelProject) {
-    throw new Error(
-      "Linked Vercel project not found. Please link this workflow to a valid project."
-    );
-  }
-
-  // Get all workflows for this Vercel project
-  const projectWorkflows = await db.query.workflows.findMany({
-    where: and(
-      eq(workflows.vercelProjectId, vercelProjectId),
-      eq(workflows.userId, session.user.id)
-    ),
-  });
-
-  // Update status to deploying for all workflows in the project
+  // Update status to deploying
   await db
     .update(workflows)
     .set({ deploymentStatus: "deploying" })
-    .where(
-      and(
-        eq(workflows.vercelProjectId, vercelProjectId),
-        eq(workflows.userId, session.user.id)
-      )
-    );
+    .where(eq(workflows.id, id));
 
-  // Deploy all workflows in the project
+  // Deploy workflow
   const result = await deployWorkflowToVercel({
-    workflows: projectWorkflows.map((w) => ({
-      id: w.id,
-      name: w.name,
-      nodes: w.nodes,
-      edges: w.edges,
-    })),
+    workflows: [
+      {
+        id: workflow.id,
+        name: workflow.name,
+        nodes: workflow.nodes,
+        edges: workflow.edges,
+      },
+    ],
     vercelToken: vercelApiToken,
     vercelTeamId,
-    vercelProjectId: vercelProject.vercelProjectId, // Use the actual Vercel project ID
+    vercelProjectId: workflow.vercelProjectId,
   });
 
-  // Update all workflows in the project with deployment result
+  // Update workflow with deployment result
   await db
     .update(workflows)
     .set({
@@ -87,12 +60,7 @@ export async function deploy(id: string): Promise<{
       deploymentUrl: result.deploymentUrl,
       lastDeployedAt: new Date(),
     })
-    .where(
-      and(
-        eq(workflows.vercelProjectId, vercelProjectId),
-        eq(workflows.userId, session.user.id)
-      )
-    );
+    .where(eq(workflows.id, id));
 
   return {
     success: result.success,

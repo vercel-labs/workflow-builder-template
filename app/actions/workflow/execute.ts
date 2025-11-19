@@ -44,7 +44,7 @@ export async function execute(
       {
         executionId: execution.id,
         userId: session.user.id,
-        projectId: workflow.vercelProjectId || undefined,
+        workflowId: id,
         input,
       }
     );

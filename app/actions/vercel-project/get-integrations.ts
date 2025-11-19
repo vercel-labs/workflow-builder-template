@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { projects } from "@/lib/db/schema";
+import { workflows } from "@/lib/db/schema";
 import { getEnvironmentVariables } from "@/lib/integrations/vercel";
 
 export type ProjectIntegrations = {
@@ -22,7 +22,7 @@ export type ProjectIntegrations = {
 };
 
 export async function getProjectIntegrations(
-  projectId: string
+  workflowId: string
 ): Promise<ProjectIntegrations> {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -32,15 +32,15 @@ export async function getProjectIntegrations(
     throw new Error("Unauthorized");
   }
 
-  const project = await db.query.projects.findFirst({
+  const workflow = await db.query.workflows.findFirst({
     where: and(
-      eq(projects.id, projectId),
-      eq(projects.userId, session.user.id)
+      eq(workflows.id, workflowId),
+      eq(workflows.userId, session.user.id)
     ),
   });
 
-  if (!project) {
-    throw new Error("Project not found");
+  if (!workflow) {
+    throw new Error("Workflow not found");
   }
 
   // Get app-level Vercel credentials from env vars
@@ -66,7 +66,7 @@ export async function getProjectIntegrations(
 
   // Fetch environment variables from Vercel
   const envResult = await getEnvironmentVariables({
-    projectId: project.vercelProjectId,
+    projectId: workflow.vercelProjectId,
     apiToken: vercelApiToken,
     teamId: vercelTeamId || undefined,
     decrypt: true, // Decrypt encrypted environment variables

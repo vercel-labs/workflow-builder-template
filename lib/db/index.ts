@@ -2,8 +2,6 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
   account,
-  projects,
-  projectsRelations,
   session,
   user,
   verification,
@@ -11,7 +9,6 @@ import {
   workflowExecutions,
   workflowExecutionsRelations,
   workflows,
-  workflowsRelations,
 } from "./schema";
 
 // Construct schema object for drizzle
@@ -21,11 +18,8 @@ const schema = {
   account,
   verification,
   workflows,
-  projects,
   workflowExecutions,
   workflowExecutionLogs,
-  workflowsRelations,
-  projectsRelations,
   workflowExecutionsRelations,
 };
 

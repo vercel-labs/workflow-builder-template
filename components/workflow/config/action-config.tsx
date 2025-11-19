@@ -22,8 +22,8 @@ import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
 import { TemplateBadgeTextarea } from "@/components/ui/template-badge-textarea";
 import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import {
-  currentVercelProjectIdAtom,
-  currentVercelProjectNameAtom,
+  currentWorkflowIdAtom,
+  currentWorkflowNameAtom,
 } from "@/lib/workflow-store";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
@@ -560,8 +560,8 @@ export function ActionConfig({
   disabled,
 }: ActionConfigProps) {
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
-  const [projectId] = useAtom(currentVercelProjectIdAtom);
-  const [projectName] = useAtom(currentVercelProjectNameAtom);
+  const [workflowId] = useAtom(currentWorkflowIdAtom);
+  const [workflowName] = useAtom(currentWorkflowNameAtom);
   const integrations = useAtomValue(projectIntegrationsAtom);
 
   const actionType = (config?.actionType as string) || "";
@@ -693,8 +693,8 @@ export function ActionConfig({
       <ProjectIntegrationsDialog
         onOpenChange={setShowIntegrationsDialog}
         open={showIntegrationsDialog}
-        projectId={projectId}
-        projectName={projectName}
+        workflowId={workflowId}
+        workflowName={workflowName}
       />
 
       {/* Send Email fields */}

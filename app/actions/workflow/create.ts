@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
-import { create as createVercelProject } from "../vercel-project/create";
+import { createProject } from "@/lib/integrations/vercel";
 import type { SavedWorkflow, WorkflowData } from "./types";
 import { getSession } from "./utils";
 
@@ -26,7 +26,7 @@ function createDefaultTriggerNode() {
 
 /**
  * Create a new workflow
- * Each workflow automatically gets its own dedicated project (1-to-1)
+ * Each workflow automatically gets its own Vercel project using format: workflow-builder-[workflowId]
  */
 export async function create(
   data: Omit<WorkflowData, "id">
@@ -53,20 +53,44 @@ export async function create(
     workflowName = `Untitled ${count}`;
   }
 
-  // Always create a dedicated project for this workflow (1-to-1 relationship)
-  const project = await createVercelProject({
-    name: workflowName,
+  // Generate workflow ID first
+  const workflowId = nanoid();
+
+  // Get app-level Vercel credentials from env vars
+  const vercelApiToken = process.env.VERCEL_API_TOKEN;
+  const vercelTeamId = process.env.VERCEL_TEAM_ID;
+
+  if (!vercelApiToken) {
+    throw new Error("Vercel API token not configured");
+  }
+
+  // Create Vercel project with workflow-builder-[workflowId] format
+  const vercelProjectName = `workflow-builder-${workflowId}`;
+  const result = await createProject({
+    name: vercelProjectName,
+    apiToken: vercelApiToken,
+    teamId: vercelTeamId,
   });
+
+  if (result.status === "error") {
+    throw new Error(result.error);
+  }
+
+  if (!result.project) {
+    throw new Error("Failed to create project on Vercel");
+  }
 
   const [newWorkflow] = await db
     .insert(workflows)
     .values({
+      id: workflowId,
       name: workflowName,
       description: data.description,
       nodes,
       edges: data.edges,
       userId: session.user.id,
-      vercelProjectId: project.id,
+      vercelProjectId: result.project.id,
+      vercelProjectName,
     })
     .returning();
 

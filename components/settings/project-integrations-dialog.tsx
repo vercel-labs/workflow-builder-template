@@ -36,8 +36,8 @@ type ProjectIntegrations = {
 type ProjectIntegrationsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string | null;
-  projectName: string | null;
+  workflowId: string | null;
+  workflowName: string | null;
 };
 
 // Helper functions extracted outside component to reduce complexity
@@ -163,8 +163,8 @@ function clearFormFields(
 export function ProjectIntegrationsDialog({
   open,
   onOpenChange,
-  projectId,
-  projectName,
+  workflowId,
+  workflowName,
 }: ProjectIntegrationsDialogProps) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("resend");
@@ -182,12 +182,12 @@ export function ProjectIntegrationsDialog({
   const [savingIntegrations, setSavingIntegrations] = useState(false);
 
   const loadIntegrations = useCallback(async () => {
-    if (!projectId) {
+    if (!workflowId) {
       return;
     }
 
     try {
-      const data = await getProjectIntegrations(projectId);
+      const data = await getProjectIntegrations(workflowId);
       setIntegrations(data);
 
       // Only populate form fields if keys already exist
@@ -198,20 +198,20 @@ export function ProjectIntegrationsDialog({
       setAiGatewayApiKey(data.hasAiGatewayKey ? "••••••••" : "");
       setDatabaseUrl(data.hasDatabaseUrl ? "••••••••" : "");
     } catch (error) {
-      console.error("Failed to load project integrations:", error);
+      console.error("Failed to load workflow integrations:", error);
       toast.error("Failed to load integrations");
     }
-  }, [projectId]);
+  }, [workflowId]);
 
   useEffect(() => {
-    if (open && projectId) {
+    if (open && workflowId) {
       setLoading(true);
       loadIntegrations().finally(() => setLoading(false));
     }
-  }, [open, projectId, loadIntegrations]);
+  }, [open, workflowId, loadIntegrations]);
 
   const handleSaveIntegrations = async (type: string) => {
-    if (!projectId) {
+    if (!workflowId) {
       return;
     }
 
@@ -225,7 +225,7 @@ export function ProjectIntegrationsDialog({
         aiGatewayApiKey,
         databaseUrl,
       });
-      await updateProjectIntegrations(projectId, updates);
+      await updateProjectIntegrations(workflowId, updates);
       await loadIntegrations();
       toast.success("Integrations updated successfully");
     } catch (error) {
@@ -237,14 +237,14 @@ export function ProjectIntegrationsDialog({
   };
 
   const handleRemoveIntegration = async (type: string) => {
-    if (!projectId) {
+    if (!workflowId) {
       return;
     }
 
     setSavingIntegrations(true);
     try {
       const updates = buildUpdatesForRemove(type);
-      await updateProjectIntegrations(projectId, updates);
+      await updateProjectIntegrations(workflowId, updates);
       await loadIntegrations();
       clearFormFields(type, {
         setResendApiKey,
@@ -268,9 +268,9 @@ export function ProjectIntegrationsDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {projectName
-              ? `${projectName} - Integrations`
-              : "Project Integrations"}
+            {workflowName
+              ? `${workflowName} - Integrations`
+              : "Workflow Integrations"}
           </DialogTitle>
         </DialogHeader>
 

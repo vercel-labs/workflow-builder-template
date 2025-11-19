@@ -11,8 +11,6 @@ import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
 import { authClient, useSession } from "@/lib/auth-client";
 import { workflowApi } from "@/lib/workflow-api";
 import {
-  currentVercelProjectIdAtom,
-  currentVercelProjectNameAtom,
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
   edgesAtom,
@@ -45,8 +43,6 @@ const Home = () => {
   const setNodes = useSetAtom(nodesAtom);
   const setEdges = useSetAtom(edgesAtom);
   const setCurrentWorkflowName = useSetAtom(currentWorkflowNameAtom);
-  const setCurrentVercelProjectId = useSetAtom(currentVercelProjectIdAtom);
-  const setCurrentVercelProjectName = useSetAtom(currentVercelProjectNameAtom);
   const hasCreatedWorkflowRef = useRef(false);
   const currentWorkflowName = useAtomValue(currentWorkflowNameAtom);
 
@@ -62,18 +58,6 @@ const Home = () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }, [session]);
-
-  // Helper to load project details if workflow has one
-  const loadProjectDetails = useCallback(
-    async (workflowId: string, _projectId: string) => {
-      const fullWorkflow = await workflowApi.getById(workflowId);
-      if (fullWorkflow?.vercelProject) {
-        setCurrentVercelProjectId(fullWorkflow.vercelProject.id);
-        setCurrentVercelProjectName(fullWorkflow.vercelProject.name);
-      }
-    },
-    [setCurrentVercelProjectId, setCurrentVercelProjectName]
-  );
 
   // Handler to add the first node (replaces the "add" node)
   const handleAddNode = useCallback(() => {
@@ -99,17 +83,8 @@ const Home = () => {
     setNodes([addNodePlaceholder]);
     setEdges([]);
     setCurrentWorkflowName("Untitled Workflow");
-    setCurrentVercelProjectId(null);
-    setCurrentVercelProjectName(null);
     hasCreatedWorkflowRef.current = false;
-  }, [
-    setNodes,
-    setEdges,
-    setCurrentWorkflowName,
-    setCurrentVercelProjectId,
-    setCurrentVercelProjectName,
-    handleAddNode,
-  ]);
+  }, [setNodes, setEdges, setCurrentWorkflowName, handleAddNode]);
 
   // Create workflow when first real node is added
   useEffect(() => {
@@ -134,11 +109,6 @@ const Home = () => {
           edges,
         });
 
-        // Load project details if available
-        if (newWorkflow.vercelProjectId) {
-          await loadProjectDetails(newWorkflow.id, newWorkflow.vercelProjectId);
-        }
-
         // Redirect to the workflow page
         router.replace(`/workflows/${newWorkflow.id}`);
       } catch (error) {
@@ -148,7 +118,7 @@ const Home = () => {
     };
 
     createWorkflowAndRedirect();
-  }, [nodes, edges, router, ensureSession, loadProjectDetails]);
+  }, [nodes, edges, router, ensureSession]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">

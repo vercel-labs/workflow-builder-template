@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { SchemaField } from "../components/workflow/config/schema-builder";
 import { db } from "./db";
-import { projects, workflowExecutionLogs } from "./db/schema";
+import { workflowExecutionLogs, workflows } from "./db/schema";
 import { getStep, hasStep } from "./steps";
 import {
   type EnvVarConfig,
@@ -28,7 +28,7 @@ type ExecutionResult = {
 export type WorkflowExecutionContext = {
   executionId?: string;
   userId?: string;
-  projectId?: string;
+  workflowId?: string;
   input?: Record<string, unknown>;
 };
 
@@ -136,13 +136,13 @@ class ServerWorkflowExecutor {
   }
 
   private async loadProjectIntegrations(): Promise<void> {
-    if (!this.context.projectId) {
+    if (!this.context.workflowId) {
       return;
     }
 
     try {
-      const projectData = await this.fetchProjectData();
-      if (!projectData) {
+      const workflowData = await this.fetchWorkflowData();
+      if (!workflowData) {
         return;
       }
 
@@ -155,31 +155,31 @@ class ServerWorkflowExecutor {
       }
 
       await this.loadEnvironmentVariables(
-        projectData.vercelProjectId,
+        workflowData.vercelProjectId,
         vercelApiToken,
         vercelTeamId
       );
     } catch (error) {
-      console.error("Failed to load project integrations:", error);
+      console.error("Failed to load workflow integrations:", error);
       this.credentials = getCredentials("system");
     }
   }
 
-  private async fetchProjectData() {
-    const projectData = await db.query.projects.findFirst({
-      where: eq(projects.id, this.context.projectId as string),
+  private async fetchWorkflowData() {
+    const workflowData = await db.query.workflows.findFirst({
+      where: eq(workflows.id, this.context.workflowId as string),
       columns: {
         vercelProjectId: true,
         userId: true,
       },
     });
 
-    if (!projectData) {
-      console.error("Project not found");
+    if (!workflowData) {
+      console.error("Workflow not found");
       return null;
     }
 
-    return projectData;
+    return workflowData;
   }
 
   private async loadEnvironmentVariables(

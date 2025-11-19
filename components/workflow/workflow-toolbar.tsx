@@ -986,8 +986,8 @@ function WorkflowDialogsComponent({
             <DialogTitle>Delete Workflow</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete &ldquo;{state.workflowName}
-              &rdquo;? This will permanently delete the workflow and its
-              associated project. This cannot be undone.
+              &rdquo;? This will permanently delete the workflow. This cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

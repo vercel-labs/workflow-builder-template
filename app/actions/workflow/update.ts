@@ -2,13 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { projects, workflows } from "@/lib/db/schema";
+import { workflows } from "@/lib/db/schema";
 import type { SavedWorkflow, WorkflowData } from "./types";
 import { getSession, verifyWorkflowOwnership } from "./utils";
 
 /**
  * Update a workflow
- * Since workflows are 1-to-1 with projects, updating the workflow name also updates the project name
  */
 export async function update(
   id: string,
@@ -49,14 +48,6 @@ export async function update(
 
   if (!updatedWorkflow) {
     throw new Error("Workflow not found");
-  }
-
-  // If name was updated, also update the associated project name (1-to-1 relationship)
-  if (data.name !== undefined && updatedWorkflow.vercelProjectId) {
-    await db
-      .update(projects)
-      .set({ name: data.name, updatedAt: new Date() })
-      .where(eq(projects.id, updatedWorkflow.vercelProjectId));
   }
 
   return {

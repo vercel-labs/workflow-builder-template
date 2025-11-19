@@ -1,10 +1,11 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
+import { createProject } from "@/lib/integrations/vercel";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
-import { create as createVercelProject } from "../vercel-project/create";
 import { CURRENT_WORKFLOW_NAME } from "./constants";
 import type { WorkflowData } from "./types";
 import { getSession } from "./utils";
@@ -48,20 +49,44 @@ export async function saveCurrent(
       .where(eq(workflows.id, existingWorkflow.id))
       .returning();
   } else {
-    // Create new current workflow with a dedicated project
-    const project = await createVercelProject({
-      name: CURRENT_WORKFLOW_NAME,
+    // Create new current workflow with a dedicated Vercel project
+    const workflowId = nanoid();
+
+    // Get app-level Vercel credentials from env vars
+    const vercelApiToken = process.env.VERCEL_API_TOKEN;
+    const vercelTeamId = process.env.VERCEL_TEAM_ID;
+
+    if (!vercelApiToken) {
+      throw new Error("Vercel API token not configured");
+    }
+
+    // Create Vercel project with workflow-builder-[workflowId] format
+    const vercelProjectName = `workflow-builder-${workflowId}`;
+    const result = await createProject({
+      name: vercelProjectName,
+      apiToken: vercelApiToken,
+      teamId: vercelTeamId,
     });
+
+    if (result.status === "error") {
+      throw new Error(result.error);
+    }
+
+    if (!result.project) {
+      throw new Error("Failed to create project on Vercel");
+    }
 
     [savedWorkflow] = await db
       .insert(workflows)
       .values({
+        id: workflowId,
         name: CURRENT_WORKFLOW_NAME,
         description: "Auto-saved current workflow",
         nodes,
         edges,
         userId: session.user.id,
-        vercelProjectId: project.id,
+        vercelProjectId: result.project.id,
+        vercelProjectName,
       })
       .returning();
   }
