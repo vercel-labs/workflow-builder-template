@@ -645,8 +645,8 @@ export function ActionConfig({
         </Alert>
       )}
 
-      <div>
-        <Label className="ml-1 mb-2" htmlFor="actionType">
+      <div className="space-y-2">
+        <Label className="ml-1" htmlFor="actionType">
           Action Type
         </Label>
         <Select
@@ -701,19 +701,6 @@ export function ActionConfig({
             </SelectGroup>
           </SelectContent>
         </Select>
-        {requiredIntegration && (
-          <p className="text-muted-foreground text-xs ml-1 mt-1">
-            This action requires{" "}
-            <button
-              className="text-foreground underline hover:text-foreground/80 underline-offset-2 transition duration-200 ease-out"
-              onClick={() => setShowIntegrationsDialog(true)}
-              type="button"
-            >
-              {requiredIntegration.label} integration
-            </button>
-            .
-          </p>
-        )}
       </div>
 
       <ProjectIntegrationsDialog
