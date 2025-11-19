@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
 import { createProject } from "@/lib/integrations/vercel";
+import { generateId } from "@/lib/utils/id";
 import type { SavedWorkflow, WorkflowData } from "./types";
 import { getSession } from "./utils";
 
@@ -54,7 +55,7 @@ export async function create(
   }
 
   // Generate workflow ID first
-  const workflowId = nanoid();
+  const workflowId = generateId();
 
   // Get app-level Vercel credentials from env vars
   const vercelApiToken = process.env.VERCEL_API_TOKEN;

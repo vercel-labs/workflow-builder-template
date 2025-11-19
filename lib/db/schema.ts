@@ -1,9 +1,6 @@
 import { relations } from "drizzle-orm";
 import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { customAlphabet } from "nanoid";
-
-// Create a nanoid generator with URL-safe characters
-const nanoid = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 21);
+import { generateId } from "../utils/id";
 
 // Better Auth tables
 export const users = pgTable("users", {
@@ -62,7 +59,7 @@ export const verifications = pgTable("verifications", {
 export const workflows = pgTable("workflows", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => nanoid()),
+    .$defaultFn(() => generateId()),
   name: text("name").notNull(),
   description: text("description"),
   userId: text("user_id")
@@ -87,7 +84,7 @@ export const workflows = pgTable("workflows", {
 export const workflowExecutions = pgTable("workflow_executions", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => nanoid()),
+    .$defaultFn(() => generateId()),
   workflowId: text("workflow_id")
     .notNull()
     .references(() => workflows.id),
@@ -111,7 +108,7 @@ export const workflowExecutions = pgTable("workflow_executions", {
 export const workflowExecutionLogs = pgTable("workflow_execution_logs", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => nanoid()),
+    .$defaultFn(() => generateId()),
   executionId: text("execution_id")
     .notNull()
     .references(() => workflowExecutions.id),
