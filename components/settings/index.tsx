@@ -6,10 +6,10 @@ import { update as updateUser } from "@/app/actions/user/update";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Spinner } from "../ui/spinner";
 import { AccountSettings } from "./account-settings";
 
@@ -20,12 +20,10 @@ type SettingsDialogProps = {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("account");
 
   // Account state
   const [accountName, setAccountName] = useState("");
   const [accountEmail, setAccountEmail] = useState("");
-  const [_savingAccount, setSavingAccount] = useState(false);
 
   const loadAccount = useCallback(async () => {
     try {
@@ -53,14 +51,11 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   }, [open, loadAll]);
 
   const saveAccount = async () => {
-    setSavingAccount(true);
     try {
       await updateUser({ name: accountName, email: accountEmail });
       await loadAccount();
     } catch (error) {
       console.error("Failed to save account:", error);
-    } finally {
-      setSavingAccount(false);
     }
   };
 
@@ -69,6 +64,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
+          <DialogDescription>
+            Update your personal information
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -77,21 +75,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
         ) : (
           <div className="mt-4">
-            <Tabs onValueChange={setActiveTab} value={activeTab}>
-              <TabsList className="mb-6 grid w-full grid-cols-1">
-                <TabsTrigger value="account">Account</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="account">
-                <AccountSettings
-                  accountEmail={accountEmail}
-                  accountName={accountName}
-                  onEmailChange={setAccountEmail}
-                  onNameChange={setAccountName}
-                  onSave={saveAccount}
-                />
-              </TabsContent>
-            </Tabs>
+            <AccountSettings
+              accountEmail={accountEmail}
+              accountName={accountName}
+              onEmailChange={setAccountEmail}
+              onNameChange={setAccountName}
+              onSave={saveAccount}
+            />
           </div>
         )}
       </DialogContent>

@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -38,11 +32,7 @@ export function AccountSettings({
 
   return (
     <Card className="border-0 py-0 shadow-none">
-      <CardHeader className="px-0">
-        <CardTitle>Account Information</CardTitle>
-        <CardDescription>Update your personal information</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 px-0">
+      <CardContent className="space-y-4 p-0">
         <div className="space-y-2">
           <Label className="ml-1" htmlFor="accountName">
             Name
