@@ -699,19 +699,6 @@ export function ActionConfig({
             </SelectGroup>
           </SelectContent>
         </Select>
-        {requiredIntegration && (
-          <p className="text-muted-foreground text-xs">
-            This action requires{" "}
-            <button
-              className="text-foreground underline hover:text-foreground/80"
-              onClick={() => setShowIntegrationsDialog(true)}
-              type="button"
-            >
-              {requiredIntegration.label} integration
-            </button>
-            .
-          </p>
-        )}
       </div>
 
       <ProjectIntegrationsDialog
