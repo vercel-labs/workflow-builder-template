@@ -629,7 +629,7 @@ export function ActionConfig({
             <span className="font-semibold text-orange-900 dark:text-orange-100">
               Integration Required
             </span>
-            <p className="mt-1 text-orange-800 dark:text-orange-400 text-xs">
+            <p className="mt-1 text-orange-800 text-xs dark:text-orange-400">
               This action requires {requiredIntegration.label} to be configured.
               Add your API key in the project integrations to use this action.
             </p>

@@ -49,7 +49,7 @@ const isIntegrationConfigured = (
   actionType: string,
   integrations: ReturnType<
     typeof useAtomValue<typeof projectIntegrationsAtom>
-  > | null,
+  > | null
 ): boolean => {
   if (!integrations) {
     return false;
@@ -118,7 +118,7 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
       <Node
         className={cn(
           "flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-          selected && "border-primary",
+          selected && "border-primary"
         )}
         handles={{ target: true, source: true }}
       >
@@ -149,7 +149,7 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
     <Node
       className={cn(
         "relative flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary",
+        selected && "border-primary"
       )}
       handles={{ target: true, source: true }}
     >
