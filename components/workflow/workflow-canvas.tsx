@@ -10,6 +10,7 @@ import {
   type Viewport,
   type Connection as XYFlowConnection,
   type Edge as XYFlowEdge,
+  MiniMap,
 } from "@xyflow/react";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,6 +32,7 @@ import {
   onNodesChangeAtom,
   selectedEdgeAtom,
   selectedNodeAtom,
+  showMinimapAtom,
   type WorkflowNode,
   type WorkflowNodeType,
 } from "@/lib/workflow-store";
@@ -73,6 +75,7 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const [edges, setEdges] = useAtom(edgesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
+  const [showMinimap] = useAtom(showMinimapAtom);
   const onNodesChange = useSetAtom(onNodesChangeAtom);
   const onEdgesChange = useSetAtom(onEdgesChangeAtom);
   const setSelectedNode = useSetAtom(selectedNodeAtom);
@@ -366,13 +369,13 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
         >
           <Controls />
         </Panel>
-        {/*{showMinimap && (
+        {showMinimap && (
           <MiniMap
             bgColor="var(--sidebar)"
             className="hidden md:flex"
             nodeStrokeColor="var(--border)"
           />
-        )}*/}
+        )}
       </Canvas>
     </div>
   );

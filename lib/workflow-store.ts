@@ -30,6 +30,7 @@ export const currentWorkflowNameAtom = atom<string>("Untitled Workflow");
 
 // UI state atoms
 export const propertiesPanelActiveTabAtom = atom<string>("runs");
+export const showMinimapAtom = atom(false);
 
 // Derived atoms for node/edge operations
 export const onNodesChangeAtom = atom(
