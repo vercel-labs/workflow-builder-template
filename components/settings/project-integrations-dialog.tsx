@@ -1,5 +1,6 @@
 "use client";
 
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getProjectIntegrations } from "@/app/actions/vercel-project/get-integrations";
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import { Spinner } from "../ui/spinner";
 import { AiGatewaySettings } from "./ai-gateway-settings";
 import { DatabaseSettings } from "./database-settings";
@@ -173,6 +175,7 @@ export function ProjectIntegrationsDialog({
 }: ProjectIntegrationsDialogProps) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(initialTab);
+  const setProjectIntegrations = useSetAtom(projectIntegrationsAtom);
 
   // Integrations state
   const [integrations, setIntegrations] = useState<ProjectIntegrations | null>(
@@ -194,6 +197,7 @@ export function ProjectIntegrationsDialog({
     try {
       const data = await getProjectIntegrations(workflowId);
       setIntegrations(data);
+      setProjectIntegrations(data);
 
       // Only populate form fields if keys already exist
       setResendApiKey(data.hasResendKey ? "••••••••" : "");
@@ -206,7 +210,7 @@ export function ProjectIntegrationsDialog({
       console.error("Failed to load workflow integrations:", error);
       toast.error("Failed to load integrations");
     }
-  }, [workflowId]);
+  }, [workflowId, setProjectIntegrations]);
 
   useEffect(() => {
     if (open && workflowId) {

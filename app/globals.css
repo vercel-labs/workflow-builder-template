@@ -174,12 +174,24 @@
   color: rgba(255, 255, 255, 0.5) !important;
 }
 
+/* React Flow pane cursor */
+.react-flow__pane {
+  cursor: default !important;
+}
+
+/* React Flow node and edge cursor */
+.react-flow__node,
+.react-flow__edge {
+  cursor: pointer !important;
+}
+
 /* React Flow handle positioning and styling */
 .react-flow__handle {
   width: 12px !important;
   height: 12px !important;
   border: 2px solid var(--border) !important;
   background: var(--primary) !important;
+  cursor: pointer !important;
 }
 
 .react-flow__handle-left {

@@ -23,7 +23,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
+import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import { workflowApi } from "@/lib/workflow-api";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
@@ -42,6 +45,7 @@ import {
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 import { Panel } from "../ai-elements/panel";
+import { ProjectIntegrationsDialog } from "../settings/project-integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ActionConfig } from "./config/action-config";
@@ -139,6 +143,7 @@ const PanelInner = () => {
   const [currentWorkflowName, setCurrentWorkflowName] = useAtom(
     currentWorkflowNameAtom
   );
+  const integrations = useAtomValue(projectIntegrationsAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
   const deleteEdge = useSetAtom(deleteEdgeAtom);
@@ -148,6 +153,9 @@ const PanelInner = () => {
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
+  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] =
+    useState<string>("resend");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
@@ -395,6 +403,107 @@ const PanelInner = () => {
                   value={currentWorkflowId || "Not saved"}
                 />
               </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <Label>Integrations</Label>
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!currentWorkflowId}
+                      onClick={() => {
+                        setSelectedIntegration("resend");
+                        setShowIntegrationsDialog(true);
+                      }}
+                      type="button"
+                    >
+                      <IntegrationIcon
+                        className="size-4"
+                        integration="resend"
+                      />
+                      <span className="text-xs">Resend</span>
+                      <div
+                        className={`ml-auto size-2 rounded-full ${integrations?.hasResendKey ? "bg-green-500" : "bg-muted"}`}
+                      />
+                    </button>
+                    <button
+                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!currentWorkflowId}
+                      onClick={() => {
+                        setSelectedIntegration("slack");
+                        setShowIntegrationsDialog(true);
+                      }}
+                      type="button"
+                    >
+                      <IntegrationIcon className="size-4" integration="slack" />
+                      <span className="text-xs">Slack</span>
+                      <div
+                        className={`ml-auto size-2 rounded-full ${integrations?.hasSlackKey ? "bg-green-500" : "bg-muted"}`}
+                      />
+                    </button>
+                    <button
+                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!currentWorkflowId}
+                      onClick={() => {
+                        setSelectedIntegration("linear");
+                        setShowIntegrationsDialog(true);
+                      }}
+                      type="button"
+                    >
+                      <IntegrationIcon
+                        className="size-4"
+                        integration="linear"
+                      />
+                      <span className="text-xs">Linear</span>
+                      <div
+                        className={`ml-auto size-2 rounded-full ${integrations?.hasLinearKey ? "bg-green-500" : "bg-muted"}`}
+                      />
+                    </button>
+                    <button
+                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!currentWorkflowId}
+                      onClick={() => {
+                        setSelectedIntegration("ai-gateway");
+                        setShowIntegrationsDialog(true);
+                      }}
+                      type="button"
+                    >
+                      <IntegrationIcon
+                        className="size-4"
+                        integration="vercel"
+                      />
+                      <span className="text-xs">AI Gateway</span>
+                      <div
+                        className={`ml-auto size-2 rounded-full ${integrations?.hasAiGatewayKey ? "bg-green-500" : "bg-muted"}`}
+                      />
+                    </button>
+                    <button
+                      className="flex cursor-pointer items-center gap-2 rounded border bg-background p-2 transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!currentWorkflowId}
+                      onClick={() => {
+                        setSelectedIntegration("database");
+                        setShowIntegrationsDialog(true);
+                      }}
+                      type="button"
+                    >
+                      <div className="flex size-4 items-center justify-center rounded bg-blue-500 text-white text-xs">
+                        DB
+                      </div>
+                      <span className="text-xs">Database</span>
+                      <div
+                        className={`ml-auto size-2 rounded-full ${integrations?.hasDatabaseUrl ? "bg-green-500" : "bg-muted"}`}
+                      />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-muted-foreground text-xs">
+                    {currentWorkflowId
+                      ? "Click an integration to configure"
+                      : "Save workflow to configure integrations"}
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 border-t p-4">
               <Button
@@ -500,6 +609,15 @@ const PanelInner = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <ProjectIntegrationsDialog
+          initialTab={selectedIntegration}
+          onOpenChange={setShowIntegrationsDialog}
+          open={showIntegrationsDialog}
+          singleIntegrationMode
+          workflowId={currentWorkflowId}
+          workflowName={currentWorkflowName}
+        />
       </>
     );
   }
@@ -682,6 +800,15 @@ const PanelInner = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProjectIntegrationsDialog
+        initialTab={selectedIntegration}
+        onOpenChange={setShowIntegrationsDialog}
+        open={showIntegrationsDialog}
+        singleIntegrationMode
+        workflowId={currentWorkflowId}
+        workflowName={currentWorkflowName}
+      />
     </>
   );
 };
