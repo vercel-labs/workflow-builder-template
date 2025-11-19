@@ -3,10 +3,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous } from "better-auth/plugins";
 import { db } from "./db";
 import {
-  account,
-  session,
-  user,
-  verification,
+  accounts,
+  sessions,
+  users,
+  verifications,
   workflowExecutionLogs,
   workflowExecutions,
   workflowExecutionsRelations,
@@ -15,10 +15,10 @@ import {
 
 // Construct schema object for drizzle adapter
 const schema = {
-  user,
-  session,
-  account,
-  verification,
+  user: users,
+  session: sessions,
+  account: accounts,
+  verification: verifications,
   workflows,
   workflowExecutions,
   workflowExecutionLogs,

@@ -9,56 +9,56 @@ const nanoid = customAlphabet(
 );
 
 // Better Auth tables
-export const user = pgTable("user", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
   email: text("email").unique(),
-  emailVerified: boolean("emailVerified").notNull().default(false),
+  emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
   // Anonymous user tracking
-  isAnonymous: boolean("isAnonymous").default(false),
+  isAnonymous: boolean("is_anonymous").default(false),
 });
 
-export const session = pgTable("session", {
+export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
-  expiresAt: timestamp("expiresAt").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   token: text("token").notNull().unique(),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
-  ipAddress: text("ipAddress"),
-  userAgent: text("userAgent"),
-  userId: text("userId")
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
     .notNull()
-    .references(() => user.id),
+    .references(() => users.id),
 });
 
-export const account = pgTable("account", {
+export const accounts = pgTable("accounts", {
   id: text("id").primaryKey(),
-  accountId: text("accountId").notNull(),
-  providerId: text("providerId").notNull(),
-  userId: text("userId")
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
     .notNull()
-    .references(() => user.id),
-  accessToken: text("accessToken"),
-  refreshToken: text("refreshToken"),
-  idToken: text("idToken"),
-  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
-  refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+    .references(() => users.id),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
   scope: text("scope"),
   password: text("password"),
-  createdAt: timestamp("createdAt").notNull(),
-  updatedAt: timestamp("updatedAt").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
 });
 
-export const verification = pgTable("verification", {
+export const verifications = pgTable("verifications", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
-  expiresAt: timestamp("expiresAt").notNull(),
-  createdAt: timestamp("createdAt"),
-  updatedAt: timestamp("updatedAt"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at"),
+  updatedAt: timestamp("updated_at"),
 });
 
 // Workflows table with user association
@@ -68,9 +68,9 @@ export const workflows = pgTable("workflows", {
     .$defaultFn(() => nanoid()),
   name: text("name").notNull(),
   description: text("description"),
-  userId: text("userId")
+  userId: text("user_id")
     .notNull()
-    .references(() => user.id),
+    .references(() => users.id),
   vercelProjectId: text("vercel_project_id").notNull().unique(), // Vercel project ID from API
   vercelProjectName: text("vercel_project_name").notNull(), // workflow-builder-[workflowId]
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - structure validated at application level
@@ -96,7 +96,7 @@ export const workflowExecutions = pgTable("workflow_executions", {
     .references(() => workflows.id),
   userId: text("user_id")
     .notNull()
-    .references(() => user.id),
+    .references(() => users.id),
   status: text("status")
     .notNull()
     .$type<"pending" | "running" | "success" | "error" | "cancelled">(),
@@ -146,8 +146,8 @@ export const workflowExecutionsRelations = relations(
   })
 );
 
-export type User = typeof user.$inferSelect;
-export type Session = typeof session.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Session = typeof sessions.$inferSelect;
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { user } from "@/lib/db/schema";
+import { users } from "@/lib/db/schema";
 
 /**
  * Get the current user's account information
@@ -18,8 +18,8 @@ export async function get() {
     throw new Error("Unauthorized");
   }
 
-  const userData = await db.query.user.findFirst({
-    where: eq(user.id, session.user.id),
+  const userData = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
     columns: {
       id: true,
       name: true,

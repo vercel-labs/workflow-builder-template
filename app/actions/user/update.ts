@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { user } from "@/lib/db/schema";
+import { users } from "@/lib/db/schema";
 
 /**
  * Update the current user's account information
@@ -30,5 +30,5 @@ export async function update(data: {
     updates.email = data.email;
   }
 
-  await db.update(user).set(updates).where(eq(user.id, session.user.id));
+  await db.update(users).set(updates).where(eq(users.id, session.user.id));
 }
