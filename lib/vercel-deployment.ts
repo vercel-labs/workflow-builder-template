@@ -1,13 +1,15 @@
 import "server-only";
 
-import { Sandbox } from "@vercel/sandbox";
-import ms from "ms";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import { Vercel } from "@vercel/sdk";
 import { generateWorkflowSDKCode } from "./workflow-codegen-sdk";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
-// Regex constants for deployment URL extraction
-const HTTPS_URL_PATTERN = /https:\/\/[^\s]+/;
-const VERCEL_APP_URL_PATTERN = /https:\/\/[^\s]+\.vercel\.app/;
+// Path to the Next.js boilerplate directory
+const BOILERPLATE_PATH = join(process.cwd(), "lib", "next-boilerplate");
+
+// Regex pattern for numeric starts
 const NUMERIC_START_PATTERN = /^[0-9]/;
 
 export type DeploymentOptions = {
@@ -29,168 +31,91 @@ export type DeploymentResult = {
   logs?: string[];
 };
 
-// Helper function to create sandbox config
-function createSandboxConfig(options: DeploymentOptions) {
-  const sandboxConfig: {
-    token: string;
-    resources: { vcpus: number };
-    timeout: number;
-    ports: number[];
-    runtime: "node22";
-    teamId?: string;
-    projectId?: string;
-  } = {
-    token: options.vercelToken,
-    resources: { vcpus: 4 },
-    timeout: ms("10m"),
-    ports: [3000],
-    runtime: "node22",
-  };
+/**
+ * Recursively read all files from a directory
+ */
+async function readDirectoryRecursive(
+  dirPath: string,
+  baseDir: string = dirPath
+): Promise<Record<string, string>> {
+  const files: Record<string, string> = {};
+  const entries = await readdir(dirPath, { withFileTypes: true });
 
-  if (options.vercelTeamId) {
-    sandboxConfig.teamId = options.vercelTeamId;
-  }
+  for (const entry of entries) {
+    const fullPath = join(dirPath, entry.name);
 
-  if (options.vercelProjectId) {
-    sandboxConfig.projectId = options.vercelProjectId;
-  }
-
-  return sandboxConfig;
-}
-
-// Helper function to handle sandbox creation errors
-function handleSandboxError(sandboxError: unknown): never {
-  const errorMsg =
-    sandboxError instanceof Error ? sandboxError.message : String(sandboxError);
-
-  if (errorMsg.includes("404")) {
-    throw new Error(
-      "Failed to create Vercel Sandbox (404). Please verify:\n" +
-        "1. Your Vercel API token is valid and has the correct permissions\n" +
-        "2. Your team ID is correct (if using a team)\n" +
-        "3. The project ID exists and you have access to it\n" +
-        "4. You have access to create sandboxes on your Vercel plan"
-    );
-  }
-
-  if (
-    errorMsg.includes("Missing credentials") ||
-    errorMsg.includes("projectId")
-  ) {
-    throw new Error(
-      "Vercel Sandbox requires a project ID. Please:\n" +
-        "1. Create a Vercel project first\n" +
-        "2. Link this workflow to a Vercel project in the workflow settings\n" +
-        "3. Or create a new project via the Vercel dashboard"
-    );
-  }
-
-  throw sandboxError;
-}
-
-// Helper function to extract deployment URL from output
-function extractDeploymentUrl(deployOutput: string): string {
-  const lines = deployOutput.split("\n");
-  const productionLine = lines.find((line) => line.includes("Production:"));
-
-  if (productionLine) {
-    const urlMatch = productionLine.match(HTTPS_URL_PATTERN);
-    if (urlMatch) {
-      return urlMatch[0];
+    if (entry.isDirectory()) {
+      // Recursively read subdirectories
+      const subFiles = await readDirectoryRecursive(fullPath, baseDir);
+      Object.assign(files, subFiles);
+    } else if (entry.isFile()) {
+      // Read file content
+      const content = await readFile(fullPath, "utf-8");
+      // Use relative path from base directory
+      const relativePath = fullPath.substring(baseDir.length + 1);
+      files[relativePath] = content;
     }
   }
 
-  // Fallback: try to find any https URL in the output
-  const urlMatch = deployOutput.match(VERCEL_APP_URL_PATTERN);
-  return urlMatch ? urlMatch[0] : "";
-}
-
-// Helper function to run install command
-async function runInstall(sandbox: Sandbox, logs: string[]) {
-  logs.push("Installing dependencies...");
-  const install = await sandbox.runCommand({
-    cmd: "npm",
-    args: ["install", "--loglevel", "info"],
-  });
-
-  if (install.exitCode !== 0) {
-    const stderrOutput = install.stderr
-      ? await install.stderr()
-      : "Unknown error";
-    throw new Error(`Failed to install dependencies: ${stderrOutput}`);
-  }
-  logs.push("Dependencies installed successfully");
-}
-
-// Helper function to run build command
-async function runBuild(sandbox: Sandbox, logs: string[]) {
-  logs.push("Building Next.js project...");
-  const build = await sandbox.runCommand({
-    cmd: "npm",
-    args: ["run", "build"],
-  });
-
-  if (build.exitCode !== 0) {
-    const stderrOutput = build.stderr ? await build.stderr() : "Unknown error";
-    throw new Error(`Build failed: ${stderrOutput}`);
-  }
-  logs.push("Project built successfully");
-}
-
-// Helper function to run deploy command
-async function runDeploy(
-  sandbox: Sandbox,
-  options: DeploymentOptions,
-  logs: string[]
-): Promise<string> {
-  logs.push("Deploying to Vercel...");
-  const deployArgs = [
-    "vercel",
-    "deploy",
-    "--prod",
-    "--yes",
-    "--token",
-    options.vercelToken,
-  ];
-  if (options.vercelTeamId) {
-    deployArgs.push("--scope", options.vercelTeamId);
-  }
-
-  const deploy = await sandbox.runCommand({
-    cmd: "npx",
-    args: deployArgs,
-  });
-
-  if (deploy.exitCode !== 0) {
-    const stderrOutput = deploy.stderr
-      ? await deploy.stderr()
-      : "Unknown error";
-    throw new Error(`Deployment failed: ${stderrOutput}`);
-  }
-
-  const deployOutput = deploy.stdout ? await deploy.stdout() : "";
-  return extractDeploymentUrl(deployOutput);
+  return files;
 }
 
 /**
- * Deploy a workflow to Vercel using Sandbox
+ * Deploy a workflow to Vercel using Vercel SDK
  */
 export async function deployWorkflowToVercel(
   options: DeploymentOptions
 ): Promise<DeploymentResult> {
   const logs: string[] = [];
-  let sandbox: Sandbox | null = null;
 
   try {
     logs.push("Starting deployment process...");
     logs.push(`Deploying ${options.workflows.length} workflow(s)...`);
 
-    // Get all project files with all workflows
-    const files = generateProjectFiles(options);
-    logs.push(`Generated code for ${options.workflows.length} workflow(s)`);
+    // Initialize Vercel SDK
+    const vercel = new Vercel({
+      bearerToken: options.vercelToken,
+    });
 
-    // Add Vercel project configuration to link to the specific project
-    files[".vercel/project.json"] = JSON.stringify(
+    // Read boilerplate files
+    logs.push("Reading boilerplate files...");
+    const boilerplateFiles = await readDirectoryRecursive(BOILERPLATE_PATH);
+    logs.push(`Read ${Object.keys(boilerplateFiles).length} boilerplate files`);
+
+    // Generate workflow-specific files
+    logs.push("Generating workflow files...");
+    const workflowFiles = generateWorkflowFiles(options);
+    logs.push(`Generated ${Object.keys(workflowFiles).length} workflow files`);
+
+    // Merge boilerplate and workflow files
+    const allFiles = { ...boilerplateFiles, ...workflowFiles };
+
+    // Update package.json to include workflow dependencies
+    const packageJson = JSON.parse(allFiles["package.json"]);
+    const allNodes = options.workflows.flatMap((w) => w.nodes);
+    packageJson.dependencies = {
+      ...packageJson.dependencies,
+      workflow: "4.0.1-beta.7",
+      ...getIntegrationDependencies(allNodes),
+    };
+    allFiles["package.json"] = JSON.stringify(packageJson, null, 2);
+
+    // Update next.config.ts to include workflow plugin
+    allFiles["next.config.ts"] = `import { withWorkflow } from 'workflow/next';
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {};
+
+export default withWorkflow(nextConfig);
+`;
+
+    // Update tsconfig.json to include workflow plugin
+    const tsConfig = JSON.parse(allFiles["tsconfig.json"]);
+    tsConfig.compilerOptions.plugins = [{ name: "next" }, { name: "workflow" }];
+    allFiles["tsconfig.json"] = JSON.stringify(tsConfig, null, 2);
+
+    // Add .vercel/project.json to link to the specific project
+    allFiles[".vercel/project.json"] = JSON.stringify(
       {
         projectId: options.vercelProjectId,
         orgId: options.vercelTeamId || undefined,
@@ -199,53 +124,101 @@ export async function deployWorkflowToVercel(
       2
     );
 
-    // Add Vercel configuration for Next.js
-    files["vercel.json"] = JSON.stringify(
-      {
-        framework: "nextjs",
-        buildCommand: "npm run build",
-        devCommand: "npm run dev",
-        installCommand: "npm install",
+    logs.push(`Total files to deploy: ${Object.keys(allFiles).length}`);
+
+    // Convert files to Vercel deployment format
+    const deploymentFiles = Object.entries(allFiles).map(([path, content]) => ({
+      file: path,
+      data: content,
+    }));
+
+    // Create deployment
+    logs.push("Creating deployment...");
+    const createResponse = await vercel.deployments.createDeployment({
+      teamId: options.vercelTeamId,
+      requestBody: {
+        name: options.vercelProjectId || "workflow",
+        files: deploymentFiles,
+        target: "production",
+        projectSettings: {
+          framework: "nextjs",
+          buildCommand: "npm run build",
+          devCommand: "npm run dev",
+          installCommand: "npm install",
+        },
       },
-      null,
-      2
+    });
+
+    const deploymentId = createResponse.id;
+    const deploymentUrl = createResponse.url;
+
+    logs.push(
+      `Deployment created: ID ${deploymentId} (status: ${createResponse.readyState})`
     );
+    logs.push(`Deployment URL: https://${deploymentUrl}`);
 
-    logs.push(`Generated ${Object.keys(files).length} project files`);
+    // Poll deployment status
+    logs.push("Waiting for deployment to complete...");
+    let deploymentStatus = createResponse.readyState;
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max (5 seconds * 60)
 
-    // Create sandbox environment
-    logs.push("Creating Vercel sandbox...");
-    const sandboxConfig = createSandboxConfig(options);
+    while (
+      (deploymentStatus === "BUILDING" ||
+        deploymentStatus === "INITIALIZING" ||
+        deploymentStatus === "QUEUED") &&
+      attempts < maxAttempts
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      attempts += 1;
 
-    try {
-      console.log("Creating sandbox with config:", sandboxConfig);
-      sandbox = await Sandbox.create(sandboxConfig);
-      logs.push("Sandbox created successfully");
-    } catch (sandboxError) {
-      logs.push(`Failed to create sandbox: ${String(sandboxError)}`);
-      handleSandboxError(sandboxError);
+      const statusResponse = await vercel.deployments.getDeployment({
+        idOrUrl: deploymentId,
+        teamId: options.vercelTeamId,
+      });
+
+      deploymentStatus = statusResponse.readyState;
+      logs.push(
+        `Deployment status: ${deploymentStatus} (${attempts}/${maxAttempts})`
+      );
     }
 
-    // Write all project files to sandbox
-    logs.push("Writing project files to sandbox...");
-    const fileEntries = Object.entries(files).map(([path, content]) => ({
-      path,
-      content: Buffer.from(content, "utf-8"),
-    }));
-    await sandbox.writeFiles(fileEntries);
-    logs.push("Files written successfully");
+    if (deploymentStatus === "READY") {
+      logs.push("Deployment successful!");
+      logs.push(
+        `Deployed ${options.workflows.length} workflow(s) to production`
+      );
 
-    // Install dependencies, build, and deploy
-    await runInstall(sandbox, logs);
-    await runBuild(sandbox, logs);
-    const deploymentUrl = await runDeploy(sandbox, options, logs);
+      return {
+        success: true,
+        deploymentUrl: `https://${deploymentUrl}`,
+        logs,
+      };
+    }
 
-    logs.push(`Deployment successful: ${deploymentUrl}`);
-    logs.push(`Deployed ${options.workflows.length} workflow(s) to production`);
+    if (deploymentStatus === "ERROR") {
+      logs.push("Deployment failed with error status");
+      return {
+        success: false,
+        error: "Deployment failed",
+        logs,
+      };
+    }
 
+    if (deploymentStatus === "CANCELED") {
+      logs.push("Deployment was canceled");
+      return {
+        success: false,
+        error: "Deployment was canceled",
+        logs,
+      };
+    }
+
+    // Timeout
+    logs.push("Deployment timed out");
     return {
-      success: true,
-      deploymentUrl,
+      success: false,
+      error: "Deployment timed out after 5 minutes",
       logs,
     };
   } catch (error) {
@@ -258,25 +231,23 @@ export async function deployWorkflowToVercel(
       error: errorMessage,
       logs,
     };
-  } finally {
-    // Sandbox is automatically cleaned up after timeout
-    if (sandbox) {
-      logs.push("Sandbox will be automatically cleaned up");
-    }
   }
 }
 
 /**
- * Generate all project files for the Next.js workflow app
+ * Generate workflow-specific files
  */
-function generateProjectFiles(
+function generateWorkflowFiles(
   options: DeploymentOptions
 ): Record<string, string> {
   const files: Record<string, string> = {};
 
   // Generate code for each workflow
-  const workflowFiles: Array<{ name: string; code: string; fileName: string }> =
-    [];
+  const workflowMetadata: Array<{
+    name: string;
+    fileName: string;
+    functionName: string;
+  }> = [];
 
   for (const workflow of options.workflows) {
     const workflowCode = generateWorkflowSDKCode(
@@ -285,18 +256,14 @@ function generateProjectFiles(
       workflow.edges
     );
     const fileName = sanitizeFileName(workflow.name);
+    const functionName = sanitizeFunctionName(workflow.name);
 
-    workflowFiles.push({
-      name: workflow.name,
-      code: workflowCode,
-      fileName,
-    });
+    workflowMetadata.push({ name: workflow.name, fileName, functionName });
 
     // Add workflow file
     files[`workflows/${fileName}.ts`] = workflowCode;
 
     // Add API route for this workflow
-    const functionName = sanitizeFunctionName(workflow.name);
     files[`app/api/workflows/${fileName}/route.ts`] =
       `import { start } from 'workflow/api';
 import { ${functionName} } from '@/workflows/${fileName}';
@@ -326,110 +293,30 @@ export async function POST(request: Request) {
 `;
   }
 
-  // Collect all nodes from all workflows for dependency detection
-  const allNodes = options.workflows.flatMap((w) => w.nodes);
-
-  // Generate package.json
-  const packageJson = {
-    name: "workflows",
-    version: "0.1.0",
-    private: true,
-    scripts: {
-      dev: "next dev",
-      build: "next build",
-      start: "next start",
-    },
-    dependencies: {
-      next: "16.0.1",
-      react: "19.2.0",
-      "react-dom": "19.2.0",
-      workflow: "4.0.1-beta.7",
-      // Add integration dependencies based on all nodes
-      ...getIntegrationDependencies(allNodes),
-    },
-  };
-
-  // Generate next.config.ts
-  const nextConfig = `import { withWorkflow } from 'workflow/next';
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {};
-
-export default withWorkflow(nextConfig);
-`;
-
-  // Generate app page listing all workflows
-  const workflowsList = workflowFiles
+  // Update app/page.tsx with workflow list
+  const workflowsList = workflowMetadata
     .map(
-      (wf) => `<li><a href="/api/workflows/${wf.fileName}">${wf.name}</a></li>`
+      (wf) =>
+        `        <li key="${wf.fileName}">
+          <a href="/api/workflows/${wf.fileName}" className="text-blue-600 hover:underline">
+            ${wf.name}
+          </a>
+        </li>`
     )
-    .join("\n          ");
+    .join("\n");
 
   files["app/page.tsx"] = `export default function Home() {
   return (
     <main className="p-8">
       <h1 className="text-2xl font-bold mb-4">Workflows</h1>
-      <p className="mb-4">Available workflow endpoints:</p>
+      <p className="mb-4 text-gray-600">Available workflow endpoints:</p>
       <ul className="list-disc pl-6 space-y-2">
-        ${workflowsList}
+${workflowsList}
       </ul>
     </main>
   );
 }
 `;
-
-  files["app/layout.tsx"] = `export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
-`;
-
-  files["package.json"] = JSON.stringify(packageJson, null, 2);
-  files["next.config.ts"] = nextConfig;
-  files[".gitignore"] = `node_modules
-.next
-.env*.local
-`;
-
-  const tsConfig = {
-    compilerOptions: {
-      target: "ES2017",
-      lib: ["dom", "dom.iterable", "esnext"],
-      allowJs: true,
-      skipLibCheck: true,
-      strict: true,
-      noEmit: true,
-      esModuleInterop: true,
-      module: "esnext",
-      moduleResolution: "bundler",
-      resolveJsonModule: true,
-      isolatedModules: true,
-      jsx: "preserve",
-      incremental: true,
-      plugins: [
-        {
-          name: "next",
-        },
-        {
-          name: "workflow",
-        },
-      ],
-      paths: {
-        "@/*": ["./*"],
-      },
-    },
-    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-    exclude: ["node_modules"],
-  };
-
-  files["tsconfig.json"] = JSON.stringify(tsConfig, null, 2);
 
   return files;
 }
