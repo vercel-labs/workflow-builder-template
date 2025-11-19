@@ -2,15 +2,20 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { generateWorkflowSDKCode } from "@/lib/workflow-codegen-sdk";
+import { generateWorkflowModule } from "@/lib/workflow-codegen";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
 import { getSession, verifyWorkflowOwnership } from "./utils";
 
 // Path to the Next.js boilerplate directory
 const BOILERPLATE_PATH = join(process.cwd(), "lib", "next-boilerplate");
 
-// Regex pattern for numeric starts
-const NUMERIC_START_PATTERN = /^[0-9]/;
+// Path to the codegen templates directory
+const CODEGEN_TEMPLATES_PATH = join(process.cwd(), "lib", "codegen-templates");
+
+// Regex patterns for code generation
+const NON_ALPHANUMERIC_REGEX = /[^a-zA-Z0-9\s]/g;
+const WHITESPACE_SPLIT_REGEX = /\s+/;
+const TEMPLATE_EXPORT_REGEX = /export default `([\s\S]*)`/;
 
 /**
  * Recursively read all files from a directory
@@ -51,14 +56,29 @@ function generateWorkflowFiles(workflow: {
 }): Record<string, string> {
   const files: Record<string, string> = {};
 
-  // Generate code for the workflow
-  const workflowCode = generateWorkflowSDKCode(
+  // Generate camelCase function name (same as Code tab)
+  const baseName =
+    workflow.name
+      .replace(NON_ALPHANUMERIC_REGEX, "")
+      .split(WHITESPACE_SPLIT_REGEX)
+      .map((word, i) => {
+        if (i === 0) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join("") || "execute";
+
+  const functionName = `${baseName}Workflow`;
+
+  // Generate code for the workflow using the same generator as the Code tab
+  const workflowCode = generateWorkflowModule(
     workflow.name,
     workflow.nodes,
-    workflow.edges
+    workflow.edges,
+    { functionName }
   );
   const fileName = sanitizeFileName(workflow.name);
-  const functionName = sanitizeFunctionName(workflow.name);
 
   // Add workflow file
   files[`workflows/${fileName}.ts`] = workflowCode;
@@ -145,16 +165,6 @@ function getIntegrationDependencies(
 }
 
 /**
- * Sanitize workflow name for use as function name
- */
-function sanitizeFunctionName(name: string): string {
-  return name
-    .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(NUMERIC_START_PATTERN, "_$&")
-    .replace(/_+/g, "_");
-}
-
-/**
  * Sanitize workflow name for use as file name
  */
 function sanitizeFileName(name: string): string {
@@ -180,6 +190,19 @@ export async function prepareWorkflowDownload(id: string): Promise<{
     // Read boilerplate files
     const boilerplateFiles = await readDirectoryRecursive(BOILERPLATE_PATH);
 
+    // Read codegen template files and convert them to actual step files
+    const templateFiles = await readDirectoryRecursive(CODEGEN_TEMPLATES_PATH);
+
+    // Convert template exports to actual step files
+    const stepFiles: Record<string, string> = {};
+    for (const [path, content] of Object.entries(templateFiles)) {
+      // Extract the template string from the export default statement
+      const templateMatch = content.match(TEMPLATE_EXPORT_REGEX);
+      if (templateMatch) {
+        stepFiles[`lib/steps/${path}`] = templateMatch[1];
+      }
+    }
+
     // Generate workflow-specific files
     const workflowFiles = generateWorkflowFiles({
       name: workflow.name,
@@ -187,8 +210,8 @@ export async function prepareWorkflowDownload(id: string): Promise<{
       edges: workflow.edges,
     });
 
-    // Merge boilerplate and workflow files
-    const allFiles = { ...boilerplateFiles, ...workflowFiles };
+    // Merge boilerplate, step files, and workflow files
+    const allFiles = { ...boilerplateFiles, ...stepFiles, ...workflowFiles };
 
     // Update package.json to include workflow dependencies
     const packageJson = JSON.parse(allFiles["package.json"]);
