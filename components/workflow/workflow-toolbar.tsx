@@ -5,12 +5,9 @@ import {
   Check,
   ChevronDown,
   Download,
-  ExternalLink,
-  FlaskConical,
   Loader2,
   Play,
   Redo2,
-  Rocket,
   Save,
   Undo2,
 } from "lucide-react";
@@ -90,30 +87,6 @@ function updateNodesStatus(
   for (const node of nodes) {
     updateNodeData({ id: node.id, data: { status } });
   }
-}
-
-async function triggerProductionWorkflow(
-  workflowName: string,
-  deploymentUrl: string
-) {
-  const workflowFileName = workflowName
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-  const workflowApiUrl = `${deploymentUrl}/api/workflows/${workflowFileName}`;
-
-  const response = await fetch(workflowApiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to trigger production workflow");
-  }
-
-  return response.json();
 }
 
 type ExecuteTestWorkflowParams = {
@@ -217,28 +190,9 @@ async function executeTestWorkflow({
   }
 }
 
-function showDeploymentSuccessToast(deploymentUrl: string) {
-  toast.success(
-    <div className="flex items-center gap-2">
-      <span>Deployed to:</span>
-      <a
-        className="flex items-center gap-1 underline"
-        href={deploymentUrl}
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        {deploymentUrl}
-        <ExternalLink className="h-3 w-3" />
-      </a>
-    </div>,
-    { duration: 10_000 }
-  );
-}
-
 // Hook for workflow handlers
 type WorkflowHandlerParams = {
   currentWorkflowId: string | null;
-  workflowName: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   updateNodeData: (update: {
@@ -248,7 +202,6 @@ type WorkflowHandlerParams = {
   setIsExecuting: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
   setHasUnsavedChanges: (value: boolean) => void;
-  deploymentUrl: string | null;
   setActiveTab: (value: string) => void;
   setNodes: (nodes: WorkflowNode[]) => void;
   setEdges: (edges: WorkflowEdge[]) => void;
@@ -257,20 +210,17 @@ type WorkflowHandlerParams = {
 
 function useWorkflowHandlers({
   currentWorkflowId,
-  workflowName,
   nodes,
   edges,
   updateNodeData,
   setIsExecuting,
   setIsSaving,
   setHasUnsavedChanges,
-  deploymentUrl,
   setActiveTab,
   setNodes,
   setEdges,
   setSelectedNodeId,
 }: WorkflowHandlerParams) {
-  const [runMode, setRunMode] = useState<"test" | "production">("test");
   const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -301,37 +251,9 @@ function useWorkflowHandlers({
     }
   };
 
-  const executeWorkflow = async (mode: "test" | "production" = runMode) => {
+  const executeWorkflow = async () => {
     if (!currentWorkflowId) {
       toast.error("Please save the workflow before executing");
-      return;
-    }
-
-    if (mode === "production") {
-      if (!deploymentUrl) {
-        toast.error("No deployment found. Deploy the workflow first.");
-        return;
-      }
-
-      setIsExecuting(true);
-      try {
-        toast.info("Triggering production workflow...");
-        const result = await triggerProductionWorkflow(
-          workflowName,
-          deploymentUrl
-        );
-        toast.success("Production workflow triggered successfully");
-        console.log("Production workflow result:", result);
-      } catch (error) {
-        console.error("Failed to trigger production workflow:", error);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Failed to trigger production workflow"
-        );
-      } finally {
-        setIsExecuting(false);
-      }
       return;
     }
 
@@ -354,13 +276,11 @@ function useWorkflowHandlers({
     // Don't set executing to false here - let polling handle it
   };
 
-  const handleExecute = async (mode: "test" | "production" = runMode) => {
-    await executeWorkflow(mode);
+  const handleExecute = async () => {
+    await executeWorkflow();
   };
 
   return {
-    runMode,
-    setRunMode,
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
     handleSave,
@@ -395,9 +315,7 @@ function useWorkflowState() {
   const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
   const setSelectedNodeId = useSetAtom(selectedNodeAtom);
 
-  const [isDeploying, setIsDeploying] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
@@ -409,20 +327,6 @@ function useWorkflowState() {
   >([]);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [newWorkflowName, setNewWorkflowName] = useState(workflowName);
-
-  // Load deployment status on mount
-  useEffect(() => {
-    if (!currentWorkflowId) {
-      return;
-    }
-
-    api.workflow
-      .getDeploymentStatus(currentWorkflowId)
-      .then((data) => setDeploymentUrl(data.deploymentUrl || null))
-      .catch((error) =>
-        console.error("Failed to load deployment status:", error)
-      );
-  }, [currentWorkflowId]);
 
   // Sync newWorkflowName when workflowName changes
   useEffect(() => {
@@ -467,12 +371,8 @@ function useWorkflowState() {
     canUndo,
     canRedo,
     session,
-    isDeploying,
-    setIsDeploying,
     isDownloading,
     setIsDownloading,
-    deploymentUrl,
-    setDeploymentUrl,
     showCodeDialog,
     setShowCodeDialog,
     generatedCode,
@@ -500,7 +400,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setIsExecuting,
     setIsSaving,
     setHasUnsavedChanges,
-    deploymentUrl,
     setShowClearDialog,
     clearWorkflow,
     setShowDeleteDialog,
@@ -509,9 +408,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setAllWorkflows,
     newWorkflowName,
     setShowRenameDialog,
-    setIsDeploying,
     setIsDownloading,
-    setDeploymentUrl,
     generatedCode,
     setActiveTab,
     setNodes,
@@ -520,22 +417,18 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   } = state;
 
   const {
-    runMode,
-    setRunMode,
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
     handleSave,
     handleExecute,
   } = useWorkflowHandlers({
     currentWorkflowId,
-    workflowName,
     nodes,
     edges,
     updateNodeData,
     setIsExecuting,
     setIsSaving,
     setHasUnsavedChanges,
-    deploymentUrl,
     setActiveTab,
     setNodes,
     setEdges,
@@ -545,12 +438,12 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   const handleSaveAndRun = async () => {
     await handleSave();
     setShowUnsavedRunDialog(false);
-    await handleExecute(runMode);
+    await handleExecute();
   };
 
   const handleRunWithoutSaving = async () => {
     setShowUnsavedRunDialog(false);
-    await handleExecute(runMode);
+    await handleExecute();
   };
 
   const handleClearWorkflow = () => {
@@ -596,61 +489,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     } catch (error) {
       console.error("Failed to rename workflow:", error);
       toast.error("Failed to rename workflow. Please try again.");
-    }
-  };
-
-  const saveBeforeDeploy = async (): Promise<boolean> => {
-    if (!currentWorkflowId) {
-      return false;
-    }
-
-    try {
-      await api.workflow.update(currentWorkflowId, { nodes, edges });
-      return true;
-    } catch {
-      toast.error("Failed to save workflow before deployment");
-      return false;
-    }
-  };
-
-  const executeDeployment = async (workflowIdParam: string) => {
-    const result = await api.workflow.deploy(workflowIdParam);
-
-    if (!result.success) {
-      throw new Error(result.error || "Deployment failed");
-    }
-
-    setDeploymentUrl(result.deploymentUrl || null);
-    toast.success("Workflow deployed successfully!");
-
-    if (result.deploymentUrl) {
-      showDeploymentSuccessToast(result.deploymentUrl);
-    }
-  };
-
-  const handleDeploy = async () => {
-    if (!currentWorkflowId) {
-      toast.error("Please save the workflow before deploying");
-      return;
-    }
-
-    setIsDeploying(true);
-    toast.info("Preparing deployment...");
-
-    try {
-      const saved = await saveBeforeDeploy();
-      if (!saved) {
-        return;
-      }
-
-      toast.info("Starting deployment to Vercel...");
-      await executeDeployment(currentWorkflowId);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to deploy workflow"
-      );
-    } finally {
-      setIsDeploying(false);
     }
   };
 
@@ -721,8 +559,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   };
 
   return {
-    runMode,
-    setRunMode,
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
     handleSave,
@@ -733,7 +569,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     handleDeleteWorkflow,
     handleNewWorkflow,
     handleRenameWorkflow,
-    handleDeploy,
     handleDownload,
     loadWorkflows,
     handleCopyCode,
@@ -804,44 +639,16 @@ function ToolbarActions({
         </Button>
       </ButtonGroup>
 
-      {/* Save/Deploy - Mobile Vertical */}
+      {/* Save/Download - Mobile Vertical */}
       <ButtonGroup className="flex lg:hidden" orientation="vertical">
         <SaveButton handleSave={actions.handleSave} state={state} />
         <DownloadButton handleDownload={actions.handleDownload} state={state} />
-        <DeployButton handleDeploy={actions.handleDeploy} state={state} />
-        {state.deploymentUrl && (
-          <Button
-            className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
-            onClick={() =>
-              state.deploymentUrl && window.open(state.deploymentUrl, "_blank")
-            }
-            size="icon"
-            title="Open deployment"
-            variant="secondary"
-          >
-            <ExternalLink className="size-4" />
-          </Button>
-        )}
       </ButtonGroup>
 
-      {/* Save/Deploy - Desktop Horizontal */}
+      {/* Save/Download - Desktop Horizontal */}
       <ButtonGroup className="hidden lg:flex" orientation="horizontal">
         <SaveButton handleSave={actions.handleSave} state={state} />
         <DownloadButton handleDownload={actions.handleDownload} state={state} />
-        <DeployButton handleDeploy={actions.handleDeploy} state={state} />
-        {state.deploymentUrl && (
-          <Button
-            className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
-            onClick={() =>
-              state.deploymentUrl && window.open(state.deploymentUrl, "_blank")
-            }
-            size="icon"
-            title="Open deployment"
-            variant="secondary"
-          >
-            <ExternalLink className="size-4" />
-          </Button>
-        )}
       </ButtonGroup>
 
       <RunButtonGroup actions={actions} state={state} />
@@ -875,41 +682,6 @@ function SaveButton({
       )}
       {state.hasUnsavedChanges && !state.isSaving && (
         <div className="-top-0.5 -right-0.5 absolute size-2 rounded-full bg-primary" />
-      )}
-    </Button>
-  );
-}
-
-// Deploy Button Component
-function DeployButton({
-  state,
-  handleDeploy,
-}: {
-  state: ReturnType<typeof useWorkflowState>;
-  handleDeploy: () => Promise<void>;
-}) {
-  return (
-    <Button
-      className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
-      disabled={
-        state.isDeploying ||
-        state.nodes.length === 0 ||
-        state.isGenerating ||
-        !state.currentWorkflowId
-      }
-      onClick={handleDeploy}
-      size="icon"
-      title={
-        state.isDeploying
-          ? "Deploying to production..."
-          : "Deploy to production"
-      }
-      variant="secondary"
-    >
-      {state.isDeploying ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : (
-        <Rocket className="size-4" />
       )}
     </Button>
   );
@@ -959,66 +731,22 @@ function RunButtonGroup({
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
   return (
-    <ButtonGroup>
-      <Button
-        className="relative border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
-        disabled={
-          state.isExecuting || state.nodes.length === 0 || state.isGenerating
-        }
-        onClick={() => actions.handleExecute()}
-        size="icon"
-        variant="secondary"
-      >
-        {state.isExecuting ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <Play className="size-4" />
-        )}
-        {actions.runMode === "test" && !state.isExecuting && (
-          <div className="absolute right-0.5 bottom-0.5">
-            <FlaskConical
-              className="text-muted-foreground"
-              strokeWidth={2.5}
-              style={{ width: "12px", height: "12px" }}
-            />
-          </div>
-        )}
-      </Button>
-      <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            className="w-6 border px-1 hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
-            disabled={
-              state.isExecuting ||
-              state.nodes.length === 0 ||
-              state.isGenerating
-            }
-            size="icon"
-            title="Select run mode"
-            variant="secondary"
-          >
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" side="bottom" sideOffset={5}>
-          <DropdownMenuItem onClick={() => actions.setRunMode("test")}>
-            <Play className="size-4" />
-            <span>Test Run (Local)</span>
-            {actions.runMode === "test" && <Check className="ml-auto size-4" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!state.deploymentUrl}
-            onClick={() => actions.setRunMode("production")}
-          >
-            <Play className="size-4" />
-            <span>Production Run</span>
-            {actions.runMode === "production" && (
-              <Check className="ml-auto size-4" />
-            )}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </ButtonGroup>
+    <Button
+      className="border hover:bg-black/5 disabled:opacity-100 dark:hover:bg-white/5 disabled:[&>svg]:text-muted-foreground"
+      disabled={
+        state.isExecuting || state.nodes.length === 0 || state.isGenerating
+      }
+      onClick={() => actions.handleExecute()}
+      size="icon"
+      title="Run Workflow"
+      variant="secondary"
+    >
+      {state.isExecuting ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <Play className="size-4" />
+      )}
+    </Button>
   );
 }
 
