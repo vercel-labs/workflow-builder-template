@@ -456,62 +456,35 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     <div className="flex h-screen w-full flex-col overflow-hidden">
       <main className="relative flex size-full overflow-hidden">
         <ReactFlowProvider>
-          {/* Desktop: Resizable panels */}
-          <div className="hidden size-full md:block">
-            <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={70} minSize={30}>
-                <div className="relative size-full overflow-hidden">
-                  <WorkflowToolbar workflowId={workflowId} />
-                  <WorkflowCanvas />
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={70} minSize={30}>
+              <div className="relative size-full overflow-hidden">
+                <WorkflowToolbar workflowId={workflowId} />
+                <WorkflowCanvas />
 
-                  {workflowNotFound && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
-                        <h1 className="mb-2 font-semibold text-2xl">
-                          Workflow Not Found
-                        </h1>
-                        <p className="mb-6 text-muted-foreground">
-                          The workflow you're looking for doesn't exist or has
-                          been deleted.
-                        </p>
-                        <Button asChild>
-                          <Link href="/">New Workflow</Link>
-                        </Button>
-                      </div>
+                {workflowNotFound && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
+                      <h1 className="mb-2 font-semibold text-2xl">
+                        Workflow Not Found
+                      </h1>
+                      <p className="mb-6 text-muted-foreground">
+                        The workflow you're looking for doesn't exist or has
+                        been deleted.
+                      </p>
+                      <Button asChild>
+                        <Link href="/">New Workflow</Link>
+                      </Button>
                     </div>
-                  )}
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={30} maxSize={50} minSize={20}>
-                <NodeConfigPanel />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </div>
-
-          {/* Mobile: Full-width canvas with drawer */}
-          <div className="relative size-full md:hidden">
-            <WorkflowToolbar workflowId={workflowId} />
-            <WorkflowCanvas />
-            <NodeConfigPanel />
-
-            {workflowNotFound && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
-                  <h1 className="mb-2 font-semibold text-2xl">
-                    Workflow Not Found
-                  </h1>
-                  <p className="mb-6 text-muted-foreground">
-                    The workflow you're looking for doesn't exist or has been
-                    deleted.
-                  </p>
-                  <Button asChild>
-                    <Link href="/">New Workflow</Link>
-                  </Button>
-                </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={30} maxSize={50} minSize={20}>
+              <NodeConfigPanel />
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </ReactFlowProvider>
       </main>
     </div>
