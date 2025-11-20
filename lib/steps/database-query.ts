@@ -85,6 +85,8 @@ async function cleanupClient(client: postgres.Sql | null): Promise<void> {
 export async function databaseQueryStep(
   input: DatabaseQueryInput
 ): Promise<DatabaseQueryResult> {
+  "use step";
+
   const validationError = validateInput(input);
   if (validationError) {
     return {

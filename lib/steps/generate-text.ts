@@ -51,6 +51,8 @@ export async function generateTextStep(input: {
   aiSchema?: string;
   apiKey: string;
 }): Promise<{ text: string } | Record<string, unknown>> {
+  "use step";
+
   // Get model and prompt from input
   const modelId = input.aiModel || "gpt-5";
   const promptText = input.aiPrompt || "";

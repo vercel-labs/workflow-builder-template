@@ -192,6 +192,7 @@
   border: 2px solid var(--border) !important;
   background: var(--primary) !important;
   cursor: pointer !important;
+  z-index: 20 !important;
 }
 
 .react-flow__handle-left {

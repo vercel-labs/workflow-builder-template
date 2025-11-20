@@ -8,6 +8,8 @@ export async function sendSlackMessageStep(input: {
   slackMessage: string;
   apiKey: string;
 }) {
+  "use step";
+
   const slack = new WebClient(input.apiKey);
 
   const result = await slack.chat.postMessage({

@@ -7,6 +7,8 @@ export async function httpRequestStep(input: {
   headers: Record<string, string>;
   body: unknown;
 }): Promise<unknown> {
+  "use step";
+
   const response = await fetch(input.url, {
     method: input.method,
     headers: input.headers,

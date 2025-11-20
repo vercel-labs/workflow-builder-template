@@ -10,6 +10,8 @@ export async function sendEmailStep(input: {
   emailBody: string;
   apiKey: string;
 }) {
+  "use step";
+
   const resend = new Resend(input.apiKey);
 
   const result = await resend.emails.send({

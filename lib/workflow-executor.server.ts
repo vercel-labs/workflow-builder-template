@@ -684,6 +684,8 @@ export async function executeWorkflowServer(
   edges: WorkflowEdge[],
   context: WorkflowExecutionContext = {}
 ): Promise<Map<string, ExecutionResult>> {
+  "use workflow";
+
   const executor = new ServerWorkflowExecutor(nodes, edges, context);
   return await executor.execute();
 }

@@ -37,7 +37,7 @@ export const AnimatedBorder = ({ className }: AnimatedBorderProps) => {
       `}</style>
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 z-10 rounded-[inherit] animate-border-mask",
+          "pointer-events-none absolute inset-0 rounded-[inherit] animate-border-mask",
           className
         )}
       >

@@ -9,6 +9,8 @@ export async function createTicketStep(input: {
   apiKey: string;
   teamId?: string;
 }) {
+  "use step";
+
   const linear = new LinearClient({ apiKey: input.apiKey });
 
   // Get the first team if no teamId is provided

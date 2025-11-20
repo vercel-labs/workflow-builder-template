@@ -8,6 +8,8 @@ export async function generateImageStep(input: {
   prompt: string;
   apiKey: string;
 }): Promise<{ base64: string | undefined }> {
+  "use step";
+
   const openai = new OpenAI({ apiKey: input.apiKey });
 
   const response = await openai.images.generate({
