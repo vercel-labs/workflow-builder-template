@@ -243,12 +243,25 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
         return;
       }
 
-      const target = event.target as Element;
+      // Get client position first
+      const { clientX, clientY } = getClientPosition(event);
+
+      // For touch events, use elementFromPoint to get the actual element at the touch position
+      // For mouse events, use event.target as before
+      const target =
+        "changedTouches" in event
+          ? document.elementFromPoint(clientX, clientY)
+          : (event.target as Element);
+
+      if (!target) {
+        connectingNodeId.current = null;
+        return;
+      }
+
       const isNode = target.closest(".react-flow__node");
       const isHandle = target.closest(".react-flow__handle");
 
       if (!(isNode || isHandle)) {
-        const { clientX, clientY } = getClientPosition(event);
         const { adjustedX, adjustedY } = calculateMenuPosition(
           event,
           clientX,
