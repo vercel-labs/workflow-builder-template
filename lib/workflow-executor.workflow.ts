@@ -414,7 +414,11 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
         };
 
         // Handle webhook mock request for test runs
-        if (triggerType === "Webhook" && config.webhookMockRequest) {
+        if (
+          triggerType === "Webhook" &&
+          config.webhookMockRequest &&
+          (!triggerInput || Object.keys(triggerInput).length === 0)
+        ) {
           try {
             const mockData = JSON.parse(config.webhookMockRequest as string);
             triggerData = { ...triggerData, ...mockData };
@@ -427,7 +431,6 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
               "[Workflow Executor] Failed to parse webhook mock request:",
               error
             );
-            triggerData = { ...triggerData, ...triggerInput };
           }
         } else if (triggerInput && Object.keys(triggerInput).length > 0) {
           // Use provided trigger input

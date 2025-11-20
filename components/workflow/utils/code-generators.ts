@@ -40,12 +40,9 @@ export const generateNodeCode = (node: {
     }
 
     if (triggerType === "Webhook") {
-      const method = (
-        (node.data.config?.webhookMethod as string) || "POST"
-      ).toLowerCase();
       return `import { NextRequest } from 'next/server';
 
-export async function ${method}(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const body = await request.json();
   
   // Call your workflow function here

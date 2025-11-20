@@ -196,6 +196,16 @@ export const workflowApi = {
       body: JSON.stringify({ input }),
     }),
 
+  // Trigger workflow via webhook
+  triggerWebhook: (id: string, input: Record<string, unknown> = {}) =>
+    apiCall<{
+      executionId: string;
+      status: string;
+    }>(`/api/workflows/${id}/webhook`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
   // Get workflow code
   getCode: (id: string) =>
     apiCall<{ code: string; workflowName: string }>(

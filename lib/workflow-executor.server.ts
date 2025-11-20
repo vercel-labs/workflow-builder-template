@@ -547,17 +547,20 @@ class ServerWorkflowExecutor {
       timestamp: Date.now(),
     };
 
-    if (triggerType === "Webhook" && nodeConfig.webhookMockRequest) {
+    if (
+      triggerType === "Webhook" &&
+      nodeConfig.webhookMockRequest &&
+      (!this.context.input || Object.keys(this.context.input).length === 0)
+    ) {
       try {
-        // Parse the mock request JSON
+        // Parse the mock request JSON (only used when no real input is provided)
         const mockData = JSON.parse(nodeConfig.webhookMockRequest as string);
         triggerData = { ...triggerData, ...mockData };
       } catch {
-        // If parsing fails, fall back to default behavior
-        triggerData.input = this.context.input;
+        // If parsing fails, use default trigger data
       }
     } else if (this.context.input) {
-      // For other trigger types or when no mock request, use context input
+      // For other trigger types or when real input is provided, use context input
       triggerData = { ...triggerData, ...this.context.input };
     }
 

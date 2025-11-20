@@ -1,6 +1,8 @@
 "use client";
 
-import { Settings, Webhook } from "lucide-react";
+import { Copy, Settings, Webhook } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +22,26 @@ type TriggerConfigProps = {
   config: Record<string, unknown>;
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
+  workflowId?: string;
 };
 
 export function TriggerConfig({
   config,
   onUpdateConfig,
   disabled,
+  workflowId,
 }: TriggerConfigProps) {
+  const webhookUrl = workflowId
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/workflows/${workflowId}/webhook`
+    : "";
+
+  const handleCopyWebhookUrl = () => {
+    if (webhookUrl) {
+      navigator.clipboard.writeText(webhookUrl);
+      toast.success("Webhook URL copied to clipboard");
+    }
+  };
+
   return (
     <>
       <div className="space-y-2">
@@ -65,35 +80,22 @@ export function TriggerConfig({
       {config?.triggerType === "Webhook" && (
         <>
           <div className="space-y-2">
-            <Label className="ml-1" htmlFor="webhookPath">
-              Webhook Path
-            </Label>
-            <Input
-              disabled={disabled}
-              id="webhookPath"
-              onChange={(e) => onUpdateConfig("webhookPath", e.target.value)}
-              placeholder="/webhooks/my-workflow"
-              value={(config?.webhookPath as string) || ""}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="ml-1" htmlFor="webhookMethod">
-              HTTP Method
-            </Label>
-            <Select
-              disabled={disabled}
-              onValueChange={(value) => onUpdateConfig("webhookMethod", value)}
-              value={(config?.webhookMethod as string) || "POST"}
-            >
-              <SelectTrigger className="w-full" id="webhookMethod">
-                <SelectValue placeholder="Select method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="GET">GET</SelectItem>
-                <SelectItem value="POST">POST</SelectItem>
-                <SelectItem value="PUT">PUT</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="ml-1">Webhook URL</Label>
+            <div className="flex gap-2">
+              <Input
+                className="font-mono text-xs"
+                disabled
+                value={webhookUrl || "Save workflow to generate webhook URL"}
+              />
+              <Button
+                disabled={!webhookUrl}
+                onClick={handleCopyWebhookUrl}
+                size="icon"
+                variant="outline"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Request Schema (Optional)</Label>

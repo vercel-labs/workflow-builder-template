@@ -389,22 +389,22 @@ const PanelInner = () => {
           >
             <div className="flex-1 space-y-4 overflow-y-auto p-4">
               <div className="space-y-2">
-                <Label className="ml-1" htmlFor="workspace-name">
-                  Workspace Name
+                <Label className="ml-1" htmlFor="workflow-name">
+                  Workflow Name
                 </Label>
                 <Input
-                  id="workspace-name"
+                  id="workflow-name"
                   onChange={(e) => handleUpdateWorkspaceName(e.target.value)}
                   value={currentWorkflowName}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="ml-1" htmlFor="workspace-id">
-                  Workspace ID
+                <Label className="ml-1" htmlFor="workflow-id">
+                  Workflow ID
                 </Label>
                 <Input
                   disabled
-                  id="workspace-id"
+                  id="workflow-id"
                   value={currentWorkflowId || "Not saved"}
                 />
               </div>
@@ -669,6 +669,7 @@ const PanelInner = () => {
                 config={selectedNode.data.config || {}}
                 disabled={isGenerating}
                 onUpdateConfig={handleUpdateConfig}
+                workflowId={currentWorkflowId ?? undefined}
               />
             )}
 
@@ -721,8 +722,8 @@ const PanelInner = () => {
               </>
             ) : null}
           </div>
-          <div className="shrink-0 border-t p-4">
-            {selectedNode.data.type !== "trigger" && (
+          {selectedNode.data.type !== "trigger" && (
+            <div className="shrink-0 border-t p-4">
               <Button
                 onClick={() => setShowDeleteNodeAlert(true)}
                 size="icon"
@@ -730,8 +731,8 @@ const PanelInner = () => {
               >
                 <Trash2 className="size-4" />
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </TabsContent>
         <TabsContent className="flex flex-col overflow-hidden" value="code">
           {(() => {
