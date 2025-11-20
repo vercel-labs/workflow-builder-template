@@ -786,10 +786,7 @@ const PanelInner = () => {
             );
           })()}
         </TabsContent>
-        <TabsContent
-          className="flex flex-col overflow-hidden"
-          value="runs"
-        >
+        <TabsContent className="flex flex-col overflow-hidden" value="runs">
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             <WorkflowRuns isActive onRefreshRef={refreshRunsRef} />
           </div>

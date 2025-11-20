@@ -121,11 +121,11 @@ function ExecutionLogEntry({
                 <div className="mb-1 flex items-center justify-between">
                   <div className="font-semibold text-xs">Input</div>
                   <Button
-                    variant="ghost"
-                    size="sm"
                     className="h-6 px-2"
                     onClick={() => copyToClipboard(log.input, "input")}
+                    size="sm"
                     type="button"
+                    variant="ghost"
                   >
                     {copiedInput ? (
                       <Check className="h-3 w-3 text-green-600" />
@@ -144,11 +144,11 @@ function ExecutionLogEntry({
                 <div className="mb-1 flex items-center justify-between">
                   <div className="font-semibold text-xs">Output</div>
                   <Button
-                    variant="ghost"
-                    size="sm"
                     className="h-6 px-2"
                     onClick={() => copyToClipboard(log.output, "output")}
+                    size="sm"
                     type="button"
+                    variant="ghost"
                   >
                     {copiedOutput ? (
                       <Check className="h-3 w-3 text-green-600" />
