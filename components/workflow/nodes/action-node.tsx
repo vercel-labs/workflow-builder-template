@@ -2,7 +2,16 @@
 
 import type { NodeProps } from "@xyflow/react";
 import { useAtomValue } from "jotai";
-import { AlertCircle, Code, Database, GitBranch, Zap } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Code,
+  Database,
+  GitBranch,
+  Loader2,
+  XCircle,
+  Zap,
+} from "lucide-react";
 import { memo } from "react";
 import {
   Node,
@@ -99,6 +108,41 @@ const getProviderLogo = (actionType: string) => {
   }
 };
 
+// Status badge component
+const StatusBadge = ({
+  status,
+}: {
+  status?: "idle" | "running" | "success" | "error";
+}) => {
+  if (!status || status === "idle") {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "absolute top-2 right-2 rounded-full p-1",
+        status === "running" && "bg-blue-500/50",
+        status === "success" && "bg-green-500/50",
+        status === "error" && "bg-red-500/50"
+      )}
+    >
+      {status === "running" && (
+        <Loader2
+          className="size-3.5 animate-spin text-white"
+          strokeWidth={2.5}
+        />
+      )}
+      {status === "success" && (
+        <Check className="size-3.5 text-white" strokeWidth={2.5} />
+      )}
+      {status === "error" && (
+        <XCircle className="size-3.5 text-white" strokeWidth={2.5} />
+      )}
+    </div>
+  );
+};
+
 type ActionNodeProps = NodeProps & {
   data?: WorkflowNodeData;
 };
@@ -111,6 +155,7 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
   }
 
   const actionType = (data.config?.actionType as string) || "";
+  const status = data.status;
 
   // Handle empty action type (new node without selected action)
   if (!actionType) {
@@ -121,6 +166,7 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
           selected && "border-primary"
         )}
         handles={{ target: true, source: true }}
+        status={status}
       >
         <div className="flex flex-col items-center justify-center gap-3 p-6">
           <Zap className="size-12 text-muted-foreground" strokeWidth={1.5} />
@@ -152,12 +198,18 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
         selected && "border-primary"
       )}
       handles={{ target: true, source: true }}
+      status={status}
     >
+      {/* Integration warning badge in top left */}
       {integrationMissing && (
         <div className="absolute top-2 left-2 rounded-full bg-orange-500/50 p-1">
-          <AlertCircle className="size-3.5 text-white" />
+          <AlertTriangle className="size-3.5 text-white" />
         </div>
       )}
+
+      {/* Status indicator badge in top right */}
+      <StatusBadge status={status} />
+
       <div className="flex flex-col items-center justify-center gap-3 p-6">
         {getProviderLogo(actionType)}
         <div className="flex flex-col items-center gap-1 text-center">

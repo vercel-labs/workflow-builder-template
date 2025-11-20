@@ -4,11 +4,11 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { useAtom, useSetAtom } from "jotai";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { use, useCallback, useEffect } from "react";
+import { use, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { generate } from "@/app/actions/ai/generate";
 import { getProjectIntegrations } from "@/app/actions/vercel-project/get-integrations";
-import { execute } from "@/app/actions/workflow/execute";
+import { getExecutionStatus } from "@/app/actions/workflow/get-execution-status";
 import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
@@ -57,6 +57,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const [workflowNotFound, setWorkflowNotFound] = useAtom(workflowNotFoundAtom);
   const setProjectIntegrations = useSetAtom(projectIntegrationsAtom);
+
+  // Ref to track polling interval
+  const executionPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load project integrations
   useEffect(() => {
@@ -222,6 +225,36 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     [nodes, updateNodeData]
   );
 
+  // Helper to poll execution status
+  const pollExecutionStatus = useCallback(
+    async (executionId: string) => {
+      try {
+        const statusData = await getExecutionStatus(executionId);
+
+        // Update node statuses based on the execution logs
+        for (const nodeStatus of statusData.nodeStatuses) {
+          updateNodeData({
+            id: nodeStatus.nodeId,
+            data: {
+              status: nodeStatus.status as
+                | "idle"
+                | "running"
+                | "success"
+                | "error",
+            },
+          });
+        }
+
+        // Return true if execution is complete
+        return statusData.status !== "running";
+      } catch (error) {
+        console.error("Failed to poll execution status:", error);
+        return false;
+      }
+    },
+    [updateNodeData]
+  );
+
   const handleRun = useCallback(async () => {
     if (
       isExecuting ||
@@ -238,25 +271,51 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     updateAllNodeStatuses("idle");
 
     try {
-      const result = await execute(currentWorkflowId, {});
+      // Start the execution via API
+      const response = await fetch(
+        `/api/workflow/${currentWorkflowId}/execute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ input: {} }),
+        }
+      );
 
-      if (result.status === "error") {
-        toast.error(result.error || "Workflow execution failed");
-      } else {
-        toast.success("Test run completed successfully");
+      if (!response.ok) {
+        throw new Error("Failed to execute workflow");
       }
 
-      // Update all nodes based on result
-      const resultStatus: "idle" | "running" | "success" | "error" =
-        result.status === "error" ? "error" : "success";
-      updateAllNodeStatuses(resultStatus);
+      const result = await response.json();
+
+      // Poll for execution status updates
+      const pollInterval = setInterval(async () => {
+        const isComplete = await pollExecutionStatus(result.executionId);
+
+        if (isComplete) {
+          if (executionPollingIntervalRef.current) {
+            clearInterval(executionPollingIntervalRef.current);
+            executionPollingIntervalRef.current = null;
+          }
+
+          if (result.status === "error") {
+            toast.error(result.error || "Workflow execution failed");
+          } else {
+            toast.success("Test run completed successfully");
+          }
+
+          setIsExecuting(false);
+        }
+      }, 500); // Poll every 500ms
+
+      executionPollingIntervalRef.current = pollInterval;
     } catch (error) {
       console.error("Failed to execute workflow:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to execute workflow"
       );
       updateAllNodeStatuses("error");
-    } finally {
       setIsExecuting(false);
     }
   }, [
@@ -266,6 +325,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     currentWorkflowId,
     setIsExecuting,
     updateAllNodeStatuses,
+    pollExecutionStatus,
   ]);
 
   // Helper to check if target is an input element
@@ -330,6 +390,16 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
   }, [handleSaveShortcut, handleRunShortcut]);
+
+  // Cleanup polling interval on unmount
+  useEffect(
+    () => () => {
+      if (executionPollingIntervalRef.current) {
+        clearInterval(executionPollingIntervalRef.current);
+      }
+    },
+    []
+  );
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">

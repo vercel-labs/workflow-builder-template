@@ -10,22 +10,36 @@ import {
 import { cn } from "@/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import type { ComponentProps } from "react";
+import { BorderBeam } from "@/components/ui/border-beam";
 
 export type NodeProps = ComponentProps<typeof Card> & {
   handles: {
     target: boolean;
     source: boolean;
   };
+  status?: "idle" | "running" | "success" | "error";
 };
 
-export const Node = ({ handles, className, ...props }: NodeProps) => (
+export const Node = ({ handles, className, status, ...props }: NodeProps) => (
   <Card
     className={cn(
-      "node-container relative size-full h-auto w-sm gap-0 rounded-md bg-card p-0",
+      "node-container relative size-full h-auto w-sm gap-0 rounded-md bg-card p-0 transition-all duration-200",
+      status === "running" && "ring-2 ring-blue-500 ring-offset-2 ring-offset-background",
+      status === "success" && "ring-2 ring-green-500 ring-offset-2 ring-offset-background",
+      status === "error" && "ring-2 ring-red-500 ring-offset-2 ring-offset-background",
       className
     )}
     {...props}
   >
+    {status === "running" && (
+      <BorderBeam
+        size={60}
+        duration={3}
+        colorFrom="#3b82f6"
+        colorTo="#60a5fa"
+        borderWidth={2}
+      />
+    )}
     {handles.target && <Handle position={Position.Left} type="target" />}
     {handles.source && <Handle position={Position.Right} type="source" />}
     {props.children}

@@ -15,12 +15,12 @@ import {
   Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { deploy } from "@/app/actions/workflow/deploy";
 import { prepareWorkflowDownload } from "@/app/actions/workflow/download";
-import { execute } from "@/app/actions/workflow/execute";
 import { getDeploymentStatus } from "@/app/actions/workflow/get-deployment-status";
+import { getExecutionStatus } from "@/app/actions/workflow/get-execution-status";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -117,36 +117,90 @@ async function triggerProductionWorkflow(
   return response.json();
 }
 
-async function executeTestWorkflow(
-  workflowId: string,
-  nodes: WorkflowNode[],
+type ExecuteTestWorkflowParams = {
+  workflowId: string;
+  nodes: WorkflowNode[];
   updateNodeData: (update: {
     id: string;
     data: { status?: "idle" | "running" | "success" | "error" };
-  }) => void
-) {
+  }) => void;
+  pollingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  setIsExecuting: (value: boolean) => void;
+};
+
+async function executeTestWorkflow({
+  workflowId,
+  nodes,
+  updateNodeData,
+  pollingIntervalRef,
+  setIsExecuting,
+}: ExecuteTestWorkflowParams) {
   // Set all nodes to idle first
   updateNodesStatus(nodes, updateNodeData, "idle");
 
   try {
-    const result = await execute(workflowId, {});
+    // Start the execution via API
+    const response = await fetch(`/api/workflow/${workflowId}/execute`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ input: {} }),
+    });
 
-    if (result.status === "error") {
-      toast.error(result.error || "Workflow execution failed");
-    } else {
-      toast.success("Test run completed successfully");
+    if (!response.ok) {
+      throw new Error("Failed to execute workflow");
     }
 
-    // Update all nodes based on result
-    const finalStatus: "idle" | "running" | "success" | "error" =
-      result.status === "error" ? "error" : "success";
-    updateNodesStatus(nodes, updateNodeData, finalStatus);
+    const result = await response.json();
+
+    // Poll for execution status updates
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusData = await getExecutionStatus(result.executionId);
+
+        // Update node statuses based on the execution logs
+        for (const nodeStatus of statusData.nodeStatuses) {
+          updateNodeData({
+            id: nodeStatus.nodeId,
+            data: {
+              status: nodeStatus.status as
+                | "idle"
+                | "running"
+                | "success"
+                | "error",
+            },
+          });
+        }
+
+        // Stop polling if execution is complete
+        if (statusData.status !== "running") {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          if (statusData.status === "error") {
+            toast.error(result.error || "Workflow execution failed");
+          } else {
+            toast.success("Test run completed successfully");
+          }
+
+          setIsExecuting(false);
+        }
+      } catch (error) {
+        console.error("Failed to poll execution status:", error);
+      }
+    }, 500); // Poll every 500ms
+
+    pollingIntervalRef.current = pollInterval;
   } catch (error) {
     console.error("Failed to execute workflow:", error);
     toast.error(
       error instanceof Error ? error.message : "Failed to execute workflow"
     );
     updateNodesStatus(nodes, updateNodeData, "error");
+    setIsExecuting(false);
   }
 }
 
@@ -197,6 +251,17 @@ function useWorkflowHandlers({
 }: WorkflowHandlerParams) {
   const [runMode, setRunMode] = useState<"test" | "production">("test");
   const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup polling interval on unmount
+  useEffect(
+    () => () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    },
+    []
+  );
 
   const handleSave = async () => {
     if (!currentWorkflowId) {
@@ -250,8 +315,14 @@ function useWorkflowHandlers({
     }
 
     setIsExecuting(true);
-    await executeTestWorkflow(currentWorkflowId, nodes, updateNodeData);
-    setIsExecuting(false);
+    await executeTestWorkflow({
+      workflowId: currentWorkflowId,
+      nodes,
+      updateNodeData,
+      pollingIntervalRef,
+      setIsExecuting,
+    });
+    // Don't set executing to false here - let polling handle it
   };
 
   const handleExecute = async (mode: "test" | "production" = runMode) => {
