@@ -17,49 +17,32 @@ export type WorkflowExecutionInput = {
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
   triggerInput?: Record<string, unknown>;
-  credentials?: Record<string, string>;
   executionId?: string;
+  workflowId?: string; // Used by steps to fetch credentials
 };
 
 /**
  * Execute a single action step
+ * IMPORTANT: Steps receive only the workflow ID as a reference to fetch credentials.
+ * This prevents credentials from being logged in Vercel's workflow observability.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Dynamic import based on action type requires multiple branches
 async function executeActionStep(input: {
   actionType: string;
   config: Record<string, unknown>;
   outputs: NodeOutputs;
-  credentials?: Record<string, string>;
+  workflowId?: string;
 }) {
-  "use step";
+  const { actionType, config, workflowId } = input;
 
-  const { actionType, config, credentials } = input;
-
-  // Build step input based on action type
-  const stepInput: Record<string, unknown> = { ...config };
-
-  // Add credentials if available
-  if (credentials) {
-    if (actionType === "Send Email") {
-      stepInput.apiKey = credentials.RESEND_API_KEY;
-      stepInput.fromEmail = credentials.RESEND_FROM_EMAIL;
-    } else if (actionType === "Send Slack Message") {
-      stepInput.apiKey = credentials.SLACK_API_KEY;
-    } else if (actionType === "Create Ticket" || actionType === "Find Issues") {
-      stepInput.apiKey = credentials.LINEAR_API_KEY;
-      stepInput.teamId = credentials.LINEAR_TEAM_ID;
-    } else if (
-      actionType === "Generate Text" ||
-      actionType === "Generate Image"
-    ) {
-      stepInput.apiKey =
-        credentials.OPENAI_API_KEY || credentials.AI_GATEWAY_API_KEY;
-    } else if (actionType === "Database Query") {
-      stepInput.databaseUrl = credentials.DATABASE_URL;
-    }
-  }
+  // Build step input WITHOUT credentials, but WITH workflowId reference
+  // Steps will fetch credentials internally using this reference
+  const stepInput: Record<string, unknown> = {
+    ...config,
+    workflowId, // Pass workflow ID so steps can fetch their own credentials
+  };
 
   // Import and execute the appropriate step function
+  // Step functions load credentials from process.env themselves
   try {
     if (actionType === "Send Email") {
       const { sendEmailStep } = await import("./steps/send-email");
@@ -181,19 +164,13 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
 
   console.log("[Workflow Executor] Starting workflow execution");
 
-  const {
-    nodes,
-    edges,
-    triggerInput = {},
-    credentials = {},
-    executionId,
-  } = input;
+  const { nodes, edges, triggerInput = {}, executionId, workflowId } = input;
 
   console.log("[Workflow Executor] Input:", {
     nodeCount: nodes.length,
     edgeCount: edges.length,
     hasExecutionId: !!executionId,
-    credentialKeys: Object.keys(credentials),
+    workflowId: workflowId || "none",
   });
 
   const outputs: NodeOutputs = {};
@@ -339,15 +316,20 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
 
         // Process templates in config
         const processedConfig = processTemplates(config, outputs);
+
+        // Log the input BEFORE enriching with credentials
+        // This ensures API keys are never stored in logs
         logInfo = await logNodeStart(node, processedConfig);
 
         // Execute the action step
+        // IMPORTANT: We pass workflowId as a reference, not actual credentials
+        // Steps fetch credentials internally using fetchWorkflowCredentials(workflowId)
         console.log("[Workflow Executor] Calling executeActionStep");
         const stepResult = await executeActionStep({
           actionType,
           config: processedConfig,
           outputs,
-          credentials,
+          workflowId,
         });
 
         console.log("[Workflow Executor] Step result received:", {

@@ -4,6 +4,8 @@
  */
 import "server-only";
 
+import { redactSensitiveData } from "../utils/redact";
+
 export type LogStepInput = {
   action: "start" | "complete";
   executionId?: string;
@@ -26,6 +28,10 @@ export async function logStep(input: LogStepInput): Promise<{
   "use step";
 
   try {
+    // Redact sensitive data from input and output before logging
+    const redactedInput = redactSensitiveData(input.nodeInput);
+    const redactedOutput = redactSensitiveData(input.output);
+
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/workflow-log`,
       {
@@ -38,11 +44,11 @@ export async function logStep(input: LogStepInput): Promise<{
             nodeId: input.nodeId,
             nodeName: input.nodeName,
             nodeType: input.nodeType,
-            input: input.nodeInput,
+            input: redactedInput,
             logId: input.logId,
             startTime: input.startTime,
             status: input.status,
-            output: input.output,
+            output: redactedOutput,
             error: input.error,
           },
         }),

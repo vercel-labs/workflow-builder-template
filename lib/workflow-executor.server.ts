@@ -11,6 +11,7 @@ import {
   enrichStepInput,
   getCredentials,
 } from "./steps/credentials";
+import { redactSensitiveData } from "./utils/redact";
 import { type NodeOutputs, processConfigTemplates } from "./utils/template";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
@@ -256,6 +257,9 @@ class ServerWorkflowExecutor {
         }
       }
 
+      // Redact sensitive data from input before storing
+      const redactedInput = redactSensitiveData(input);
+
       const [log] = await db
         .insert(workflowExecutionLogs)
         .values({
@@ -264,7 +268,7 @@ class ServerWorkflowExecutor {
           nodeName,
           nodeType: node.data.type,
           status: "running",
-          input,
+          input: redactedInput,
           startedAt: new Date(),
         })
         .returning();
@@ -296,11 +300,14 @@ class ServerWorkflowExecutor {
     try {
       const duration = Date.now() - logInfo.startTime;
 
+      // Redact sensitive data from output before storing
+      const redactedOutput = redactSensitiveData(output);
+
       await db
         .update(workflowExecutionLogs)
         .set({
           status,
-          output,
+          output: redactedOutput,
           error,
           completedAt: new Date(),
           duration: duration.toString(),
@@ -328,14 +335,16 @@ class ServerWorkflowExecutor {
           };
         }
 
-        // Enrich the processed config with credentials
+        // Enrich the processed config with credentials RIGHT BEFORE execution
+        // This happens in-memory only and is never persisted
+        // The credentials are added here and used immediately, then discarded
         const enrichedInput = enrichStepInput(
           actionType,
           processedConfig,
           this.credentials
         );
 
-        // Execute the step function
+        // Execute the step function with enriched credentials
         const result = await stepFn(enrichedInput);
 
         return {
@@ -565,6 +574,8 @@ class ServerWorkflowExecutor {
       const actionType = nodeConfig.actionType as string;
       const processedConfig = this.prepareProcessedConfig(nodeConfig);
 
+      // Log the input BEFORE enriching with credentials
+      // This ensures API keys are never stored in logs
       await this.startNodeExecution(node, processedConfig);
 
       let result: ExecutionResult;

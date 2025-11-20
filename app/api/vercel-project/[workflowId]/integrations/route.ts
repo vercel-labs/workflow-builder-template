@@ -19,6 +19,24 @@ export type ProjectIntegrations = {
   hasDatabaseUrl: boolean;
 };
 
+/**
+ * Mask an API key, showing only the last 4 characters
+ * Example: "sk_live_abc123def456" -> "********def456"
+ */
+function maskApiKey(key: string | null): string | null {
+  if (!key || key.length === 0) {
+    return null;
+  }
+
+  if (key.length <= 4) {
+    return "****";
+  }
+
+  const last4 = key.slice(-4);
+  const stars = "*".repeat(Math.min(8, key.length - 4));
+  return `${stars}${last4}`;
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ workflowId: string }> }
@@ -108,13 +126,15 @@ export async function GET(
     const databaseUrl =
       envResult.envs.find((env) => env.key === "DATABASE_URL")?.value || null;
 
+    // Mask API keys before returning them to the client
+    // Only show last 4 characters for security
     return NextResponse.json({
-      resendApiKey,
-      resendFromEmail,
-      linearApiKey,
-      slackApiKey,
-      aiGatewayApiKey,
-      databaseUrl,
+      resendApiKey: maskApiKey(resendApiKey),
+      resendFromEmail, // Email is not sensitive, don't mask
+      linearApiKey: maskApiKey(linearApiKey),
+      slackApiKey: maskApiKey(slackApiKey),
+      aiGatewayApiKey: maskApiKey(aiGatewayApiKey),
+      databaseUrl: maskApiKey(databaseUrl), // Database URL contains password, mask it
       hasResendKey: !!resendApiKey,
       hasLinearKey: !!linearApiKey,
       hasSlackKey: !!slackApiKey,

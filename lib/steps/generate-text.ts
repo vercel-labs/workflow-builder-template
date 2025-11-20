@@ -1,11 +1,15 @@
 /**
  * Executable step function for Generate Text action
  * Uses AI Gateway with {provider}/{model} format (e.g., "openai/gpt-4")
+ *
+ * SECURITY PATTERN - External Secret Store:
+ * Step fetches credentials using workflow ID reference
  */
 import "server-only";
 
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
+import { fetchWorkflowCredentials } from "../credential-fetcher";
 
 type SchemaField = {
   name: string;
@@ -47,15 +51,26 @@ function buildZodSchema(
 }
 
 export async function generateTextStep(input: {
+  workflowId?: string;
   aiModel?: string;
   aiPrompt?: string;
   aiFormat?: string;
   aiSchema?: string;
-  apiKey: string;
 }): Promise<{ text: string } | Record<string, unknown>> {
   "use step";
 
-  // Get model and prompt from input
+  const credentials = input.workflowId
+    ? await fetchWorkflowCredentials(input.workflowId)
+    : {};
+
+  const apiKey = credentials.AI_GATEWAY_API_KEY || credentials.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      "AI_GATEWAY_API_KEY or OPENAI_API_KEY is not configured. Please add it in Project Integrations."
+    );
+  }
+
   const modelId = input.aiModel || "gpt-5";
   const promptText = input.aiPrompt || "";
 
@@ -63,11 +78,9 @@ export async function generateTextStep(input: {
     throw new Error("Prompt is required for text generation");
   }
 
-  // Determine provider from model ID for AI Gateway format
   const providerName = getProviderFromModel(modelId);
   const modelString = `${providerName}/${modelId}`;
 
-  // Handle structured output if schema is provided
   if (input.aiFormat === "object" && input.aiSchema) {
     try {
       const schema = JSON.parse(input.aiSchema) as SchemaField[];
@@ -78,7 +91,7 @@ export async function generateTextStep(input: {
         prompt: promptText,
         schema: zodSchema,
         headers: {
-          Authorization: `Bearer ${input.apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       });
 
@@ -88,12 +101,11 @@ export async function generateTextStep(input: {
     }
   }
 
-  // Regular text generation
   const { text } = await generateText({
     model: modelString,
     prompt: promptText,
     headers: {
-      Authorization: `Bearer ${input.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
   });
 

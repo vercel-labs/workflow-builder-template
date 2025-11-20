@@ -1,16 +1,20 @@
 /**
  * Executable step function for Database Query action
+ *
+ * SECURITY PATTERN - External Secret Store:
+ * Step fetches credentials using workflow ID reference
  */
 import "server-only";
 
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { fetchWorkflowCredentials } from "../credential-fetcher";
 
 type DatabaseQueryInput = {
+  workflowId?: string;
   dbQuery?: string;
   query?: string;
-  databaseUrl?: string;
 };
 
 type DatabaseQueryResult = {
@@ -25,10 +29,6 @@ function validateInput(input: DatabaseQueryInput): string | null {
 
   if (!queryString || queryString.trim() === "") {
     return "SQL query is required";
-  }
-
-  if (!input.databaseUrl || input.databaseUrl.trim() === "") {
-    return "Database URL is required. Please configure it in Project Integrations.";
   }
 
   return null;
@@ -96,9 +96,21 @@ export async function databaseQueryStep(
     };
   }
 
-  // At this point, validation ensures these are defined
+  const credentials = input.workflowId
+    ? await fetchWorkflowCredentials(input.workflowId)
+    : {};
+
+  const databaseUrl = credentials.DATABASE_URL;
+
+  if (!databaseUrl) {
+    return {
+      status: "error",
+      error:
+        "DATABASE_URL is not configured. Please add it in Project Integrations.",
+    };
+  }
+
   const queryString = (input.dbQuery || input.query) as string;
-  const databaseUrl = input.databaseUrl as string;
   let client: postgres.Sql | null = null;
 
   try {
