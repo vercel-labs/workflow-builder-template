@@ -291,6 +291,43 @@ export function WorkflowRuns({
     loadExecutions();
   }, [loadExecutions]);
 
+  // Helper function to map node IDs to labels
+  const mapNodeLabels = useCallback(
+    (
+      logEntries: Array<{
+        id: string;
+        executionId: string;
+        nodeId: string;
+        nodeName: string;
+        nodeType: string;
+        status: "pending" | "running" | "success" | "error";
+        input: unknown;
+        output: unknown;
+        error: string | null;
+        startedAt: Date;
+        completedAt: Date | null;
+        duration: string | null;
+      }>,
+      _workflow?: {
+        nodes: unknown;
+      }
+    ): ExecutionLog[] =>
+      logEntries.map((log) => ({
+        id: log.id,
+        nodeId: log.nodeId,
+        nodeName: log.nodeName,
+        nodeType: log.nodeType,
+        status: log.status,
+        startedAt: new Date(log.startedAt),
+        completedAt: log.completedAt ? new Date(log.completedAt) : null,
+        duration: log.duration,
+        input: log.input,
+        output: log.output,
+        error: log.error,
+      })),
+    []
+  );
+
   // Poll for new executions when tab is active
   useEffect(() => {
     if (!(isActive && currentWorkflowId)) {
@@ -306,21 +343,13 @@ export function WorkflowRuns({
         for (const executionId of expandedRuns) {
           try {
             const logsData = await api.workflow.getExecutionLogs(executionId);
+            const mappedLogs = mapNodeLabels(
+              logsData.logs,
+              logsData.execution.workflow
+            );
             setLogs((prev) => ({
               ...prev,
-              [executionId]: logsData.logs.map((log) => ({
-                id: log.id,
-                nodeId: log.nodeId,
-                nodeName: log.nodeId,
-                nodeType: "action",
-                status: log.status,
-                startedAt: new Date(log.timestamp),
-                completedAt: null,
-                duration: null,
-                input: log.data,
-                output: log.data,
-                error: log.error,
-              })),
+              [executionId]: mappedLogs,
             }));
           } catch (error) {
             console.error(`Failed to refresh logs for ${executionId}:`, error);
@@ -333,26 +362,15 @@ export function WorkflowRuns({
 
     const interval = setInterval(pollExecutions, 2000);
     return () => clearInterval(interval);
-  }, [isActive, currentWorkflowId, expandedRuns]);
+  }, [isActive, currentWorkflowId, expandedRuns, mapNodeLabels]);
 
   const loadExecutionLogs = async (executionId: string) => {
     try {
       const data = await api.workflow.getExecutionLogs(executionId);
+      const mappedLogs = mapNodeLabels(data.logs, data.execution.workflow);
       setLogs((prev) => ({
         ...prev,
-        [executionId]: data.logs.map((log) => ({
-          id: log.id,
-          nodeId: log.nodeId,
-          nodeName: log.nodeId,
-          nodeType: "action",
-          status: log.status,
-          startedAt: new Date(log.timestamp),
-          completedAt: null,
-          duration: null,
-          input: log.data,
-          output: log.data,
-          error: log.error,
-        })),
+        [executionId]: mappedLogs,
       }));
     } catch (error) {
       console.error("Failed to load execution logs:", error);

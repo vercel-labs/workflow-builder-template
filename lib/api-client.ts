@@ -252,15 +252,26 @@ export const workflowApi = {
         startedAt: Date;
         completedAt: Date | null;
         duration: string | null;
+        workflow: {
+          id: string;
+          name: string;
+          nodes: unknown;
+          edges: unknown;
+        };
       };
       logs: Array<{
         id: string;
         executionId: string;
         nodeId: string;
+        nodeName: string;
+        nodeType: string;
         status: "pending" | "running" | "success" | "error";
-        data: unknown;
+        input: unknown;
+        output: unknown;
         error: string | null;
-        timestamp: Date;
+        startedAt: Date;
+        completedAt: Date | null;
+        duration: string | null;
       }>;
     }>(`/api/workflows/executions/${executionId}/logs`),
 
