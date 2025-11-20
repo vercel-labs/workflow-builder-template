@@ -2,6 +2,8 @@
  * Executable step function for Generate Text action
  * Uses AI Gateway with {provider}/{model} format (e.g., "openai/gpt-4")
  */
+import "server-only";
+
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 

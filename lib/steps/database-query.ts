@@ -1,6 +1,7 @@
 /**
  * Executable step function for Database Query action
  */
+import "server-only";
 
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";

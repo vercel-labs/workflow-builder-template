@@ -1,6 +1,8 @@
 /**
  * Executable step function for Generate Image action
  */
+import "server-only";
+
 import OpenAI from "openai";
 
 export async function generateImageStep(input: {

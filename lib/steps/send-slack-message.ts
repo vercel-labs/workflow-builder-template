@@ -1,6 +1,8 @@
 /**
  * Executable step function for Send Slack Message action
  */
+import "server-only";
+
 import { WebClient } from "@slack/web-api";
 
 export async function sendSlackMessageStep(input: {

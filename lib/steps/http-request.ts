@@ -1,6 +1,8 @@
 /**
  * Executable step function for HTTP Request action
  */
+import "server-only";
+
 export async function httpRequestStep(input: {
   url: string;
   method: string;

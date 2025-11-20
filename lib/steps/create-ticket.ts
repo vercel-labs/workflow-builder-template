@@ -1,6 +1,8 @@
 /**
  * Executable step function for Create Ticket action
  */
+import "server-only";
+
 import { LinearClient } from "@linear/sdk";
 
 export async function createTicketStep(input: {

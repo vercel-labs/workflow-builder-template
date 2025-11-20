@@ -1,7 +1,14 @@
 import "server-only";
 
-import fs from "node:fs";
-import path from "node:path";
+// Import codegen templates directly
+import conditionTemplate from "./codegen-templates/condition";
+import createTicketTemplate from "./codegen-templates/create-ticket";
+import databaseQueryTemplate from "./codegen-templates/database-query";
+import generateImageTemplate from "./codegen-templates/generate-image";
+import generateTextTemplate from "./codegen-templates/generate-text";
+import httpRequestTemplate from "./codegen-templates/http-request";
+import sendEmailTemplate from "./codegen-templates/send-email";
+import sendSlackMessageTemplate from "./codegen-templates/send-slack-message";
 import {
   ARRAY_INDEX_PATTERN,
   analyzeNodeUsage,
@@ -15,36 +22,32 @@ import {
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 /**
- * Load step implementation from lib/steps/ directory
+ * Load step implementation from templates
  */
 const FUNCTION_BODY_REGEX =
   /export\s+(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{([\s\S]*)\}/;
 
 function loadStepImplementation(actionType: string): string | null {
-  const stepFileMap: Record<string, string> = {
-    "Send Email": "send-email.ts",
-    "Send Slack Message": "send-slack-message.ts",
-    "Create Ticket": "create-ticket.ts",
-    "Find Issues": "create-ticket.ts", // Uses same file for now
-    "Generate Text": "generate-text.ts",
-    "Generate Image": "generate-image.ts",
-    "Database Query": "database-query.ts",
-    "HTTP Request": "http-request.ts",
-    Condition: "condition.ts",
+  const templateMap: Record<string, string> = {
+    "Send Email": sendEmailTemplate,
+    "Send Slack Message": sendSlackMessageTemplate,
+    "Create Ticket": createTicketTemplate,
+    "Find Issues": createTicketTemplate, // Uses same template for now
+    "Generate Text": generateTextTemplate,
+    "Generate Image": generateImageTemplate,
+    "Database Query": databaseQueryTemplate,
+    "HTTP Request": httpRequestTemplate,
+    Condition: conditionTemplate,
   };
 
-  const fileName = stepFileMap[actionType];
-  if (!fileName) {
+  const template = templateMap[actionType];
+  if (!template) {
     return null;
   }
 
   try {
-    const stepFilePath = path.join(process.cwd(), "lib", "steps", fileName);
-    const fileContent = fs.readFileSync(stepFilePath, "utf-8");
-
-    // Extract just the function body (remove imports and export statement)
-    // This regex matches the function declaration and its body
-    const functionMatch = fileContent.match(FUNCTION_BODY_REGEX);
+    // Extract just the function body (remove export statement and function declaration)
+    const functionMatch = template.match(FUNCTION_BODY_REGEX);
 
     if (functionMatch) {
       return functionMatch[1].trim();
