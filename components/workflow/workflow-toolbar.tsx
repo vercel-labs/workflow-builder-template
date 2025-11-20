@@ -188,10 +188,10 @@ async function executeTestWorkflow({
           }
 
           if (statusData.status === "error") {
-            toast.error(result.error || "Workflow execution failed");
-          } else {
-            toast.success("Test run completed successfully");
-          }
+      toast.error(result.error || "Workflow execution failed");
+    } else {
+      toast.success("Test run completed successfully");
+    }
 
           setIsExecuting(false);
         }

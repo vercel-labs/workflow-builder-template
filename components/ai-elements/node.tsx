@@ -10,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Handle, Position } from "@xyflow/react";
 import type { ComponentProps } from "react";
-import { BorderBeam } from "@/components/ui/border-beam";
+import { AnimatedBorder } from "@/components/ui/animated-border";
 
 export type NodeProps = ComponentProps<typeof Card> & {
   handles: {
@@ -30,15 +30,7 @@ export const Node = ({ handles, className, status, ...props }: NodeProps) => (
     )}
     {...props}
   >
-    {status === "running" && (
-      <BorderBeam
-        size={60}
-        duration={3}
-        colorFrom="#3b82f6"
-        colorTo="#60a5fa"
-        borderWidth={2}
-      />
-    )}
+    {status === "running" && <AnimatedBorder />}
     {handles.target && <Handle position={Position.Left} type="target" />}
     {handles.source && <Handle position={Position.Right} type="source" />}
     {props.children}

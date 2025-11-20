@@ -306,11 +306,11 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
             executionPollingIntervalRef.current = null;
           }
 
-          if (result.status === "error") {
-            toast.error(result.error || "Workflow execution failed");
-          } else {
-            toast.success("Test run completed successfully");
-          }
+      if (result.status === "error") {
+        toast.error(result.error || "Workflow execution failed");
+      } else {
+        toast.success("Test run completed successfully");
+      }
 
           setIsExecuting(false);
         }
