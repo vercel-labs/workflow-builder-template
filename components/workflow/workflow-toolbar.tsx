@@ -47,7 +47,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
-import { VERCEL_DEPLOY_URL } from "@/lib/constants";
 import {
   canRedoAtom,
   canUndoAtom,
@@ -1235,25 +1234,6 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
           workflowId={workflowId}
         />
         <GitHubStarsButton />
-        <Button asChild className="h-8 px-3" size="sm" variant="secondary">
-          <a
-            className="flex items-center gap-1.5"
-            href={VERCEL_DEPLOY_URL}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            <svg
-              aria-label="Vercel Logo"
-              className="h-3 w-3"
-              fill="currentColor"
-              role="img"
-              viewBox="0 0 76 65"
-            >
-              <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
-            </svg>
-            <span>Deploy Your Own</span>
-          </a>
-        </Button>
         <UserMenu />
       </Panel>
 
