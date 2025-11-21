@@ -72,7 +72,7 @@ type WorkflowCanvasProps = {
 };
 
 export function WorkflowCanvas(_props: WorkflowCanvasProps) {
-  const [nodes] = useAtom(nodesAtom);
+  const [nodes, setNodes] = useAtom(nodesAtom);
   const [edges, setEdges] = useAtom(edgesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
@@ -87,6 +87,7 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const { screenToFlowPosition, setViewport } = useReactFlow();
 
   const connectingNodeId = useRef<string | null>(null);
+  const justCreatedNodeFromConnection = useRef(false);
   const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(
     undefined
   );
@@ -301,9 +302,22 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
             config: actionTemplate.defaultConfig,
             status: "idle",
           },
+          selected: true,
         };
 
         addNode(newNode);
+        setSelectedNode(newNode.id);
+
+        // Deselect all other nodes and select only the new node
+        // Need to do this after a delay because panOnDrag will clear selection
+        setTimeout(() => {
+          setNodes((currentNodes) =>
+            currentNodes.map((n) => ({
+              ...n,
+              selected: n.id === newNode.id,
+            }))
+          );
+        }, 50);
 
         // Create connection from the source node to the new node
         const newEdge = {
@@ -313,6 +327,12 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
           type: "animated",
         };
         setEdges([...edges, newEdge]);
+
+        // Set flag to prevent immediate deselection
+        justCreatedNodeFromConnection.current = true;
+        setTimeout(() => {
+          justCreatedNodeFromConnection.current = false;
+        }, 100);
       }
 
       connectingNodeId.current = null;
@@ -324,16 +344,27 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
       addNode,
       edges,
       setEdges,
+      setNodes,
+      setSelectedNode,
     ]
   );
 
   const onPaneClick = useCallback(() => {
+    // Don't deselect if we just created a node from a connection
+    if (justCreatedNodeFromConnection.current) {
+      return;
+    }
     setSelectedNode(null);
     setSelectedEdge(null);
   }, [setSelectedNode, setSelectedEdge]);
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+      // Don't clear selection if we just created a node from a connection
+      if (justCreatedNodeFromConnection.current && selectedNodes.length === 0) {
+        return;
+      }
+
       if (selectedNodes.length === 0) {
         setSelectedNode(null);
       } else if (selectedNodes.length === 1) {
