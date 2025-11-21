@@ -23,6 +23,7 @@ import { Loader2, PlayCircle, Zap } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
   addNodeAtom,
+  autosaveAtom,
   currentWorkflowIdAtom,
   edgesAtom,
   hasUnsavedChangesAtom,
@@ -82,6 +83,7 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const setSelectedEdge = useSetAtom(selectedEdgeAtom);
   const addNode = useSetAtom(addNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
+  const triggerAutosave = useSetAtom(autosaveAtom);
   const { screenToFlowPosition, setViewport } = useReactFlow();
 
   const connectingNodeId = useRef<string | null>(null);
@@ -189,8 +191,10 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
       };
       setEdges([...edges, newEdge]);
       setHasUnsavedChanges(true);
+      // Trigger immediate autosave when nodes are connected
+      triggerAutosave({ immediate: true });
     },
-    [edges, setEdges, setHasUnsavedChanges]
+    [edges, setEdges, setHasUnsavedChanges, triggerAutosave]
   );
 
   const onNodeClick: NodeMouseHandler = useCallback(

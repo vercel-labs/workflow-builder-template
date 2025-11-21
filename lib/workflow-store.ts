@@ -32,6 +32,46 @@ export const currentWorkflowNameAtom = atom<string>("Untitled Workflow");
 export const propertiesPanelActiveTabAtom = atom<string>("properties");
 export const showMinimapAtom = atom(false);
 
+// Autosave functionality
+let autosaveTimeoutId: NodeJS.Timeout | null = null;
+const AUTOSAVE_DELAY = 1000; // 1 second debounce for field typing
+
+// Autosave atom that handles saving workflow state
+export const autosaveAtom = atom(
+  null,
+  async (get, set, options?: { immediate?: boolean }) => {
+    const workflowId = get(currentWorkflowIdAtom);
+    const nodes = get(nodesAtom);
+    const edges = get(edgesAtom);
+
+    // Only autosave if we have a workflow ID
+    if (!workflowId) {
+      return;
+    }
+
+    const saveFunc = async () => {
+      try {
+        await api.workflow.update(workflowId, { nodes, edges });
+        // Clear the unsaved changes indicator after successful save
+        set(hasUnsavedChangesAtom, false);
+      } catch (error) {
+        console.error("Autosave failed:", error);
+      }
+    };
+
+    if (options?.immediate) {
+      // Save immediately (for add/delete/connect operations)
+      await saveFunc();
+    } else {
+      // Debounce for typing operations
+      if (autosaveTimeoutId) {
+        clearTimeout(autosaveTimeoutId);
+      }
+      autosaveTimeoutId = setTimeout(saveFunc, AUTOSAVE_DELAY);
+    }
+  }
+);
+
 // Derived atoms for node/edge operations
 export const onNodesChangeAtom = atom(
   null,
@@ -68,6 +108,23 @@ export const onNodesChangeAtom = atom(
         set(selectedNodeAtom, null);
       }
     }
+
+    // Check if there were any deletions to trigger immediate save
+    const hadDeletions = filteredChanges.some(
+      (change) => change.type === "remove"
+    );
+    if (hadDeletions) {
+      set(autosaveAtom, { immediate: true });
+      return;
+    }
+
+    // Check if there were any position changes (node moved) to trigger debounced save
+    const hadPositionChanges = filteredChanges.some(
+      (change) => change.type === "position" && change.dragging === false
+    );
+    if (hadPositionChanges) {
+      set(autosaveAtom); // Debounced save
+    }
   }
 );
 
@@ -92,6 +149,12 @@ export const onEdgesChangeAtom = atom(
         set(selectedEdgeAtom, null);
       }
     }
+
+    // Check if there were any deletions to trigger immediate save
+    const hadDeletions = changes.some((change) => change.type === "remove");
+    if (hadDeletions) {
+      set(autosaveAtom, { immediate: true });
+    }
   }
 );
 
@@ -114,6 +177,9 @@ export const addNodeAtom = atom(null, (get, set, node: WorkflowNode) => {
 
   // Mark as having unsaved changes
   set(hasUnsavedChangesAtom, true);
+
+  // Trigger immediate autosave
+  set(autosaveAtom, { immediate: true });
 });
 
 export const updateNodeDataAtom = atom(
@@ -161,6 +227,8 @@ export const updateNodeDataAtom = atom(
     // Mark as having unsaved changes (except for status updates during execution)
     if (!data.status) {
       set(hasUnsavedChangesAtom, true);
+      // Trigger debounced autosave (for typing)
+      set(autosaveAtom);
     }
   }
 );
@@ -245,6 +313,9 @@ export const deleteNodeAtom = atom(null, (get, set, nodeId: string) => {
 
   // Mark as having unsaved changes
   set(hasUnsavedChangesAtom, true);
+
+  // Trigger immediate autosave
+  set(autosaveAtom, { immediate: true });
 });
 
 export const deleteEdgeAtom = atom(null, (get, set, edgeId: string) => {
@@ -264,6 +335,9 @@ export const deleteEdgeAtom = atom(null, (get, set, edgeId: string) => {
 
   // Mark as having unsaved changes
   set(hasUnsavedChangesAtom, true);
+
+  // Trigger immediate autosave
+  set(autosaveAtom, { immediate: true });
 });
 
 export const deleteSelectedItemsAtom = atom(null, (get, set) => {
@@ -305,6 +379,9 @@ export const deleteSelectedItemsAtom = atom(null, (get, set) => {
 
   // Mark as having unsaved changes
   set(hasUnsavedChangesAtom, true);
+
+  // Trigger immediate autosave
+  set(autosaveAtom, { immediate: true });
 });
 
 export const clearWorkflowAtom = atom(null, (get, set) => {

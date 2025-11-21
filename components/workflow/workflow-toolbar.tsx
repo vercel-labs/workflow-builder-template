@@ -679,7 +679,7 @@ function SaveButton({
         <Save className="size-4" />
       )}
       {state.hasUnsavedChanges && !state.isSaving && (
-        <div className="-top-0.5 -right-0.5 absolute size-2 rounded-full bg-primary" />
+        <div className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />
       )}
     </Button>
   );
