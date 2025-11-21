@@ -406,17 +406,11 @@ const PanelInner = () => {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 border-t p-4">
-              <Button
-                onClick={() => setShowClearDialog(true)}
-                variant="ghost"
-              >
+              <Button onClick={() => setShowClearDialog(true)} variant="ghost">
                 <Eraser className="size-4" />
                 Clear
               </Button>
-              <Button
-                onClick={() => setShowDeleteDialog(true)}
-                variant="ghost"
-              >
+              <Button onClick={() => setShowDeleteDialog(true)} variant="ghost">
                 <Trash2 className="size-4" />
                 Delete
               </Button>
