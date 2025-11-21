@@ -1,23 +1,20 @@
 import { Background, ReactFlow, type ReactFlowProps } from "@xyflow/react";
 import type { ReactNode } from "react";
 import "@xyflow/react/dist/style.css";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 type CanvasProps = ReactFlowProps & {
   children?: ReactNode;
 };
 
 export const Canvas = ({ children, ...props }: CanvasProps) => {
-  const isMobile = useIsMobile();
-
   return (
     <ReactFlow
       deleteKeyCode={["Backspace", "Delete"]}
       fitView
       panActivationKeyCode={null}
-      panOnDrag={isMobile}
+      panOnDrag={true}
       panOnScroll
-      selectionOnDrag={!isMobile}
+      selectionOnDrag={false}
       zoomOnDoubleClick={false}
       {...props}
     >
