@@ -9,10 +9,10 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 type DatabaseQueryInput = {
-  workflowId?: string;
+  integrationId?: string;
   dbQuery?: string;
   query?: string;
 };
@@ -96,8 +96,8 @@ export async function databaseQueryStep(
     };
   }
 
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   const databaseUrl = credentials.DATABASE_URL;

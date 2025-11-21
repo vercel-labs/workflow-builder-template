@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,6 +21,7 @@ type SettingsDialogProps = {
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Account state
   const [accountName, setAccountName] = useState("");
@@ -51,16 +54,23 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
   const saveAccount = async () => {
     try {
+      setSaving(true);
       await api.user.update({ name: accountName, email: accountEmail });
       await loadAccount();
+      onOpenChange(false);
     } catch (error) {
       console.error("Failed to save account:", error);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent
+        className="max-h-[90vh] max-w-4xl overflow-y-auto"
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -79,10 +89,19 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               accountName={accountName}
               onEmailChange={setAccountEmail}
               onNameChange={setAccountName}
-              onSave={saveAccount}
             />
           </div>
         )}
+
+        <DialogFooter>
+          <Button onClick={() => onOpenChange(false)} variant="outline">
+            Cancel
+          </Button>
+          <Button disabled={loading || saving} onClick={saveAccount}>
+            {saving ? <Spinner className="mr-2 size-4" /> : null}
+            Save
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

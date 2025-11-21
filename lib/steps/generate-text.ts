@@ -9,7 +9,7 @@ import "server-only";
 
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 type SchemaField = {
   name: string;
@@ -51,7 +51,7 @@ function buildZodSchema(
 }
 
 export async function generateTextStep(input: {
-  workflowId?: string;
+  integrationId?: string;
   aiModel?: string;
   aiPrompt?: string;
   aiFormat?: string;
@@ -59,8 +59,8 @@ export async function generateTextStep(input: {
 }): Promise<{ text: string } | Record<string, unknown>> {
   "use step";
 
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   const apiKey = credentials.AI_GATEWAY_API_KEY || credentials.OPENAI_API_KEY;

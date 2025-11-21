@@ -7,17 +7,17 @@
 import "server-only";
 
 import { LinearClient } from "@linear/sdk";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 export async function createTicketStep(input: {
-  workflowId?: string;
+  integrationId?: string;
   ticketTitle: string;
   ticketDescription: string;
 }) {
   "use step";
 
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   const apiKey = credentials.LINEAR_API_KEY;

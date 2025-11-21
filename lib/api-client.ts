@@ -12,7 +12,6 @@ export type WorkflowData = {
   description?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
-  vercelProjectId?: string | null;
 };
 
 export type SavedWorkflow = WorkflowData & {
@@ -20,11 +19,6 @@ export type SavedWorkflow = WorkflowData & {
   name: string;
   createdAt: string;
   updatedAt: string;
-  vercelProject?: {
-    id: string;
-    name: string;
-    vercelProjectId: string;
-  } | null;
 };
 
 // API error class
@@ -67,14 +61,74 @@ export const aiApi = {
     }),
 };
 
+// Integration types
+export type IntegrationType =
+  | "resend"
+  | "linear"
+  | "slack"
+  | "database"
+  | "ai-gateway";
+
+export type IntegrationConfig = {
+  apiKey?: string;
+  fromEmail?: string;
+  teamId?: string;
+  url?: string;
+  openaiApiKey?: string;
+};
+
+export type Integration = {
+  id: string;
+  name: string;
+  type: IntegrationType;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IntegrationWithConfig = Integration & {
+  config: IntegrationConfig;
+};
+
 // Integration API
 export const integrationApi = {
-  testConnection: (workflowId: string, integrationType: string) =>
+  // List all integrations
+  getAll: (type?: IntegrationType) =>
+    apiCall<Integration[]>(`/api/integrations${type ? `?type=${type}` : ""}`),
+
+  // Get single integration with config
+  get: (id: string) =>
+    apiCall<IntegrationWithConfig>(`/api/integrations/${id}`),
+
+  // Create integration
+  create: (data: {
+    name: string;
+    type: IntegrationType;
+    config: IntegrationConfig;
+  }) =>
+    apiCall<Integration>("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Update integration
+  update: (id: string, data: { name?: string; config?: IntegrationConfig }) =>
+    apiCall<IntegrationWithConfig>(`/api/integrations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  // Delete integration
+  delete: (id: string) =>
+    apiCall<{ success: boolean }>(`/api/integrations/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Test connection
+  testConnection: (integrationId: string) =>
     apiCall<{ status: "success" | "error"; message: string }>(
-      "/api/integration/test-connection",
+      `/api/integrations/${integrationId}/test`,
       {
         method: "POST",
-        body: JSON.stringify({ workflowId, integrationType }),
       }
     ),
 };
@@ -95,43 +149,6 @@ export const userApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-};
-
-// Vercel Project API
-export const vercelProjectApi = {
-  getIntegrations: (workflowId: string) =>
-    apiCall<{
-      resendApiKey: string | null;
-      resendFromEmail: string | null;
-      linearApiKey: string | null;
-      slackApiKey: string | null;
-      aiGatewayApiKey: string | null;
-      databaseUrl: string | null;
-      hasResendKey: boolean;
-      hasLinearKey: boolean;
-      hasSlackKey: boolean;
-      hasAiGatewayKey: boolean;
-      hasDatabaseUrl: boolean;
-    }>(`/api/vercel-project/${workflowId}/integrations`),
-
-  updateIntegrations: (
-    workflowId: string,
-    data: {
-      resendApiKey?: string | null;
-      resendFromEmail?: string | null;
-      linearApiKey?: string | null;
-      slackApiKey?: string | null;
-      aiGatewayApiKey?: string | null;
-      databaseUrl?: string | null;
-    }
-  ) =>
-    apiCall<{ success: boolean }>(
-      `/api/vercel-project/${workflowId}/integrations/update`,
-      {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }
-    ),
 };
 
 // Workflow API
@@ -172,17 +189,6 @@ export const workflowApi = {
       body: JSON.stringify({ nodes, edges }),
     }),
 
-  // Deploy workflow
-  deploy: (id: string) =>
-    apiCall<{
-      success: boolean;
-      deploymentUrl?: string;
-      error?: string;
-      logs?: string[];
-    }>(`/api/workflows/${id}/deploy`, {
-      method: "POST",
-    }),
-
   // Execute workflow
   execute: (id: string, input: Record<string, unknown> = {}) =>
     apiCall<{
@@ -211,16 +217,6 @@ export const workflowApi = {
     apiCall<{ code: string; workflowName: string }>(
       `/api/workflows/${id}/code`
     ),
-
-  // Get deployment status
-  getDeploymentStatus: (id: string) =>
-    apiCall<{
-      id: string;
-      name: string;
-      deploymentStatus: string;
-      deploymentUrl?: string | null;
-      lastDeployedAt?: Date | null;
-    }>(`/api/workflows/${id}/deployment-status`),
 
   // Get executions
   getExecutions: (id: string) =>
@@ -353,21 +349,5 @@ export const api = {
   ai: aiApi,
   integration: integrationApi,
   user: userApi,
-  vercelProject: vercelProjectApi,
   workflow: workflowApi,
-};
-
-// Export ProjectIntegrations type
-export type ProjectIntegrations = {
-  resendApiKey: string | null;
-  resendFromEmail: string | null;
-  linearApiKey: string | null;
-  slackApiKey: string | null;
-  aiGatewayApiKey: string | null;
-  databaseUrl: string | null;
-  hasResendKey: boolean;
-  hasLinearKey: boolean;
-  hasSlackKey: boolean;
-  hasAiGatewayKey: boolean;
-  hasDatabaseUrl: boolean;
 };

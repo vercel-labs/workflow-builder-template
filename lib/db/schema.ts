@@ -65,17 +65,28 @@ export const workflows = pgTable("workflows", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id),
-  vercelProjectId: text("vercel_project_id").notNull().unique(), // Vercel project ID from API
-  vercelProjectName: text("vercel_project_name").notNull(), // workflow-builder-[workflowId]
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - structure validated at application level
   nodes: jsonb("nodes").notNull().$type<any[]>(),
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - structure validated at application level
   edges: jsonb("edges").notNull().$type<any[]>(),
-  deploymentStatus: text("deployment_status")
-    .$type<"none" | "pending" | "deploying" | "deployed" | "failed">()
-    .default("none"),
-  deploymentUrl: text("deployment_url"),
-  lastDeployedAt: timestamp("last_deployed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Integrations table for storing user credentials
+export const integrations = pgTable("integrations", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  type: text("type")
+    .notNull()
+    .$type<"resend" | "linear" | "slack" | "database" | "ai-gateway">(),
+  // biome-ignore lint/suspicious/noExplicitAny: JSONB type - encrypted credentials stored as JSON
+  config: jsonb("config").notNull().$type<any>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -144,6 +155,8 @@ export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
+export type Integration = typeof integrations.$inferSelect;
+export type NewIntegration = typeof integrations.$inferInsert;
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
 export type NewWorkflowExecution = typeof workflowExecutions.$inferInsert;
 export type WorkflowExecutionLog = typeof workflowExecutionLogs.$inferSelect;

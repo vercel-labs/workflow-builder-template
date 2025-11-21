@@ -7,17 +7,17 @@
 import "server-only";
 
 import OpenAI from "openai";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 export async function generateImageStep(input: {
-  workflowId?: string;
+  integrationId?: string;
   model: string;
   prompt: string;
 }): Promise<{ base64: string | undefined }> {
   "use step";
 
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   const apiKey = credentials.OPENAI_API_KEY || credentials.AI_GATEWAY_API_KEY;

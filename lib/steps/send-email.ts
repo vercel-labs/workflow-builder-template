@@ -15,22 +15,25 @@
 import "server-only";
 
 import { Resend } from "resend";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 export async function sendEmailStep(input: {
-  workflowId?: string; // Reference to fetch credentials (safe to log)
+  integrationId?: string; // Reference to fetch credentials (safe to log)
   emailTo: string;
   emailSubject: string;
   emailBody: string;
 }) {
   "use step";
 
-  console.log("[Send Email] Step called with workflowId:", input.workflowId);
+  console.log(
+    "[Send Email] Step called with integrationId:",
+    input.integrationId
+  );
 
-  // SECURITY: Fetch credentials using the workflow ID reference
+  // SECURITY: Fetch credentials using the integration ID reference
   // This happens in a secure, non-persisted context (not logged by observability)
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   console.log(

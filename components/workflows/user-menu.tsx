@@ -1,10 +1,11 @@
 "use client";
 
-import { LogOut, Moon, Settings, Sun } from "lucide-react";
+import { LogOut, Moon, Plug, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import { AuthDialog } from "@/components/auth/dialog";
 import { SettingsDialog } from "@/components/settings";
+import { IntegrationsDialog } from "@/components/settings/integrations-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ export const UserMenu = () => {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -105,6 +107,10 @@ export const UserMenu = () => {
             <Settings className="size-4" />
             <span>Settings</span>
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIntegrationsOpen(true)}>
+            <Plug className="size-4" />
+            <span>Integrations</span>
+          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Sun className="dark:-rotate-90 size-4 rotate-0 scale-100 transition-all dark:scale-0" />
@@ -130,6 +136,10 @@ export const UserMenu = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
         <SettingsDialog onOpenChange={setSettingsOpen} open={settingsOpen} />
+        <IntegrationsDialog
+          onOpenChange={setIntegrationsOpen}
+          open={integrationsOpen}
+        />
       </DropdownMenu>
     </div>
   );

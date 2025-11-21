@@ -3,15 +3,18 @@ import { WebClient } from "@slack/web-api";
 import { NextResponse } from "next/server";
 import postgres from "postgres";
 import { Resend } from "resend";
-import { api } from "@/lib/api-client";
 import { auth } from "@/lib/auth";
+import { getIntegration } from "@/lib/db/integrations";
 
 export type TestConnectionResult = {
   status: "success" | "error";
   message: string;
 };
 
-export async function POST(request: Request) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ integrationId: string }> }
+) {
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -21,33 +24,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { workflowId, integrationType } = body;
+    const { integrationId } = await params;
 
-    if (!(workflowId && integrationType)) {
+    if (!integrationId) {
       return NextResponse.json(
-        { error: "workflowId and integrationType are required" },
+        { error: "integrationId is required" },
         { status: 400 }
+      );
+    }
+
+    // Get the integration
+    const integration = await getIntegration(integrationId, session.user.id);
+
+    if (!integration) {
+      return NextResponse.json(
+        { error: "Integration not found" },
+        { status: 404 }
       );
     }
 
     let result: TestConnectionResult;
 
-    switch (integrationType) {
+    switch (integration.type) {
       case "linear":
-        result = await testLinearConnection(workflowId);
+        result = await testLinearConnection(integration.config.apiKey);
         break;
       case "slack":
-        result = await testSlackConnection(workflowId);
+        result = await testSlackConnection(integration.config.apiKey);
         break;
       case "resend":
-        result = await testResendConnection(workflowId);
+        result = await testResendConnection(integration.config.apiKey);
         break;
-      case "aiGateway":
-        result = await testAiGatewayConnection(workflowId);
+      case "ai-gateway":
+        result = await testAiGatewayConnection(integration.config.apiKey);
         break;
       case "database":
-        result = await testDatabaseConnection(workflowId);
+        result = await testDatabaseConnection(integration.config.url);
         break;
       default:
         return NextResponse.json(
@@ -70,16 +82,13 @@ export async function POST(request: Request) {
 }
 
 async function testLinearConnection(
-  workflowId: string
+  apiKey?: string
 ): Promise<TestConnectionResult> {
   try {
-    const integrations = await api.vercelProject.getIntegrations(workflowId);
-    const apiKey = integrations.linearApiKey;
-
     if (!apiKey) {
       return {
         status: "error",
-        message: "Linear API key is not configured for this workflow",
+        message: "Linear API key is not configured",
       };
     }
 
@@ -99,16 +108,13 @@ async function testLinearConnection(
 }
 
 async function testSlackConnection(
-  workflowId: string
+  apiKey?: string
 ): Promise<TestConnectionResult> {
   try {
-    const integrations = await api.vercelProject.getIntegrations(workflowId);
-    const apiKey = integrations.slackApiKey;
-
     if (!apiKey) {
       return {
         status: "error",
-        message: "Slack bot token is not configured for this workflow",
+        message: "Slack bot token is not configured",
       };
     }
 
@@ -135,16 +141,13 @@ async function testSlackConnection(
 }
 
 async function testResendConnection(
-  workflowId: string
+  apiKey?: string
 ): Promise<TestConnectionResult> {
   try {
-    const integrations = await api.vercelProject.getIntegrations(workflowId);
-    const apiKey = integrations.resendApiKey;
-
     if (!apiKey) {
       return {
         status: "error",
-        message: "Resend API key is not configured for this workflow",
+        message: "Resend API key is not configured",
       };
     }
 
@@ -175,16 +178,13 @@ async function testResendConnection(
 }
 
 async function testAiGatewayConnection(
-  workflowId: string
+  apiKey?: string
 ): Promise<TestConnectionResult> {
   try {
-    const integrations = await api.vercelProject.getIntegrations(workflowId);
-    const apiKey = integrations.aiGatewayApiKey;
-
     if (!apiKey) {
       return {
         status: "error",
-        message: "AI Gateway API key is not configured for this workflow",
+        message: "AI Gateway API key is not configured",
       };
     }
 
@@ -216,18 +216,15 @@ async function testAiGatewayConnection(
 }
 
 async function testDatabaseConnection(
-  workflowId: string
+  databaseUrl?: string
 ): Promise<TestConnectionResult> {
   let connection: postgres.Sql | null = null;
 
   try {
-    const integrations = await api.vercelProject.getIntegrations(workflowId);
-    const databaseUrl = integrations.databaseUrl;
-
     if (!databaseUrl) {
       return {
         status: "error",
-        message: "Database URL is not configured for this workflow",
+        message: "Database URL is not configured",
       };
     }
 

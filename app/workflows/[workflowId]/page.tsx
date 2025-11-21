@@ -4,7 +4,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { useAtom, useSetAtom } from "jotai";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,6 @@ import { WorkflowCanvas } from "@/components/workflow/workflow-canvas";
 import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
-import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
@@ -56,33 +55,10 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setSelectedNodeId = useSetAtom(selectedNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const [workflowNotFound, setWorkflowNotFound] = useAtom(workflowNotFoundAtom);
-  const setProjectIntegrations = useSetAtom(projectIntegrationsAtom);
   const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
-
-  // Track if integrations have been loaded
-  const [integrationsLoaded, setIntegrationsLoaded] = useState(false);
 
   // Ref to track polling interval
   const executionPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Load project integrations first before loading workflow
-  useEffect(() => {
-    const loadIntegrations = async () => {
-      try {
-        const integrations =
-          await api.vercelProject.getIntegrations(workflowId);
-        setProjectIntegrations(integrations);
-        setIntegrationsLoaded(true);
-      } catch (error) {
-        console.error("Failed to load integrations:", error);
-        // Still mark as loaded even on error to prevent blocking workflow load
-        setIntegrationsLoaded(true);
-      }
-    };
-
-    setIntegrationsLoaded(false);
-    loadIntegrations();
-  }, [workflowId, setProjectIntegrations]);
 
   // Helper function to generate workflow from AI
   const generateWorkflowFromAI = useCallback(
@@ -185,11 +161,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
         return;
       }
 
-      // Wait for integrations to load first to prevent flash of warning indicators
-      if (!integrationsLoaded) {
-        return;
-      }
-
       // Check if we should generate from AI
       if (
         isGeneratingParam &&
@@ -212,7 +183,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     nodes.length,
     generateWorkflowFromAI,
     loadExistingWorkflow,
-    integrationsLoaded,
   ]);
 
   // Keyboard shortcuts

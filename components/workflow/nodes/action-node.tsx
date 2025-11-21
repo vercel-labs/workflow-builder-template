@@ -1,7 +1,6 @@
 "use client";
 
 import type { NodeProps } from "@xyflow/react";
-import { useAtomValue } from "jotai";
 import {
   AlertTriangle,
   Check,
@@ -18,7 +17,6 @@ import {
   NodeTitle,
 } from "@/components/ai-elements/node";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
-import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import { cn } from "@/lib/utils";
 import type { WorkflowNodeData } from "@/lib/workflow-store";
 
@@ -53,33 +51,9 @@ const requiresIntegration = (actionType: string): boolean => {
 };
 
 // Helper to check if integration is configured
-const isIntegrationConfigured = (
-  actionType: string,
-  integrations: ReturnType<
-    typeof useAtomValue<typeof projectIntegrationsAtom>
-  > | null
-): boolean => {
-  if (!integrations) {
-    return false;
-  }
-
-  switch (actionType) {
-    case "Send Email":
-      return integrations.hasResendKey;
-    case "Send Slack Message":
-      return integrations.hasSlackKey;
-    case "Create Ticket":
-    case "Find Issues":
-      return integrations.hasLinearKey;
-    case "Generate Text":
-    case "Generate Image":
-      return integrations.hasAiGatewayKey;
-    case "Database Query":
-      return integrations.hasDatabaseUrl;
-    default:
-      return true;
-  }
-};
+// Now checks for integrationId in node config
+const hasIntegrationConfigured = (config: Record<string, unknown>): boolean =>
+  Boolean(config?.integrationId);
 
 // Helper to get provider logo for action type
 const getProviderLogo = (actionType: string) => {
@@ -141,8 +115,6 @@ type ActionNodeProps = NodeProps & {
 };
 
 export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
-  const integrations = useAtomValue(projectIntegrationsAtom);
-
   if (!data) {
     return null;
   }
@@ -182,7 +154,7 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
 
   const needsIntegration = requiresIntegration(actionType);
   const integrationMissing =
-    needsIntegration && !isIntegrationConfigured(actionType, integrations);
+    needsIntegration && !hasIntegrationConfigured(data.config || {});
 
   return (
     <Node

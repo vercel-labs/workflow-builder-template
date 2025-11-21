@@ -23,7 +23,7 @@ export type WorkflowExecutionInput = {
 
 /**
  * Execute a single action step
- * IMPORTANT: Steps receive only the workflow ID as a reference to fetch credentials.
+ * IMPORTANT: Steps receive only the integration ID as a reference to fetch credentials.
  * This prevents credentials from being logged in Vercel's workflow observability.
  */
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type dispatch requires branching logic
@@ -31,9 +31,8 @@ async function executeActionStep(input: {
   actionType: string;
   config: Record<string, unknown>;
   outputs: NodeOutputs;
-  workflowId?: string;
 }) {
-  const { actionType, config, workflowId } = input;
+  const { actionType, config } = input;
 
   // Helper to replace template variables in conditions
   // biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
@@ -80,11 +79,11 @@ async function executeActionStep(input: {
     return varName;
   }
 
-  // Build step input WITHOUT credentials, but WITH workflowId reference
+  // Build step input WITHOUT credentials, but WITH integrationId reference
   // Steps will fetch credentials internally using this reference
   const stepInput: Record<string, unknown> = {
     ...config,
-    workflowId, // Pass workflow ID so steps can fetch their own credentials
+    // integrationId is already in config from the node configuration
   };
 
   // Import and execute the appropriate step function
@@ -476,14 +475,13 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
         logInfo = await logNodeStart(node, processedConfig);
 
         // Execute the action step
-        // IMPORTANT: We pass workflowId as a reference, not actual credentials
-        // Steps fetch credentials internally using fetchWorkflowCredentials(workflowId)
+        // IMPORTANT: We pass integrationId via config, not actual credentials
+        // Steps fetch credentials internally using fetchCredentials(integrationId)
         console.log("[Workflow Executor] Calling executeActionStep");
         const stepResult = await executeActionStep({
           actionType,
           config: processedConfig,
           outputs,
-          workflowId,
         });
 
         console.log("[Workflow Executor] Step result received:", {

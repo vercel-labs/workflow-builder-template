@@ -1,26 +1,20 @@
 "use client";
 
-import { useAtom, useAtomValue } from "jotai";
-import { AlertTriangle, Settings } from "lucide-react";
-import { useState } from "react";
-import { ProjectIntegrationsDialog } from "@/components/settings/project-integrations-dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { useAtom } from "jotai";
+import { Settings } from "lucide-react";
+import { useEffect, useState } from "react";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
 import { TemplateBadgeTextarea } from "@/components/ui/template-badge-textarea";
-import { projectIntegrationsAtom } from "@/lib/integrations-store";
 import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
@@ -32,18 +26,6 @@ type ActionConfigProps = {
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
 };
-
-// Map action types to their required integrations
-const ACTION_INTEGRATION_MAP: Record<string, { name: string; label: string }> =
-  {
-    "Send Email": { name: "resend", label: "Resend" },
-    "Send Slack Message": { name: "slack", label: "Slack" },
-    "Create Ticket": { name: "linear", label: "Linear" },
-    "Find Issues": { name: "linear", label: "Linear" },
-    "Generate Text": { name: "ai-gateway", label: "AI Gateway" },
-    "Generate Image": { name: "ai-gateway", label: "AI Gateway" },
-    "Database Query": { name: "database", label: "Database" },
-  };
 
 // Send Email fields component
 function SendEmailFields({
@@ -579,139 +561,134 @@ function ConditionFields({
   );
 }
 
+// Action categories and their actions
+const ACTION_CATEGORIES = {
+  System: ["HTTP Request", "Database Query", "Condition"],
+  "AI Gateway": ["Generate Text", "Generate Image"],
+  Linear: ["Create Ticket", "Find Issues"],
+  Resend: ["Send Email"],
+  Slack: ["Send Slack Message"],
+} as const;
+
+type ActionCategory = keyof typeof ACTION_CATEGORIES;
+
+// Get category for an action type
+const getCategoryForAction = (actionType: string): ActionCategory | null => {
+  for (const [category, actions] of Object.entries(ACTION_CATEGORIES)) {
+    if (actions.includes(actionType as never)) {
+      return category as ActionCategory;
+    }
+  }
+  return null;
+};
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Component inherently complex due to multiple action types
 export function ActionConfig({
   config,
   onUpdateConfig,
   disabled,
 }: ActionConfigProps) {
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
-  const [workflowId] = useAtom(currentWorkflowIdAtom);
-  const [workflowName] = useAtom(currentWorkflowNameAtom);
-  const integrations = useAtomValue(projectIntegrationsAtom);
+  const [_workflowId] = useAtom(currentWorkflowIdAtom);
+  const [_workflowName] = useAtom(currentWorkflowNameAtom);
 
   const actionType = (config?.actionType as string) || "";
-  const requiredIntegration = ACTION_INTEGRATION_MAP[actionType];
+  const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
+  const [category, setCategory] = useState<ActionCategory | "">(
+    selectedCategory || ""
+  );
 
-  // Check if the required integration is configured
-  const isIntegrationConfigured = () => {
-    if (!requiredIntegration) {
-      return true;
-    }
-    if (!integrations) {
-      return false; // Changed: return false if integrations haven't loaded
-    }
+  // Sync category state when actionType changes (e.g., when switching nodes)
+  useEffect(() => {
+    const newCategory = actionType ? getCategoryForAction(actionType) : null;
+    setCategory(newCategory || "");
+  }, [actionType]);
 
-    switch (actionType) {
-      case "Send Email":
-        return integrations.hasResendKey;
-      case "Send Slack Message":
-        return integrations.hasSlackKey;
-      case "Create Ticket":
-      case "Find Issues":
-        return integrations.hasLinearKey;
-      case "Generate Text":
-      case "Generate Image":
-        return integrations.hasAiGatewayKey;
-      case "Database Query":
-        return integrations.hasDatabaseUrl;
-      default:
-        return true;
-    }
+  const handleCategoryChange = (newCategory: ActionCategory) => {
+    setCategory(newCategory);
+    // Auto-select the first action in the new category
+    const firstAction = ACTION_CATEGORIES[newCategory][0];
+    onUpdateConfig("actionType", firstAction);
   };
 
-  const integrationMissing = requiredIntegration && !isIntegrationConfigured();
+  const handleActionTypeChange = (value: string) => {
+    onUpdateConfig("actionType", value);
+  };
 
   return (
     <>
-      {integrationMissing && (
-        <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
-          <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <AlertDescription className="text-sm">
-            <span className="font-semibold text-orange-900 dark:text-orange-100">
-              Integration Required
-            </span>
-            <p className="mt-1 text-orange-800 text-xs dark:text-orange-400">
-              This action requires {requiredIntegration.label} to be configured.
-              Add your API key in the project integrations to use this action.
-            </p>
-            <Button
-              className="mt-2.5"
-              onClick={() => setShowIntegrationsDialog(true)}
-              size="sm"
-              variant="outline"
-            >
-              Configure {requiredIntegration.label}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="actionType">
-          Action Type
-        </Label>
-        <Select
-          disabled={disabled}
-          onValueChange={(value) => onUpdateConfig("actionType", value)}
-          value={actionType || undefined}
-        >
-          <SelectTrigger className="w-full" id="actionType">
-            <SelectValue placeholder="Select action type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel className="flex items-center gap-2">
-                <Settings className="h-3 w-3" />
-                System
-              </SelectLabel>
-              <SelectItem value="HTTP Request">HTTP Request</SelectItem>
-              <SelectItem value="Database Query">Database Query</SelectItem>
-              <SelectItem value="Condition">Condition</SelectItem>
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="flex items-center gap-2">
-                <IntegrationIcon integration="resend" />
-                Resend
-              </SelectLabel>
-              <SelectItem value="Send Email">Send Email</SelectItem>
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="flex items-center gap-2">
-                <IntegrationIcon integration="slack" />
-                Slack
-              </SelectLabel>
-              <SelectItem value="Send Slack Message">
-                Send Slack Message
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
+          <Label className="ml-1" htmlFor="actionCategory">
+            Category
+          </Label>
+          <Select
+            disabled={disabled}
+            onValueChange={(value) =>
+              handleCategoryChange(value as ActionCategory)
+            }
+            value={category || undefined}
+          >
+            <SelectTrigger className="w-full" id="actionCategory">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="System">
+                <div className="flex items-center gap-2">
+                  <Settings className="size-4" />
+                  <span>System</span>
+                </div>
               </SelectItem>
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="flex items-center gap-2">
-                <IntegrationIcon integration="linear" />
-                Linear
-              </SelectLabel>
-              <SelectItem value="Create Ticket">Create Ticket</SelectItem>
-              <SelectItem value="Find Issues">Find Issues</SelectItem>
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="flex items-center gap-2">
-                <IntegrationIcon integration="vercel" />
-                AI Gateway
-              </SelectLabel>
-              <SelectItem value="Generate Text">Generate Text</SelectItem>
-              <SelectItem value="Generate Image">Generate Image</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
+              <SelectItem value="AI Gateway">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon className="size-4" integration="vercel" />
+                  <span>AI Gateway</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Linear">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon className="size-4" integration="linear" />
+                  <span>Linear</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Resend">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon className="size-4" integration="resend" />
+                  <span>Resend</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Slack">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon className="size-4" integration="slack" />
+                  <span>Slack</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <ProjectIntegrationsDialog
-        initialTab={requiredIntegration?.name || "resend"}
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
-        singleIntegrationMode={!!requiredIntegration}
-        workflowId={workflowId}
-        workflowName={workflowName}
-      />
+        <div className="space-y-2">
+          <Label className="ml-1" htmlFor="actionType">
+            Action
+          </Label>
+          <Select
+            disabled={disabled || !category}
+            onValueChange={handleActionTypeChange}
+            value={actionType || undefined}
+          >
+            <SelectTrigger className="w-full" id="actionType">
+              <SelectValue placeholder="Select action" />
+            </SelectTrigger>
+            <SelectContent>
+              {category &&
+                ACTION_CATEGORIES[category].map((action) => (
+                  <SelectItem key={action} value={action}>
+                    {action}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Send Email fields */}
       {config?.actionType === "Send Email" && (

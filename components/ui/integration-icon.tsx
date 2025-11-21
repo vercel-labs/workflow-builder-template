@@ -1,8 +1,9 @@
+import { Database, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface IntegrationIconProps {
-  integration: "linear" | "resend" | "slack" | "vercel";
+  integration: "linear" | "resend" | "slack" | "vercel" | "database" | "ai-gateway";
   className?: string;
 }
 
@@ -53,6 +54,14 @@ export function IntegrationIcon({
 
   if (integration === "vercel") {
     return <VercelIcon className={cn("text-foreground", className)} />;
+  }
+
+  if (integration === "database") {
+    return <Database className={cn("text-foreground", className)} />;
+  }
+
+  if (integration === "ai-gateway") {
+    return <Sparkles className={cn("text-foreground", className)} />;
   }
 
   return (

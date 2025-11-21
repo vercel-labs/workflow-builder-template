@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
-import { createProject } from "@/lib/integrations/vercel";
 import { generateId } from "@/lib/utils/id";
 
 // Helper function to create a default trigger node
@@ -61,36 +60,6 @@ export async function POST(request: Request) {
     // Generate workflow ID first
     const workflowId = generateId();
 
-    // Get app-level Vercel credentials from env vars
-    const vercelApiToken = process.env.VERCEL_API_TOKEN;
-    const vercelTeamId = process.env.VERCEL_TEAM_ID;
-
-    if (!vercelApiToken) {
-      return NextResponse.json(
-        { error: "Vercel API token not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Create Vercel project with workflow-builder-[workflowId] format
-    const vercelProjectName = `workflow-builder-${workflowId}`;
-    const result = await createProject({
-      name: vercelProjectName,
-      apiToken: vercelApiToken,
-      teamId: vercelTeamId,
-    });
-
-    if (result.status === "error") {
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-
-    if (!result.project) {
-      return NextResponse.json(
-        { error: "Failed to create project on Vercel" },
-        { status: 500 }
-      );
-    }
-
     const [newWorkflow] = await db
       .insert(workflows)
       .values({
@@ -100,8 +69,6 @@ export async function POST(request: Request) {
         nodes,
         edges: body.edges,
         userId: session.user.id,
-        vercelProjectId: result.project.id,
-        vercelProjectName,
       })
       .returning();
 
@@ -109,7 +76,6 @@ export async function POST(request: Request) {
       ...newWorkflow,
       createdAt: newWorkflow.createdAt.toISOString(),
       updatedAt: newWorkflow.updatedAt.toISOString(),
-      lastDeployedAt: newWorkflow.lastDeployedAt?.toISOString() || null,
     });
   } catch (error) {
     console.error("Failed to create workflow:", error);

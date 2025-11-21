@@ -7,17 +7,17 @@
 import "server-only";
 
 import { WebClient } from "@slack/web-api";
-import { fetchWorkflowCredentials } from "../credential-fetcher";
+import { fetchCredentials } from "../credential-fetcher";
 
 export async function sendSlackMessageStep(input: {
-  workflowId?: string;
+  integrationId?: string;
   slackChannel: string;
   slackMessage: string;
 }) {
   "use step";
 
-  const credentials = input.workflowId
-    ? await fetchWorkflowCredentials(input.workflowId)
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
     : {};
 
   const apiKey = credentials.SLACK_API_KEY;

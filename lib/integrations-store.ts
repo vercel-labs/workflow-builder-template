@@ -1,7 +1,8 @@
 import { atom } from "jotai";
-import type { ProjectIntegrations } from "@/lib/api-client";
+import type { Integration } from "@/lib/api-client";
 
-// Re-export the type from API routes
-export type { ProjectIntegrations } from "@/lib/api-client";
+// Store for all user integrations
+export const integrationsAtom = atom<Integration[]>([]);
 
-export const projectIntegrationsAtom = atom<ProjectIntegrations | null>(null);
+// Selected integration for forms/dialogs
+export const selectedIntegrationAtom = atom<Integration | null>(null);

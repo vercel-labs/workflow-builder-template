@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
-import { createProject } from "@/lib/integrations/vercel";
 import { generateId } from "@/lib/utils/id";
 
 const CURRENT_WORKFLOW_NAME = "~~__CURRENT__~~";
@@ -108,38 +107,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create new current workflow with a dedicated Vercel project
+    // Create new current workflow
     const workflowId = generateId();
-
-    // Get app-level Vercel credentials from env vars
-    const vercelApiToken = process.env.VERCEL_API_TOKEN;
-    const vercelTeamId = process.env.VERCEL_TEAM_ID;
-
-    if (!vercelApiToken) {
-      return NextResponse.json(
-        { error: "Vercel API token not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Create Vercel project with workflow-builder-[workflowId] format
-    const vercelProjectName = `workflow-builder-${workflowId}`;
-    const result = await createProject({
-      name: vercelProjectName,
-      apiToken: vercelApiToken,
-      teamId: vercelTeamId,
-    });
-
-    if (result.status === "error") {
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-
-    if (!result.project) {
-      return NextResponse.json(
-        { error: "Failed to create project on Vercel" },
-        { status: 500 }
-      );
-    }
 
     const [savedWorkflow] = await db
       .insert(workflows)
@@ -150,8 +119,6 @@ export async function POST(request: Request) {
         nodes,
         edges,
         userId: session.user.id,
-        vercelProjectId: result.project.id,
-        vercelProjectName,
       })
       .returning();
 

@@ -36,7 +36,6 @@ export async function GET(
       ...workflow,
       createdAt: workflow.createdAt.toISOString(),
       updatedAt: workflow.updatedAt.toISOString(),
-      lastDeployedAt: workflow.lastDeployedAt?.toISOString() || null,
     });
   } catch (error) {
     console.error("Failed to get workflow:", error);
@@ -114,7 +113,6 @@ export async function PATCH(
       ...updatedWorkflow,
       createdAt: updatedWorkflow.createdAt.toISOString(),
       updatedAt: updatedWorkflow.updatedAt.toISOString(),
-      lastDeployedAt: updatedWorkflow.lastDeployedAt?.toISOString() || null,
     });
   } catch (error) {
     console.error("Failed to update workflow:", error);

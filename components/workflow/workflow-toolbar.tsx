@@ -573,7 +573,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   };
 }
 
-// Toolbar Actions Component - handles undo/redo, save/deploy, and run buttons
+// Toolbar Actions Component - handles undo/redo, save, and run buttons
 function ToolbarActions({
   workflowId,
   state,
@@ -920,7 +920,8 @@ function WorkflowDialogsComponent({
             <DialogTitle>Generated Workflow Code</DialogTitle>
             <DialogDescription>
               This is the generated code for your workflow using the Vercel
-              Workflow SDK. Copy this code and deploy it to a Next.js project.
+              Workflow SDK. Copy this code or download the ZIP to run it in your
+              own Next.js project.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto">

@@ -4,13 +4,8 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { SchemaField } from "../components/workflow/config/schema-builder";
 import { db } from "./db";
-import { workflowExecutionLogs, workflows } from "./db/schema";
+import { workflowExecutionLogs } from "./db/schema";
 import { getStep, hasStep } from "./steps";
-import {
-  type EnvVarConfig,
-  enrichStepInput,
-  getCredentials,
-} from "./steps/credentials";
 import { redactSensitiveData } from "./utils/redact";
 import { type NodeOutputs, processConfigTemplates } from "./utils/template";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
@@ -123,7 +118,6 @@ class ServerWorkflowExecutor {
   private readonly nodeOutputs: NodeOutputs = {};
   private readonly context: WorkflowExecutionContext;
   private readonly executionLogs: Map<string, NodeExecutionLog> = new Map();
-  private credentials: EnvVarConfig = {};
 
   constructor(
     nodes: WorkflowNode[],
@@ -134,93 +128,6 @@ class ServerWorkflowExecutor {
     this.edges = edges;
     this.results = new Map();
     this.context = context;
-  }
-
-  private async loadProjectIntegrations(): Promise<void> {
-    if (!this.context.workflowId) {
-      return;
-    }
-
-    try {
-      const workflowData = await this.fetchWorkflowData();
-      if (!workflowData) {
-        return;
-      }
-
-      const vercelApiToken = process.env.VERCEL_API_TOKEN;
-      const vercelTeamId = process.env.VERCEL_TEAM_ID;
-
-      if (!vercelApiToken) {
-        return;
-      }
-
-      await this.loadEnvironmentVariables(
-        workflowData.vercelProjectId,
-        vercelApiToken,
-        vercelTeamId
-      );
-    } catch {
-      this.credentials = getCredentials("system");
-    }
-  }
-
-  private async fetchWorkflowData() {
-    const workflowData = await db.query.workflows.findFirst({
-      where: eq(workflows.id, this.context.workflowId as string),
-      columns: {
-        vercelProjectId: true,
-        userId: true,
-      },
-    });
-
-    if (!workflowData) {
-      return null;
-    }
-
-    return workflowData;
-  }
-
-  private async loadEnvironmentVariables(
-    vercelProjectId: string,
-    apiToken: string,
-    teamId?: string
-  ): Promise<void> {
-    const { getEnvironmentVariables } = await import("./integrations/vercel");
-    const envResult = await getEnvironmentVariables({
-      projectId: vercelProjectId,
-      apiToken,
-      teamId: teamId || undefined,
-      decrypt: true,
-    });
-
-    if (envResult.status === "success" && envResult.envs) {
-      this.setupCredentials(envResult.envs);
-    }
-  }
-
-  private setupCredentials(
-    envs: Array<{
-      key: string;
-      value: string;
-      type: string;
-      id: string;
-      target: string[];
-    }>
-  ): void {
-    const findEnvValue = (key: string) =>
-      envs.find((env) => env.key === key)?.value || null;
-
-    const aiGatewayApiKey = findEnvValue("AI_GATEWAY_API_KEY");
-
-    this.credentials = getCredentials("user", {
-      RESEND_API_KEY: findEnvValue("RESEND_API_KEY") || undefined,
-      RESEND_FROM_EMAIL: findEnvValue("RESEND_FROM_EMAIL") || undefined,
-      LINEAR_API_KEY: findEnvValue("LINEAR_API_KEY") || undefined,
-      SLACK_API_KEY: findEnvValue("SLACK_API_KEY") || undefined,
-      AI_GATEWAY_API_KEY: aiGatewayApiKey || undefined,
-      OPENAI_API_KEY: findEnvValue("OPENAI_API_KEY") || undefined,
-      DATABASE_URL: findEnvValue("DATABASE_URL") || undefined,
-    });
   }
 
   private getNextNodes(nodeId: string): string[] {
@@ -335,17 +242,9 @@ class ServerWorkflowExecutor {
           };
         }
 
-        // Enrich the processed config with credentials RIGHT BEFORE execution
-        // This happens in-memory only and is never persisted
-        // The credentials are added here and used immediately, then discarded
-        const enrichedInput = enrichStepInput(
-          actionType,
-          processedConfig,
-          this.credentials
-        );
-
-        // Execute the step function with enriched credentials
-        const result = await stepFn(enrichedInput);
+        // Execute the step function with the processed config
+        // Steps will fetch their own credentials based on integrationId in the config
+        const result = await stepFn(processedConfig);
 
         return {
           success: true,
@@ -675,9 +574,6 @@ class ServerWorkflowExecutor {
   }
 
   async execute(): Promise<Map<string, ExecutionResult>> {
-    // Load project integrations before executing
-    await this.loadProjectIntegrations();
-
     const triggerNodes = this.getTriggerNodes();
 
     if (triggerNodes.length === 0) {

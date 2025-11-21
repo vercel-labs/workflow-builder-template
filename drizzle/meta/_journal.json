@@ -8,6 +8,13 @@
       "when": 1763524363750,
       "tag": "0000_easy_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1763686045429,
+      "tag": "0001_dark_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

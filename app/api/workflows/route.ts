@@ -24,7 +24,6 @@ export async function GET(request: Request) {
       ...workflow,
       createdAt: workflow.createdAt.toISOString(),
       updatedAt: workflow.updatedAt.toISOString(),
-      lastDeployedAt: workflow.lastDeployedAt?.toISOString() || null,
     }));
 
     return NextResponse.json(mappedWorkflows);
