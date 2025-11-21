@@ -327,6 +327,9 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
           type: "animated",
         };
         setEdges([...edges, newEdge]);
+        setHasUnsavedChanges(true);
+        // Trigger immediate autosave for the new edge
+        triggerAutosave({ immediate: true });
 
         // Set flag to prevent immediate deselection
         justCreatedNodeFromConnection.current = true;
@@ -346,6 +349,8 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
       setEdges,
       setNodes,
       setSelectedNode,
+      setHasUnsavedChanges,
+      triggerAutosave,
     ]
   );
 

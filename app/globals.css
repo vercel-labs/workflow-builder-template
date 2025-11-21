@@ -176,11 +176,23 @@
 
 /* React Flow pane cursor */
 .react-flow__pane {
-  cursor: default !important;
+  cursor: grab !important;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing !important;
 }
 
 /* React Flow node and edge cursor */
-.react-flow__node,
+.react-flow__node {
+  cursor: pointer !important;
+}
+
+/* When dragging a node, show grabbing cursor */
+.react-flow__node.dragging {
+  cursor: grabbing !important;
+}
+
 .react-flow__edge {
   cursor: pointer !important;
 }
