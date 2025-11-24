@@ -33,7 +33,7 @@ export function GitHubStarsButton() {
       >
         <GitHubIcon className="size-4.5" />
         {stars !== null && (
-          <span className="text-sm">
+          <span className="hidden text-sm sm:inline">
             {formatAbbreviatedNumber(stars)} stars
           </span>
         )}
