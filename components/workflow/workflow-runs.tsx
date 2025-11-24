@@ -12,11 +12,14 @@ import {
   X,
 } from "lucide-react";
 import type { JSX } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { getRelativeTime } from "@/lib/utils/time";
-import { currentWorkflowIdAtom } from "@/lib/workflow-store";
+import {
+  currentWorkflowIdAtom,
+  selectedExecutionIdAtom,
+} from "@/lib/workflow-store";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 
@@ -47,6 +50,7 @@ type WorkflowExecution = {
 type WorkflowRunsProps = {
   isActive?: boolean;
   onRefreshRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  onStartRun?: (executionId: string) => void;
 };
 
 // Component for rendering individual execution log entries
@@ -247,13 +251,20 @@ function ExecutionLogEntry({
 export function WorkflowRuns({
   isActive = false,
   onRefreshRef,
+  onStartRun,
 }: WorkflowRunsProps) {
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
+  const [selectedExecutionId, setSelectedExecutionId] = useAtom(
+    selectedExecutionIdAtom
+  );
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [logs, setLogs] = useState<Record<string, ExecutionLog[]>>({});
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+
+  // Track which execution we've already auto-expanded to prevent loops
+  const autoExpandedExecutionRef = useRef<string | null>(null);
 
   const loadExecutions = useCallback(
     async (showLoading = true) => {
@@ -328,6 +339,59 @@ export function WorkflowRuns({
     []
   );
 
+  const loadExecutionLogs = useCallback(
+    async (executionId: string) => {
+      try {
+        const data = await api.workflow.getExecutionLogs(executionId);
+        const mappedLogs = mapNodeLabels(data.logs, data.execution.workflow);
+        setLogs((prev) => ({
+          ...prev,
+          [executionId]: mappedLogs,
+        }));
+      } catch (error) {
+        console.error("Failed to load execution logs:", error);
+        setLogs((prev) => ({ ...prev, [executionId]: [] }));
+      }
+    },
+    [mapNodeLabels]
+  );
+
+  // Notify parent when a new execution starts and auto-expand it
+  useEffect(() => {
+    if (executions.length === 0) {
+      return;
+    }
+
+    const latestExecution = executions[0];
+
+    // Check if this is a new running execution that we haven't auto-expanded yet
+    if (
+      latestExecution.status === "running" &&
+      latestExecution.id !== autoExpandedExecutionRef.current
+    ) {
+      // Mark this execution as auto-expanded
+      autoExpandedExecutionRef.current = latestExecution.id;
+
+      // Auto-select the new running execution
+      setSelectedExecutionId(latestExecution.id);
+
+      // Auto-expand the run
+      setExpandedRuns((prev) => {
+        const newExpanded = new Set(prev);
+        newExpanded.add(latestExecution.id);
+        return newExpanded;
+      });
+
+      // Load logs for the new execution
+      loadExecutionLogs(latestExecution.id);
+
+      // Notify parent
+      if (onStartRun) {
+        onStartRun(latestExecution.id);
+      }
+    }
+  }, [executions, setSelectedExecutionId, loadExecutionLogs, onStartRun]);
+
   // Poll for new executions when tab is active
   useEffect(() => {
     if (!(isActive && currentWorkflowId)) {
@@ -364,29 +428,21 @@ export function WorkflowRuns({
     return () => clearInterval(interval);
   }, [isActive, currentWorkflowId, expandedRuns, mapNodeLabels]);
 
-  const loadExecutionLogs = async (executionId: string) => {
-    try {
-      const data = await api.workflow.getExecutionLogs(executionId);
-      const mappedLogs = mapNodeLabels(data.logs, data.execution.workflow);
-      setLogs((prev) => ({
-        ...prev,
-        [executionId]: mappedLogs,
-      }));
-    } catch (error) {
-      console.error("Failed to load execution logs:", error);
-      setLogs((prev) => ({ ...prev, [executionId]: [] }));
-    }
-  };
-
   const toggleRun = async (executionId: string) => {
     const newExpanded = new Set(expandedRuns);
     if (newExpanded.has(executionId)) {
       newExpanded.delete(executionId);
     } else {
       newExpanded.add(executionId);
+      // Load logs when expanding
       await loadExecutionLogs(executionId);
     }
     setExpandedRuns(newExpanded);
+  };
+
+  const selectRun = (executionId: string) => {
+    // Just select the run without toggling expansion
+    setSelectedExecutionId(executionId);
   };
 
   const toggleLog = (logId: string) => {
@@ -451,6 +507,7 @@ export function WorkflowRuns({
     <div className="space-y-3">
       {executions.map((execution, index) => {
         const isExpanded = expandedRuns.has(execution.id);
+        const isSelected = selectedExecutionId === execution.id;
         const executionLogs = (logs[execution.id] || []).sort((a, b) => {
           // Sort by startedAt to ensure first to last order
           return (
@@ -460,24 +517,34 @@ export function WorkflowRuns({
 
         return (
           <div
-            className="overflow-hidden rounded-lg border bg-card"
+            className={cn(
+              "overflow-hidden rounded-lg border bg-card transition-all",
+              isSelected &&
+                "ring-2 ring-primary ring-offset-2 ring-offset-background"
+            )}
             key={execution.id}
           >
-            <button
-              className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50"
-              onClick={() => toggleRun(execution.id)}
-              type="button"
-            >
-              <div
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-0",
-                  getStatusDotClass(execution.status)
-                )}
+            <div className="flex w-full items-center gap-3 p-4">
+              <button
+                className="flex size-5 shrink-0 items-center justify-center rounded-full border-0 transition-colors hover:bg-muted"
+                onClick={() => toggleRun(execution.id)}
+                type="button"
               >
-                {getStatusIcon(execution.status)}
-              </div>
+                <div
+                  className={cn(
+                    "flex size-5 items-center justify-center rounded-full border-0",
+                    getStatusDotClass(execution.status)
+                  )}
+                >
+                  {getStatusIcon(execution.status)}
+                </div>
+              </button>
 
-              <div className="min-w-0 flex-1">
+              <button
+                className="min-w-0 flex-1 text-left transition-colors hover:opacity-80"
+                onClick={() => selectRun(execution.id)}
+                type="button"
+              >
                 <div className="mb-1 flex items-center gap-2">
                   <span className="font-semibold text-sm">
                     Run #{executions.length - index}
@@ -505,14 +572,20 @@ export function WorkflowRuns({
                     </>
                   )}
                 </div>
-              </div>
+              </button>
 
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              )}
-            </button>
+              <button
+                className="flex shrink-0 items-center justify-center rounded p-1 transition-colors hover:bg-muted"
+                onClick={() => toggleRun(execution.id)}
+                type="button"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+            </div>
 
             {isExpanded && (
               <div className="border-t bg-muted/20">

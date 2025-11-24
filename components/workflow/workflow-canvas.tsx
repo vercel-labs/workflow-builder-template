@@ -12,14 +12,15 @@ import {
   type Connection as XYFlowConnection,
   type Edge as XYFlowEdge,
 } from "@xyflow/react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@/components/ai-elements/canvas";
 import { Connection } from "@/components/ai-elements/connection";
 import { Controls } from "@/components/ai-elements/controls";
+import { AIPrompt } from "@/components/ai-elements/prompt";
 import "@xyflow/react/dist/style.css";
 
-import { Loader2, PlayCircle, Zap } from "lucide-react";
+import { PlayCircle, Zap } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
   addNodeAtom,
@@ -75,7 +76,7 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const [nodes, setNodes] = useAtom(nodesAtom);
   const [edges, setEdges] = useAtom(edgesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
-  const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
+  const currentWorkflowId = useAtomValue(currentWorkflowIdAtom);
   const [showMinimap] = useAtom(showMinimapAtom);
   const onNodesChange = useSetAtom(onNodesChangeAtom);
   const onEdgesChange = useSetAtom(onEdgesChangeAtom);
@@ -381,14 +382,6 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
 
   return (
     <div className="relative h-full w-full">
-      {isGenerating && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="text-center">
-            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
-            <div className="font-semibold text-lg">Generating workflow...</div>
-          </div>
-        </div>
-      )}
       {!viewportReady && (
         <div className="absolute inset-0 z-40 bg-secondary transition-opacity duration-100" />
       )}
@@ -431,6 +424,9 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
           <MiniMap bgColor="var(--sidebar)" nodeStrokeColor="var(--border)" />
         )}
       </Canvas>
+
+      {/* AI Prompt */}
+      {currentWorkflowId && <AIPrompt workflowId={currentWorkflowId} />}
     </div>
   );
 }

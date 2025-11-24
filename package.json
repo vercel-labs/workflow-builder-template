@@ -1,7 +1,9 @@
 {
-  "name": "v8-workflow",
+  "name": "workflow-builder-template",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
+  "description": "A template for building your own workflow automation platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -30,6 +32,7 @@
     "jotai": "^2.15.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.552.0",
+    "motion": "^12.23.24",
     "nanoid": "^5.1.6",
     "next": "16.0.1",
     "next-themes": "^0.4.6",

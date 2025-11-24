@@ -27,6 +27,7 @@ import {
   isSavingAtom,
   nodesAtom,
   propertiesPanelActiveTabAtom,
+  selectedExecutionIdAtom,
   selectedNodeAtom,
   updateNodeDataAtom,
   type WorkflowNode,
@@ -47,6 +48,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const [nodes] = useAtom(nodesAtom);
   const [edges] = useAtom(edgesAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
+  const [selectedExecutionId, setSelectedExecutionId] = useAtom(
+    selectedExecutionIdAtom
+  );
   const setNodes = useSetAtom(nodesAtom);
   const setEdges = useSetAtom(edgesAtom);
   const setCurrentWorkflowId = useSetAtom(currentWorkflowIdAtom);
@@ -59,6 +63,17 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
   // Ref to track polling interval
   const executionPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref to track polling interval for selected execution
+  const selectedExecutionPollingIntervalRef = useRef<NodeJS.Timeout | null>(
+    null
+  );
+  // Ref to access current nodes without triggering effect re-runs
+  const nodesRef = useRef(nodes);
+
+  // Keep nodes ref in sync
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
 
   // Helper function to generate workflow from AI
   const generateWorkflowFromAI = useCallback(
@@ -301,6 +316,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
       const result = await response.json();
 
+      // Select the new execution
+      setSelectedExecutionId(result.executionId);
+
       // Poll for execution status updates
       const pollInterval = setInterval(async () => {
         const { isComplete, status } = await pollExecutionStatus(
@@ -319,10 +337,8 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
           setIsExecuting(false);
 
-          // Reset node statuses after 5 seconds
-          setTimeout(() => {
-            updateAllNodeStatuses("idle");
-          }, 5000);
+          // Don't reset node statuses - let them show the final state
+          // The user can click another run or deselect to reset
         }
       }, 500); // Poll every 500ms
 
@@ -349,6 +365,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setNodes,
     setEdges,
     setSelectedNodeId,
+    setSelectedExecutionId,
   ]);
 
   // Helper to check if target is an input element
@@ -420,9 +437,80 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       if (executionPollingIntervalRef.current) {
         clearInterval(executionPollingIntervalRef.current);
       }
+      if (selectedExecutionPollingIntervalRef.current) {
+        clearInterval(selectedExecutionPollingIntervalRef.current);
+      }
     },
     []
   );
+
+  // Poll for selected execution status
+  useEffect(() => {
+    // Clear existing interval if any
+    if (selectedExecutionPollingIntervalRef.current) {
+      clearInterval(selectedExecutionPollingIntervalRef.current);
+      selectedExecutionPollingIntervalRef.current = null;
+    }
+
+    // If no execution is selected or it's the currently running one, don't poll
+    if (!selectedExecutionId) {
+      // Reset all node statuses when no execution is selected
+      for (const node of nodesRef.current) {
+        updateNodeData({ id: node.id, data: { status: "idle" } });
+      }
+      return;
+    }
+
+    // Start polling for the selected execution
+    const pollSelectedExecution = async () => {
+      try {
+        const statusData =
+          await api.workflow.getExecutionStatus(selectedExecutionId);
+
+        // Update node statuses based on the execution logs
+        for (const nodeStatus of statusData.nodeStatuses) {
+          updateNodeData({
+            id: nodeStatus.nodeId,
+            data: {
+              status: nodeStatus.status as
+                | "idle"
+                | "running"
+                | "success"
+                | "error",
+            },
+          });
+        }
+
+        // Stop polling if execution is complete
+        if (
+          statusData.status !== "running" &&
+          selectedExecutionPollingIntervalRef.current
+        ) {
+          clearInterval(selectedExecutionPollingIntervalRef.current);
+          selectedExecutionPollingIntervalRef.current = null;
+        }
+      } catch (error) {
+        console.error("Failed to poll selected execution status:", error);
+        // Clear polling on error
+        if (selectedExecutionPollingIntervalRef.current) {
+          clearInterval(selectedExecutionPollingIntervalRef.current);
+          selectedExecutionPollingIntervalRef.current = null;
+        }
+      }
+    };
+
+    // Poll immediately and then every 500ms
+    pollSelectedExecution();
+    const pollInterval = setInterval(pollSelectedExecution, 500);
+    selectedExecutionPollingIntervalRef.current = pollInterval;
+
+    return () => {
+      if (selectedExecutionPollingIntervalRef.current) {
+        clearInterval(selectedExecutionPollingIntervalRef.current);
+        selectedExecutionPollingIntervalRef.current = null;
+      }
+    };
+  }, [selectedExecutionId, updateNodeData]);
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden">

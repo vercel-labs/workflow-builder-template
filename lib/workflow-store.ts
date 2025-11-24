@@ -31,6 +31,7 @@ export const currentWorkflowNameAtom = atom<string>("");
 // UI state atoms
 export const propertiesPanelActiveTabAtom = atom<string>("properties");
 export const showMinimapAtom = atom(false);
+export const selectedExecutionIdAtom = atom<string | null>(null);
 
 // Autosave functionality
 let autosaveTimeoutId: NodeJS.Timeout | null = null;

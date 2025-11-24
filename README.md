@@ -1,15 +1,18 @@
-# V8 Workflow Builder
+# Workflow Builder Template
 
-A powerful visual workflow builder with real integrations and code generation capabilities.
+A template for building your own workflow automation platform. Built on top of Workflow DevKit, this template provides a complete visual workflow builder with real integrations and code generation capabilities.
 
-## Features
+## What's Included
 
 - **Visual Workflow Builder** - Drag-and-drop interface powered by React Flow
-- **Real Integrations** - Connect to Resend (emails), Linear (tickets), PostgreSQL, and external APIs
+- **Workflow DevKit Integration** - Built on top of Workflow DevKit for powerful execution capabilities
+- **Real Integrations** - Connect to Resend (emails), Linear (tickets), Slack, PostgreSQL, and external APIs
 - **Code Generation** - Convert workflows to executable TypeScript with `"use workflow"` directive
 - **Execution Tracking** - Monitor workflow runs with detailed logs
 - **Authentication** - Secure user authentication with Better Auth
-- **AI-Powered** - Generate workflows from natural language descriptions
+- **AI-Powered** - Generate workflows from natural language descriptions using OpenAI
+- **Database** - PostgreSQL with Drizzle ORM for type-safe database access
+- **Modern UI** - Beautiful shadcn/ui components with dark mode support
 
 ## Getting Started
 
@@ -25,25 +28,28 @@ Create a `.env.local` file with the following:
 
 ```env
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/v8_workflow
+DATABASE_URL=postgresql://user:password@localhost:5432/workflow_builder
 
 # Better Auth
 BETTER_AUTH_SECRET=your-secret-key
 BETTER_AUTH_URL=http://localhost:3000
 
-# Vercel (App-level - all projects created with workflow-builder- prefix)
+# OpenAI (for AI workflow generation)
+OPENAI_API_KEY=your-openai-api-key
+
+# Vercel (for deploying workflows)
 VERCEL_API_TOKEN=your-vercel-api-token
 VERCEL_TEAM_ID=team_xxxxxxxxxxxxx  # Optional, for team projects
 
-# Resend (Email)
+# Resend (for sending emails)
 RESEND_API_KEY=your-resend-api-key
 RESEND_FROM_EMAIL=onboarding@yourdomain.com
 
-# Linear (Tickets)
+# Linear (for creating tickets)
 LINEAR_API_KEY=your-linear-api-key
 
-# OpenAI (for AI workflow generation)
-OPENAI_API_KEY=your-openai-api-key
+# Slack (for sending messages)
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
 ```
 
 ### Installation
@@ -237,6 +243,32 @@ await callApi({
 });
 ```
 
+## Tech Stack
+
+- **Framework**: Next.js 16 with React 19
+- **Workflow Engine**: Workflow DevKit
+- **UI**: shadcn/ui with Tailwind CSS
+- **State Management**: Jotai
+- **Database**: PostgreSQL with Drizzle ORM
+- **Authentication**: Better Auth
+- **Code Editor**: Monaco Editor
+- **Workflow Canvas**: React Flow
+- **AI**: OpenAI GPT-5
+- **Type Checking**: TypeScript
+- **Code Quality**: Ultracite (formatter + linter)
+
+## About Workflow DevKit
+
+This template is built on top of Workflow DevKit, a powerful workflow execution engine that enables:
+
+- Native TypeScript workflow definitions with `"use workflow"` directive
+- Type-safe workflow execution
+- Automatic code generation from visual workflows
+- Built-in logging and error handling
+- Serverless deployment support
+
+Learn more about Workflow DevKit at [workflow.dev](https://workflow.dev)
+
 ## License
 
-MIT
+Apache 2.0

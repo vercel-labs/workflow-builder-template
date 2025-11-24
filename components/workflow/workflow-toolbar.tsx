@@ -69,6 +69,7 @@ import {
   propertiesPanelActiveTabAtom,
   redoAtom,
   selectedEdgeAtom,
+  selectedExecutionIdAtom,
   selectedNodeAtom,
   showClearDialogAtom,
   showDeleteDialogAtom,
@@ -110,6 +111,7 @@ type ExecuteTestWorkflowParams = {
   }) => void;
   pollingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>;
   setIsExecuting: (value: boolean) => void;
+  setSelectedExecutionId: (value: string | null) => void;
 };
 
 async function executeTestWorkflow({
@@ -118,6 +120,7 @@ async function executeTestWorkflow({
   updateNodeData,
   pollingIntervalRef,
   setIsExecuting,
+  setSelectedExecutionId,
 }: ExecuteTestWorkflowParams) {
   // Set all nodes to idle first
   updateNodesStatus(nodes, updateNodeData, "idle");
@@ -144,6 +147,9 @@ async function executeTestWorkflow({
     }
 
     const result = await response.json();
+
+    // Select the new execution
+    setSelectedExecutionId(result.executionId);
 
     // Poll for execution status updates
     const pollInterval = setInterval(async () => {
@@ -179,10 +185,8 @@ async function executeTestWorkflow({
 
           setIsExecuting(false);
 
-          // Reset node statuses after 5 seconds
-          setTimeout(() => {
-            updateNodesStatus(nodes, updateNodeData, "idle");
-          }, 5000);
+          // Don't reset node statuses - let them show the final state
+          // The user can click another run or deselect to reset
         }
       } catch (error) {
         console.error("Failed to poll execution status:", error);
@@ -216,6 +220,7 @@ type WorkflowHandlerParams = {
   setNodes: (nodes: WorkflowNode[]) => void;
   setEdges: (edges: WorkflowEdge[]) => void;
   setSelectedNodeId: (id: string | null) => void;
+  setSelectedExecutionId: (id: string | null) => void;
 };
 
 function useWorkflowHandlers({
@@ -230,6 +235,7 @@ function useWorkflowHandlers({
   setNodes,
   setEdges,
   setSelectedNodeId,
+  setSelectedExecutionId,
 }: WorkflowHandlerParams) {
   const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -282,6 +288,7 @@ function useWorkflowHandlers({
       updateNodeData,
       pollingIntervalRef,
       setIsExecuting,
+      setSelectedExecutionId,
     });
     // Don't set executing to false here - let polling handle it
   };
@@ -325,6 +332,7 @@ function useWorkflowState() {
   const { data: session } = useSession();
   const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
   const setSelectedNodeId = useSetAtom(selectedNodeAtom);
+  const setSelectedExecutionId = useSetAtom(selectedExecutionIdAtom);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
@@ -398,6 +406,7 @@ function useWorkflowState() {
     setNodes,
     setEdges,
     setSelectedNodeId,
+    setSelectedExecutionId,
   };
 }
 
@@ -425,6 +434,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setNodes,
     setEdges,
     setSelectedNodeId,
+    setSelectedExecutionId,
   } = state;
 
   const {
@@ -444,6 +454,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setNodes,
     setEdges,
     setSelectedNodeId,
+    setSelectedExecutionId,
   });
 
   const handleSaveAndRun = async () => {
@@ -944,9 +955,14 @@ function WorkflowMenuComponent({
           <ChevronDown className="size-3 opacity-50" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
-          <DropdownMenuItem className="flex items-center justify-between">
-            <a href="/">New Workflow</a>
-            {!workflowId && <Check className="size-4 shrink-0" />}
+          <DropdownMenuItem
+            asChild
+            className="flex items-center justify-between"
+          >
+            <a href="/">
+              New Workflow{" "}
+              {!workflowId && <Check className="size-4 shrink-0" />}
+            </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {state.allWorkflows.length === 0 ? (
