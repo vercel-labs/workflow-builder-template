@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Provider } from "jotai";
 import type { ReactNode } from "react";
@@ -12,6 +12,14 @@ export const metadata: Metadata = {
   title: "Workflow Builder - Visual Workflow Automation",
   description:
     "Build powerful workflow automations with a visual, node-based editor. Similar to n8n, built with Next.js and React Flow.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 type RootLayoutProps = {

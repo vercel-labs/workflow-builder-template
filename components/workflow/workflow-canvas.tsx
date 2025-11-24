@@ -100,7 +100,7 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
     if (!currentWorkflowId) {
       setViewportReady(true);
       setDefaultViewport(undefined);
-      setShouldFitView(true); // Enable fitView for landing page to center the trigger node
+      setShouldFitView(true);
       viewportInitialized.current = true;
       return;
     }
@@ -401,6 +401,11 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
         edgeTypes={edgeTypes}
         elementsSelectable={!isGenerating}
         fitView={shouldFitView}
+        fitViewOptions={{
+          maxZoom: 1,
+          minZoom: 0.5,
+          padding: 0.2,
+        }}
         isValidConnection={isValidConnection}
         nodes={nodes}
         nodesConnectable={!isGenerating}
@@ -417,17 +422,13 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
         <Panel
-          className="border-none bg-transparent p-0"
+          className="workflow-controls-panel border-none bg-transparent p-0"
           position="bottom-left"
         >
           <Controls />
         </Panel>
         {showMinimap && (
-          <MiniMap
-            bgColor="var(--sidebar)"
-            className="hidden md:flex"
-            nodeStrokeColor="var(--border)"
-          />
+          <MiniMap bgColor="var(--sidebar)" nodeStrokeColor="var(--border)" />
         )}
       </Canvas>
     </div>

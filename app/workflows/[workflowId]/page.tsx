@@ -425,7 +425,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   );
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden">
+    <div className="flex h-dvh w-full flex-col overflow-hidden">
       <main className="relative flex size-full overflow-hidden">
         <ReactFlowProvider>
           {isMobile ? (

@@ -11,6 +11,8 @@ import {
   Plus,
   Redo2,
   Save,
+  Settings2,
+  Trash2,
   Undo2,
 } from "lucide-react";
 import { nanoid } from "nanoid";
@@ -19,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -45,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import {
@@ -54,6 +58,8 @@ import {
   clearWorkflowAtom,
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
+  deleteEdgeAtom,
+  deleteNodeAtom,
   edgesAtom,
   hasUnsavedChangesAtom,
   isExecutingAtom,
@@ -62,6 +68,7 @@ import {
   nodesAtom,
   propertiesPanelActiveTabAtom,
   redoAtom,
+  selectedEdgeAtom,
   selectedNodeAtom,
   showClearDialogAtom,
   showDeleteDialogAtom,
@@ -74,6 +81,7 @@ import { Panel } from "../ai-elements/panel";
 import { GitHubStarsButton } from "../github-stars-button";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
+import { PanelInner } from "./node-config-panel";
 
 type WorkflowToolbarProps = {
   workflowId?: string;
@@ -582,11 +590,32 @@ function ToolbarActions({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
+  const [showPropertiesSheet, setShowPropertiesSheet] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [selectedNodeId] = useAtom(selectedNodeAtom);
+  const [selectedEdgeId] = useAtom(selectedEdgeAtom);
+  const [nodes] = useAtom(nodesAtom);
+  const [edges] = useAtom(edgesAtom);
+  const deleteNode = useSetAtom(deleteNodeAtom);
+  const deleteEdge = useSetAtom(deleteEdgeAtom);
   const { screenToFlowPosition } = useReactFlow();
+
+  const selectedNode = nodes.find((node) => node.id === selectedNodeId);
+  const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
+  const hasSelection = selectedNode || selectedEdge;
 
   if (!workflowId) {
     return null;
   }
+
+  const handleDelete = () => {
+    if (selectedNodeId) {
+      deleteNode(selectedNodeId);
+    } else if (selectedEdgeId) {
+      deleteEdge(selectedEdgeId);
+    }
+    setShowDeleteAlert(false);
+  };
 
   const handleAddStep = () => {
     // Get the ReactFlow wrapper (the visible canvas container)
@@ -666,6 +695,60 @@ function ToolbarActions({
           <Plus className="size-4" />
         </Button>
       </ButtonGroup>
+
+      {/* Properties - Mobile Vertical (always visible) */}
+      <ButtonGroup className="flex lg:hidden" orientation="vertical">
+        <Button
+          className="border hover:bg-black/5 dark:hover:bg-white/5"
+          onClick={() => setShowPropertiesSheet(true)}
+          size="icon"
+          title="Properties"
+          variant="secondary"
+        >
+          <Settings2 className="size-4" />
+        </Button>
+        {/* Delete - Show when node or edge is selected */}
+        {hasSelection && (
+          <Button
+            className="border hover:bg-black/5 dark:hover:bg-white/5"
+            onClick={() => setShowDeleteAlert(true)}
+            size="icon"
+            title="Delete"
+            variant="secondary"
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+      </ButtonGroup>
+
+      {/* Properties Sheet - Mobile Only */}
+      <Sheet onOpenChange={setShowPropertiesSheet} open={showPropertiesSheet}>
+        <SheetContent className="w-full p-0 sm:max-w-full" side="bottom">
+          <div className="h-[80vh]">
+            <PanelInner />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Alert - Mobile Only */}
+      <AlertDialog onOpenChange={setShowDeleteAlert} open={showDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedNode ? "Node" : "Connection"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this{" "}
+              {selectedNode ? "node" : "connection"}? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Step - Desktop Horizontal */}
       <ButtonGroup className="hidden lg:flex" orientation="horizontal">

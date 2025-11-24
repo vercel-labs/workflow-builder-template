@@ -131,7 +131,7 @@ const MultiSelectionPanel = ({
 };
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex UI logic with multiple conditions
-const PanelInner = () => {
+export const PanelInner = () => {
   const [selectedNodeId] = useAtom(selectedNodeAtom);
   const [selectedEdgeId] = useAtom(selectedEdgeAtom);
   const [nodes] = useAtom(nodesAtom);

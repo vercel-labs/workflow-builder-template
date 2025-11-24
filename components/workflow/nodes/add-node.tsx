@@ -52,12 +52,8 @@ export function AddNode({ data }: NodeProps & { data?: AddNodeData }) {
           </a>
         </p>
       </div>
-      <Button
-        className="h-11 gap-2 text-lg shadow-lg"
-        onClick={data.onClick}
-        size="lg"
-      >
-        <Plus className="size-5.5" />
+      <Button className="gap-2 shadow-lg" onClick={data.onClick} size="default">
+        <Plus className="size-4" />
         Add a Step
       </Button>
     </div>
