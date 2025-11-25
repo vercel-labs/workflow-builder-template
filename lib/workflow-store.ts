@@ -33,6 +33,18 @@ export const propertiesPanelActiveTabAtom = atom<string>("properties");
 export const showMinimapAtom = atom(false);
 export const selectedExecutionIdAtom = atom<string | null>(null);
 
+// Execution log entry type for storing run outputs per node
+export type ExecutionLogEntry = {
+  nodeId: string;
+  nodeName: string;
+  nodeType: string;
+  status: "pending" | "running" | "success" | "error";
+  output?: unknown;
+};
+
+// Map of nodeId -> execution log entry for the currently selected execution
+export const executionLogsAtom = atom<Record<string, ExecutionLogEntry>>({});
+
 // Autosave functionality
 let autosaveTimeoutId: NodeJS.Timeout | null = null;
 const AUTOSAVE_DELAY = 1000; // 1 second debounce for field typing

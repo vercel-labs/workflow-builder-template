@@ -180,10 +180,6 @@ async function executeTestWorkflow({
             pollingIntervalRef.current = null;
           }
 
-          if (statusData.status === "error") {
-            toast.error("Test run failed");
-          }
-
           setIsExecuting(false);
 
           // Don't reset node statuses - let them show the final state

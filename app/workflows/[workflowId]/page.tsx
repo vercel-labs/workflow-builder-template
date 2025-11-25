@@ -321,18 +321,12 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
       // Poll for execution status updates
       const pollInterval = setInterval(async () => {
-        const { isComplete, status } = await pollExecutionStatus(
-          result.executionId
-        );
+        const { isComplete } = await pollExecutionStatus(result.executionId);
 
         if (isComplete) {
           if (executionPollingIntervalRef.current) {
             clearInterval(executionPollingIntervalRef.current);
             executionPollingIntervalRef.current = null;
-          }
-
-          if (status === "error") {
-            toast.error("Test run failed");
           }
 
           setIsExecuting(false);
