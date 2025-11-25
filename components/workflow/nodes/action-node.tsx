@@ -1,6 +1,7 @@
 "use client";
 
 import type { NodeProps } from "@xyflow/react";
+import { useAtomValue } from "jotai";
 import {
   AlertTriangle,
   Check,
@@ -10,6 +11,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import Image from "next/image";
 import { memo } from "react";
 import {
   Node,
@@ -18,7 +20,11 @@ import {
 } from "@/components/ai-elements/node";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { cn } from "@/lib/utils";
-import type { WorkflowNodeData } from "@/lib/workflow-store";
+import {
+  executionLogsAtom,
+  selectedExecutionIdAtom,
+  type WorkflowNodeData,
+} from "@/lib/workflow-store";
 
 // Helper to get display name for AI model
 const getModelDisplayName = (modelId: string): string => {
@@ -60,6 +66,17 @@ const getIntegrationFromActionType = (actionType: string): string => {
   };
   return integrationMap[actionType] || "System";
 };
+
+// Helper to detect if output is a base64 image from generateImage step
+function isBase64ImageOutput(output: unknown): output is { base64: string } {
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    "base64" in output &&
+    typeof (output as { base64: unknown }).base64 === "string" &&
+    (output as { base64: string }).base64.length > 100
+  );
+}
 
 // Helper to check if an action requires an integration
 const requiresIntegration = (actionType: string): boolean => {
@@ -150,15 +167,27 @@ const ModelBadge = ({ model }: { model: string }) => {
 
 type ActionNodeProps = NodeProps & {
   data?: WorkflowNodeData;
+  id: string;
 };
 
-export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
+export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
+  const selectedExecutionId = useAtomValue(selectedExecutionIdAtom);
+  const executionLogs = useAtomValue(executionLogsAtom);
+
   if (!data) {
     return null;
   }
 
   const actionType = (data.config?.actionType as string) || "";
   const status = data.status;
+
+  // Check if this node has a generated image from the selected execution
+  const nodeLog = executionLogs[id];
+  const hasGeneratedImage =
+    selectedExecutionId &&
+    actionType === "Generate Image" &&
+    nodeLog?.output &&
+    isBase64ImageOutput(nodeLog.output);
 
   // Handle empty action type (new node without selected action)
   if (!actionType) {
@@ -227,7 +256,20 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
       <StatusBadge status={status} />
 
       <div className="flex flex-col items-center justify-center gap-3 p-6">
-        {getProviderLogo(actionType)}
+        {hasGeneratedImage ? (
+          <div className="relative size-12 overflow-hidden rounded-lg">
+            <Image
+              alt="Generated image"
+              className="object-cover"
+              fill
+              sizes="48px"
+              src={`data:image/png;base64,${(nodeLog.output as { base64: string }).base64}`}
+              unoptimized
+            />
+          </div>
+        ) : (
+          getProviderLogo(actionType)
+        )}
         <div className="flex flex-col items-center gap-1 text-center">
           <NodeTitle className="text-base">{displayTitle}</NodeTitle>
           {displayDescription && (

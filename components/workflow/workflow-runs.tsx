@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { getRelativeTime } from "@/lib/utils/time";
 import {
   currentWorkflowIdAtom,
+  executionLogsAtom,
   selectedExecutionIdAtom,
 } from "@/lib/workflow-store";
 import { Button } from "../ui/button";
@@ -63,6 +64,39 @@ function isBase64ImageOutput(output: unknown): output is { base64: string } {
     typeof (output as { base64: unknown }).base64 === "string" &&
     (output as { base64: string }).base64.length > 100 // Base64 images are large
   );
+}
+
+// Helper to convert execution logs to a map by nodeId for the global atom
+function createExecutionLogsMap(logs: ExecutionLog[]): Record<
+  string,
+  {
+    nodeId: string;
+    nodeName: string;
+    nodeType: string;
+    status: "pending" | "running" | "success" | "error";
+    output?: unknown;
+  }
+> {
+  const logsMap: Record<
+    string,
+    {
+      nodeId: string;
+      nodeName: string;
+      nodeType: string;
+      status: "pending" | "running" | "success" | "error";
+      output?: unknown;
+    }
+  > = {};
+  for (const log of logs) {
+    logsMap[log.nodeId] = {
+      nodeId: log.nodeId,
+      nodeName: log.nodeName,
+      nodeType: log.nodeType,
+      status: log.status,
+      output: log.output,
+    };
+  }
+  return logsMap;
 }
 
 // Reusable copy button component
@@ -249,6 +283,7 @@ export function WorkflowRuns({
   const [selectedExecutionId, setSelectedExecutionId] = useAtom(
     selectedExecutionIdAtom
   );
+  const [, setExecutionLogs] = useAtom(executionLogsAtom);
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [logs, setLogs] = useState<Record<string, ExecutionLog[]>>({});
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
@@ -340,12 +375,17 @@ export function WorkflowRuns({
           ...prev,
           [executionId]: mappedLogs,
         }));
+
+        // Update global execution logs atom if this is the selected execution
+        if (executionId === selectedExecutionId) {
+          setExecutionLogs(createExecutionLogsMap(mappedLogs));
+        }
       } catch (error) {
         console.error("Failed to load execution logs:", error);
         setLogs((prev) => ({ ...prev, [executionId]: [] }));
       }
     },
-    [mapNodeLabels]
+    [mapNodeLabels, selectedExecutionId, setExecutionLogs]
   );
 
   // Notify parent when a new execution starts and auto-expand it
@@ -384,6 +424,31 @@ export function WorkflowRuns({
     }
   }, [executions, setSelectedExecutionId, loadExecutionLogs, onStartRun]);
 
+  // Helper to refresh logs for a single execution
+  const refreshExecutionLogs = useCallback(
+    async (executionId: string) => {
+      try {
+        const logsData = await api.workflow.getExecutionLogs(executionId);
+        const mappedLogs = mapNodeLabels(
+          logsData.logs,
+          logsData.execution.workflow
+        );
+        setLogs((prev) => ({
+          ...prev,
+          [executionId]: mappedLogs,
+        }));
+
+        // Update global execution logs atom if this is the selected execution
+        if (executionId === selectedExecutionId) {
+          setExecutionLogs(createExecutionLogsMap(mappedLogs));
+        }
+      } catch (error) {
+        console.error(`Failed to refresh logs for ${executionId}:`, error);
+      }
+    },
+    [mapNodeLabels, selectedExecutionId, setExecutionLogs]
+  );
+
   // Poll for new executions when tab is active
   useEffect(() => {
     if (!(isActive && currentWorkflowId)) {
@@ -397,19 +462,7 @@ export function WorkflowRuns({
 
         // Also refresh logs for expanded runs
         for (const executionId of expandedRuns) {
-          try {
-            const logsData = await api.workflow.getExecutionLogs(executionId);
-            const mappedLogs = mapNodeLabels(
-              logsData.logs,
-              logsData.execution.workflow
-            );
-            setLogs((prev) => ({
-              ...prev,
-              [executionId]: mappedLogs,
-            }));
-          } catch (error) {
-            console.error(`Failed to refresh logs for ${executionId}:`, error);
-          }
+          await refreshExecutionLogs(executionId);
         }
       } catch (error) {
         console.error("Failed to poll executions:", error);
@@ -418,7 +471,7 @@ export function WorkflowRuns({
 
     const interval = setInterval(pollExecutions, 2000);
     return () => clearInterval(interval);
-  }, [isActive, currentWorkflowId, expandedRuns, mapNodeLabels]);
+  }, [isActive, currentWorkflowId, expandedRuns, refreshExecutionLogs]);
 
   const toggleRun = async (executionId: string) => {
     const newExpanded = new Set(expandedRuns);
@@ -433,8 +486,12 @@ export function WorkflowRuns({
   };
 
   const selectRun = (executionId: string) => {
-    // Just select the run without toggling expansion
+    // Select the run without toggling expansion
     setSelectedExecutionId(executionId);
+
+    // Update global execution logs atom with logs for this execution
+    const executionLogEntries = logs[executionId] || [];
+    setExecutionLogs(createExecutionLogsMap(executionLogEntries));
   };
 
   const toggleLog = (logId: string) => {
