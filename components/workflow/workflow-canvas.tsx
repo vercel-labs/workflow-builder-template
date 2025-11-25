@@ -43,6 +43,11 @@ import { Panel } from "../ai-elements/panel";
 import { ActionNode } from "./nodes/action-node";
 import { AddNode } from "./nodes/add-node";
 import { TriggerNode } from "./nodes/trigger-node";
+import {
+  type ContextMenuState,
+  useContextMenuHandlers,
+  WorkflowContextMenu,
+} from "./workflow-context-menu";
 
 const nodeTemplates = [
   {
@@ -95,6 +100,16 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const [viewportReady, setViewportReady] = useState(false);
   const [shouldFitView, setShouldFitView] = useState(false);
   const viewportInitialized = useRef(false);
+  const [contextMenuState, setContextMenuState] =
+    useState<ContextMenuState>(null);
+
+  // Context menu handlers
+  const { onNodeContextMenu, onEdgeContextMenu, onPaneContextMenu } =
+    useContextMenuHandlers(screenToFlowPosition, setContextMenuState);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenuState(null);
+  }, []);
 
   // Load saved viewport when workflow changes
   useEffect(() => {
@@ -362,7 +377,8 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
     }
     setSelectedNode(null);
     setSelectedEdge(null);
-  }, [setSelectedNode, setSelectedEdge]);
+    closeContextMenu();
+  }, [setSelectedNode, setSelectedEdge, closeContextMenu]);
 
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
@@ -407,11 +423,14 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
         onConnect={isGenerating ? undefined : onConnect}
         onConnectEnd={isGenerating ? undefined : onConnectEnd}
         onConnectStart={isGenerating ? undefined : onConnectStart}
+        onEdgeContextMenu={isGenerating ? undefined : onEdgeContextMenu}
         onEdgesChange={isGenerating ? undefined : onEdgesChange}
         onMoveEnd={onMoveEnd}
         onNodeClick={isGenerating ? undefined : onNodeClick}
+        onNodeContextMenu={isGenerating ? undefined : onNodeContextMenu}
         onNodesChange={isGenerating ? undefined : onNodesChange}
         onPaneClick={onPaneClick}
+        onPaneContextMenu={isGenerating ? undefined : onPaneContextMenu}
         onSelectionChange={isGenerating ? undefined : onSelectionChange}
       >
         <Panel
@@ -427,6 +446,12 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
 
       {/* AI Prompt */}
       {currentWorkflowId && <AIPrompt workflowId={currentWorkflowId} />}
+
+      {/* Context Menu */}
+      <WorkflowContextMenu
+        menuState={contextMenuState}
+        onClose={closeContextMenu}
+      />
     </div>
   );
 }
