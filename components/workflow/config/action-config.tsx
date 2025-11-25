@@ -441,15 +441,6 @@ function GenerateTextFields({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="gpt-5">GPT-5</SelectItem>
-            <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-            <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-            <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-            <SelectItem value="claude-3-5-sonnet-20241022">
-              Claude 3.5 Sonnet
-            </SelectItem>
-            <SelectItem value="claude-3-5-haiku-20241022">
-              Claude 3.5 Haiku
-            </SelectItem>
           </SelectContent>
         </Select>
       </div>

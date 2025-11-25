@@ -7,7 +7,7 @@
  */
 import "server-only";
 
-import { generateObject, generateText } from "ai";
+import { createGateway, generateObject, generateText } from "ai";
 import { z } from "zod";
 import { fetchCredentials } from "../credential-fetcher";
 import { getErrorMessageAsync } from "../utils";
@@ -93,28 +93,26 @@ export async function generateTextStep(input: {
   const modelString = `${providerName}/${modelId}`;
 
   try {
+    const gateway = createGateway({
+      apiKey,
+    });
+
     if (input.aiFormat === "object" && input.aiSchema) {
       const schema = JSON.parse(input.aiSchema) as SchemaField[];
       const zodSchema = buildZodSchema(schema);
 
       const { object } = await generateObject({
-        model: modelString,
+        model: gateway(modelString),
         prompt: promptText,
         schema: zodSchema,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
       });
 
       return { success: true, object };
     }
 
     const { text } = await generateText({
-      model: modelString,
+      model: gateway(modelString),
       prompt: promptText,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
     });
 
     return { success: true, text };
