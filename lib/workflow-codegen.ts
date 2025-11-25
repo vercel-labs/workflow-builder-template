@@ -438,17 +438,20 @@ export function generateWorkflowCode(
     indent: string,
     varName: string
   ): string[] {
-    imports.add("import { generateImage } from './integrations/ai';");
+    imports.add(
+      "import { experimental_generateImage as generateImage } from 'ai';"
+    );
     const imagePrompt =
       (node.data.config?.imagePrompt as string) || "A beautiful landscape";
     const imageModel =
-      (node.data.config?.imageModel as string) || "openai/dall-e-3";
+      (node.data.config?.imageModel as string) || "bfl/flux-2-pro";
 
     return [
       `${indent}// Generate image using AI`,
       `${indent}const ${varName} = await generateImage({`,
       `${indent}  model: "${imageModel}",`,
       `${indent}  prompt: \`${imagePrompt}\`,`,
+      `${indent}  size: "1024x1024",`,
       `${indent}});`,
     ];
   }

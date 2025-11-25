@@ -6,7 +6,7 @@
  */
 import "server-only";
 
-import OpenAI from "openai";
+import { experimental_generateImage as generateImage } from "ai";
 import { fetchCredentials } from "../credential-fetcher";
 
 export async function generateImageStep(input: {
@@ -20,26 +20,32 @@ export async function generateImageStep(input: {
     ? await fetchCredentials(input.integrationId)
     : {};
 
-  const apiKey = credentials.OPENAI_API_KEY || credentials.AI_GATEWAY_API_KEY;
+  const apiKey = credentials.AI_GATEWAY_API_KEY;
 
   if (!apiKey) {
     throw new Error(
-      "OPENAI_API_KEY or AI_GATEWAY_API_KEY is not configured. Please add it in Project Integrations."
+      "AI_GATEWAY_API_KEY is not configured. Please add it in Project Integrations."
     );
   }
 
-  const openai = new OpenAI({ apiKey });
-
-  const response = await openai.images.generate({
-    model: input.model,
+  const result = await generateImage({
+    // biome-ignore lint/suspicious/noExplicitAny: model string needs type coercion for ai package
+    model: input.model as any,
     prompt: input.prompt,
-    n: 1,
-    response_format: "b64_json",
+    size: "1024x1024",
+    providerOptions: {
+      openai: {
+        apiKey,
+      },
+    },
   });
 
-  if (!response.data?.[0]) {
+  if (!result.image) {
     throw new Error("Failed to generate image");
   }
 
-  return { base64: response.data[0].b64_json };
+  // Convert the GeneratedFile to base64 string
+  const base64 = result.image.toString();
+
+  return { base64 };
 }

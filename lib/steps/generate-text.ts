@@ -63,11 +63,11 @@ export async function generateTextStep(input: {
     ? await fetchCredentials(input.integrationId)
     : {};
 
-  const apiKey = credentials.AI_GATEWAY_API_KEY || credentials.OPENAI_API_KEY;
+  const apiKey = credentials.AI_GATEWAY_API_KEY;
 
   if (!apiKey) {
     throw new Error(
-      "AI_GATEWAY_API_KEY or OPENAI_API_KEY is not configured. Please add it in Project Integrations."
+      "AI_GATEWAY_API_KEY is not configured. Please add it in Project Integrations."
     );
   }
 

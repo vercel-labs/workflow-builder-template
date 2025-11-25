@@ -183,7 +183,7 @@ Action types:
 - Database Query: {"actionType": "Database Query", "dbQuery": "SELECT * FROM table", "dbTable": "table"}
 - HTTP Request: {"actionType": "HTTP Request", "httpMethod": "POST", "endpoint": "https://api.example.com", "httpHeaders": "{}", "httpBody": "{}"}
 - Generate Text: {"actionType": "Generate Text", "aiModel": "gpt-5", "aiFormat": "text", "aiPrompt": "Your prompt here"}
-- Generate Image: {"actionType": "Generate Image", "imageModel": "openai/dall-e-3", "imagePrompt": "Image description"}
+- Generate Image: {"actionType": "Generate Image", "imageModel": "bfl/flux-2-pro", "imagePrompt": "Image description"}
 - Condition: {"actionType": "Condition", "condition": "{{@nodeId:Label.field}} === 'value'"}
 
 CRITICAL ABOUT CONDITION NODES:

@@ -24,7 +24,6 @@ export type WorkflowCredentials = {
   LINEAR_TEAM_ID?: string;
   SLACK_API_KEY?: string;
   AI_GATEWAY_API_KEY?: string;
-  OPENAI_API_KEY?: string;
   DATABASE_URL?: string;
 };
 
@@ -70,9 +69,6 @@ function mapAiGatewayConfig(config: IntegrationConfig): WorkflowCredentials {
   const creds: WorkflowCredentials = {};
   if (config.apiKey) {
     creds.AI_GATEWAY_API_KEY = config.apiKey;
-  }
-  if (config.openaiApiKey) {
-    creds.OPENAI_API_KEY = config.openaiApiKey;
   }
   return creds;
 }
