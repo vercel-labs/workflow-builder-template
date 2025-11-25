@@ -23,16 +23,24 @@ type GenerateTextResult =
   | { success: false; error: string };
 
 /**
- * Determines the provider from the model ID
+ * Gets the full model string in provider/model format.
+ * If the modelId already contains a provider prefix (e.g., "anthropic/claude-opus-4.5"),
+ * it returns as-is. Otherwise, it infers the provider from the model name.
  */
-function getProviderFromModel(modelId: string): string {
+function getModelString(modelId: string): string {
+  // If already in provider/model format, return as-is
+  if (modelId.includes("/")) {
+    return modelId;
+  }
+
+  // Infer provider from model name
   if (modelId.startsWith("claude-")) {
-    return "anthropic";
+    return `anthropic/${modelId}`;
   }
   if (modelId.startsWith("gpt-") || modelId.startsWith("o1-")) {
-    return "openai";
+    return `openai/${modelId}`;
   }
-  return "openai"; // default
+  return `openai/${modelId}`; // default to openai
 }
 
 /**
@@ -89,8 +97,7 @@ export async function generateTextStep(input: {
     };
   }
 
-  const providerName = getProviderFromModel(modelId);
-  const modelString = `${providerName}/${modelId}`;
+  const modelString = getModelString(modelId);
 
   try {
     const gateway = createGateway({

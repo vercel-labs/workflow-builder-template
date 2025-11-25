@@ -20,6 +20,31 @@ import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { cn } from "@/lib/utils";
 import type { WorkflowNodeData } from "@/lib/workflow-store";
 
+// Helper to get display name for AI model
+const getModelDisplayName = (modelId: string): string => {
+  const modelNames: Record<string, string> = {
+    "gpt-5": "GPT-5",
+    "openai/gpt-5.1-instant": "GPT-5.1 Instant",
+    "openai/gpt-5.1-codex": "GPT-5.1 Codex",
+    "openai/gpt-5.1-codex-mini": "GPT-5.1 Codex Mini",
+    "openai/gpt-5.1-thinking": "GPT-5.1 Thinking",
+    "gpt-4": "GPT-4",
+    "gpt-4o": "GPT-4o",
+    "gpt-4o-mini": "GPT-4o Mini",
+    "claude-3-5-sonnet": "Claude 3.5",
+    "claude-3-opus": "Claude 3 Opus",
+    "anthropic/claude-opus-4.5": "Claude Opus 4.5",
+    "anthropic/claude-sonnet-4.5": "Claude Sonnet 4.5",
+    "o1-preview": "o1 Preview",
+    "o1-mini": "o1 Mini",
+    "bfl/flux-2-pro": "FLUX.2 Pro",
+    "bfl/flux-1-pro": "FLUX.1 Pro",
+    "openai/dall-e-3": "DALL-E 3",
+    "google/imagen-4.0-generate": "Imagen 4.0",
+  };
+  return modelNames[modelId] || modelId;
+};
+
 // Helper to get integration name from action type
 const getIntegrationFromActionType = (actionType: string): string => {
   const integrationMap: Record<string, string> = {
@@ -110,6 +135,19 @@ const StatusBadge = ({
   );
 };
 
+// Model badge component for AI nodes
+const ModelBadge = ({ model }: { model: string }) => {
+  if (!model) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-full border border-muted-foreground/50 px-2 py-0.5 font-medium text-[10px] text-muted-foreground">
+      {getModelDisplayName(model)}
+    </div>
+  );
+};
+
 type ActionNodeProps = NodeProps & {
   data?: WorkflowNodeData;
 };
@@ -156,6 +194,19 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
   const integrationMissing =
     needsIntegration && !hasIntegrationConfigured(data.config || {});
 
+  // Get model for AI nodes
+  const getAiModel = (): string | null => {
+    if (actionType === "Generate Text") {
+      return (data.config?.aiModel as string) || "gpt-5";
+    }
+    if (actionType === "Generate Image") {
+      return (data.config?.imageModel as string) || "bfl/flux-2-pro";
+    }
+    return null;
+  };
+
+  const aiModel = getAiModel();
+
   return (
     <Node
       className={cn(
@@ -184,6 +235,8 @@ export const ActionNode = memo(({ data, selected }: ActionNodeProps) => {
               {displayDescription}
             </NodeDescription>
           )}
+          {/* Model badge for AI nodes */}
+          {aiModel && <ModelBadge model={aiModel} />}
         </div>
       </div>
     </Node>

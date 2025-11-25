@@ -440,7 +440,23 @@ function GenerateTextFields({
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="anthropic/claude-opus-4.5">
+              Claude Opus 4.5
+            </SelectItem>
+            <SelectItem value="anthropic/claude-sonnet-4.5">
+              Claude Sonnet 4.5
+            </SelectItem>
             <SelectItem value="gpt-5">GPT-5</SelectItem>
+            <SelectItem value="openai/gpt-5.1-instant">
+              GPT-5.1 Instant
+            </SelectItem>
+            <SelectItem value="openai/gpt-5.1-codex">GPT-5.1 Codex</SelectItem>
+            <SelectItem value="openai/gpt-5.1-codex-mini">
+              GPT-5.1 Codex Mini
+            </SelectItem>
+            <SelectItem value="openai/gpt-5.1-thinking">
+              GPT-5.1 Thinking
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -499,6 +515,9 @@ function GenerateImageFields({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="bfl/flux-2-pro">FLUX.2 Pro</SelectItem>
+            <SelectItem value="google/imagen-4.0-generate">
+              Imagen 4.0
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
