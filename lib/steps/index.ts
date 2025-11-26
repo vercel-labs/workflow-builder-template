@@ -7,10 +7,7 @@
 import type { conditionStep } from "./condition";
 import type { createTicketStep } from "./create-ticket";
 import type { databaseQueryStep } from "./database-query";
-import type {
-  firecrawlScrapeStep,
-  firecrawlSearchStep,
-} from "./firecrawl";
+import type {firecrawlScrapeStep, firecrawlSearchStep} from "./firecrawl";
 import type { generateImageStep } from "./generate-image";
 import type { generateTextStep } from "./generate-text";
 import type { httpRequestStep } from "./http-request";

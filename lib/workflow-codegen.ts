@@ -641,7 +641,7 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateFindIssuesActionCode(indent, varName))
       );
-    } else if (actionType?.startsWith("Firecrawl")) {
+    } else if (actionType === "Firecrawl Scrape" || actionType === "Firecrawl Search") {
       lines.push(
         ...wrapActionCall(generateFirecrawlActionCode(node, indent, varName))
       );
