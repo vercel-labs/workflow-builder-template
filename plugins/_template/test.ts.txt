@@ -1,0 +1,32 @@
+/**
+ * TEST FUNCTION TEMPLATE
+ * 
+ * This function is called when users click "Test Connection" in the settings dialog.
+ * It should verify that the credentials are valid.
+ */
+
+export async function test[IntegrationName](credentials: Record<string, string>) {
+  try {
+    // Test your API connection here
+    const response = await fetch("[TEST_ENDPOINT_URL]", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${credentials.[ENV_VAR_NAME]}`,
+      },
+    });
+
+    if (response.ok) {
+      return { success: true };
+    }
+    
+    const error = await response.text();
+    return { success: false, error };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+

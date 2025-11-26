@@ -7,7 +7,8 @@
       "!components/ui",
       "!components/ai-elements",
       "!lib/utils.ts",
-      "!hooks/use-mobile.ts"
+      "!hooks/use-mobile.ts",
+      "!plugins"
     ]
   }
 }

@@ -90,27 +90,37 @@ async function executeActionStep(input: {
   // Import and execute the appropriate step function
   // Step functions load credentials from process.env themselves
   if (actionType === "Send Email") {
-    const { sendEmailStep } = await import("./steps/send-email");
+    const { sendEmailStep } = await import(
+      "../plugins/resend/steps/send-email/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await sendEmailStep(stepInput as any);
   }
   if (actionType === "Send Slack Message") {
-    const { sendSlackMessageStep } = await import("./steps/send-slack-message");
+    const { sendSlackMessageStep } = await import(
+      "../plugins/slack/steps/send-slack-message/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await sendSlackMessageStep(stepInput as any);
   }
   if (actionType === "Create Ticket") {
-    const { createTicketStep } = await import("./steps/create-ticket");
+    const { createTicketStep } = await import(
+      "../plugins/linear/steps/create-ticket/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await createTicketStep(stepInput as any);
   }
   if (actionType === "Generate Text") {
-    const { generateTextStep } = await import("./steps/generate-text");
+    const { generateTextStep } = await import(
+      "../plugins/ai-gateway/steps/generate-text/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await generateTextStep(stepInput as any);
   }
   if (actionType === "Generate Image") {
-    const { generateImageStep } = await import("./steps/generate-image");
+    const { generateImageStep } = await import(
+      "../plugins/ai-gateway/steps/generate-image/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await generateImageStep(stepInput as any);
   }
@@ -181,12 +191,16 @@ async function executeActionStep(input: {
   }
 
   if (actionType === "Scrape") {
-    const { firecrawlScrapeStep } = await import("./steps/firecrawl");
+    const { firecrawlScrapeStep } = await import(
+      "../plugins/firecrawl/steps/scrape/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await firecrawlScrapeStep(stepInput as any);
   }
   if (actionType === "Search") {
-    const { firecrawlSearchStep } = await import("./steps/firecrawl");
+    const { firecrawlSearchStep } = await import(
+      "../plugins/firecrawl/steps/search/step"
+    );
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await firecrawlSearchStep(stepInput as any);
   }

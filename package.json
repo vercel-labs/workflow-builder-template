@@ -5,8 +5,8 @@
   "license": "Apache-2.0",
   "description": "A template for building your own AI-driven workflow automation platform",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "pnpm discover-plugins && next dev",
+    "build": "pnpm discover-plugins && next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
     "check": "npx ultracite@latest check",
@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "discover-plugins": "node scripts/discover-plugins.js"
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",

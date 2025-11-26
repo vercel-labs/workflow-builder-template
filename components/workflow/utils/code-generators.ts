@@ -3,15 +3,15 @@
  */
 
 import conditionTemplate from "@/lib/codegen-templates/condition";
-import createTicketTemplate from "@/lib/codegen-templates/create-ticket";
 import databaseQueryTemplate from "@/lib/codegen-templates/database-query";
-import firecrawlScrapeTemplate from "@/lib/codegen-templates/firecrawl-scrape";
-import firecrawlSearchTemplate from "@/lib/codegen-templates/firecrawl-search";
-import generateImageTemplate from "@/lib/codegen-templates/generate-image";
-import generateTextTemplate from "@/lib/codegen-templates/generate-text";
 import httpRequestTemplate from "@/lib/codegen-templates/http-request";
-import sendEmailTemplate from "@/lib/codegen-templates/send-email";
-import sendSlackMessageTemplate from "@/lib/codegen-templates/send-slack-message";
+import { generateImageCodegenTemplate } from "@/plugins/ai-gateway/codegen/generate-image";
+import { generateTextCodegenTemplate } from "@/plugins/ai-gateway/codegen/generate-text";
+import { scrapeCodegenTemplate } from "@/plugins/firecrawl/codegen/scrape";
+import { searchCodegenTemplate } from "@/plugins/firecrawl/codegen/search";
+import { createTicketCodegenTemplate } from "@/plugins/linear/codegen/create-ticket";
+import { sendEmailCodegenTemplate } from "@/plugins/resend/codegen/send-email";
+import { sendSlackMessageCodegenTemplate } from "@/plugins/slack/codegen/send-slack-message";
 
 // Generate code snippet for a single node
 export const generateNodeCode = (node: {
@@ -64,16 +64,16 @@ export async function POST(request: NextRequest) {
     // Map action types to templates
     switch (actionType) {
       case "Send Email":
-        return sendEmailTemplate;
+        return sendEmailCodegenTemplate;
       case "Send Slack Message":
-        return sendSlackMessageTemplate;
+        return sendSlackMessageCodegenTemplate;
       case "Create Ticket":
       case "Create Linear Issue":
-        return createTicketTemplate;
+        return createTicketCodegenTemplate;
       case "Generate Text":
-        return generateTextTemplate;
+        return generateTextCodegenTemplate;
       case "Generate Image":
-        return generateImageTemplate;
+        return generateImageCodegenTemplate;
       case "Database Query":
         return databaseQueryTemplate;
       case "HTTP Request":
@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
       case "Condition":
         return conditionTemplate;
       case "Scrape":
-        return firecrawlScrapeTemplate;
+        return scrapeCodegenTemplate;
       case "Search":
-        return firecrawlSearchTemplate;
+        return searchCodegenTemplate;
       default:
         return `async function actionStep(input: Record<string, unknown>) {
   "use step";

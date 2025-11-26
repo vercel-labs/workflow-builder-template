@@ -1,15 +1,16 @@
 import "server-only";
 
+import { generateImageCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-image";
+import { generateTextCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-text";
+import { scrapeCodegenTemplate } from "../plugins/firecrawl/codegen/scrape";
+import { searchCodegenTemplate } from "../plugins/firecrawl/codegen/search";
+import { createTicketCodegenTemplate } from "../plugins/linear/codegen/create-ticket";
+import { sendEmailCodegenTemplate } from "../plugins/resend/codegen/send-email";
+import { sendSlackMessageCodegenTemplate } from "../plugins/slack/codegen/send-slack-message";
 // Import codegen templates directly
 import conditionTemplate from "./codegen-templates/condition";
-import createTicketTemplate from "./codegen-templates/create-ticket";
 import databaseQueryTemplate from "./codegen-templates/database-query";
-import firecrawlTemplate from "./codegen-templates/firecrawl";
-import generateImageTemplate from "./codegen-templates/generate-image";
-import generateTextTemplate from "./codegen-templates/generate-text";
 import httpRequestTemplate from "./codegen-templates/http-request";
-import sendEmailTemplate from "./codegen-templates/send-email";
-import sendSlackMessageTemplate from "./codegen-templates/send-slack-message";
 import {
   ARRAY_INDEX_PATTERN,
   analyzeNodeUsage,
@@ -30,15 +31,15 @@ const FUNCTION_BODY_REGEX =
 
 function loadStepImplementation(actionType: string): string | null {
   const templateMap: Record<string, string> = {
-    "Send Email": sendEmailTemplate,
-    "Send Slack Message": sendSlackMessageTemplate,
-    "Create Ticket": createTicketTemplate,
-    "Find Issues": createTicketTemplate, // Uses same template for now
-    "Generate Text": generateTextTemplate,
-    "Generate Image": generateImageTemplate,
+    "Send Email": sendEmailCodegenTemplate,
+    "Send Slack Message": sendSlackMessageCodegenTemplate,
+    "Create Ticket": createTicketCodegenTemplate,
+    "Find Issues": createTicketCodegenTemplate, // Uses same template for now
+    "Generate Text": generateTextCodegenTemplate,
+    "Generate Image": generateImageCodegenTemplate,
     "Database Query": databaseQueryTemplate,
-    Scrape: firecrawlTemplate,
-    Search: firecrawlTemplate,
+    Scrape: scrapeCodegenTemplate,
+    Search: searchCodegenTemplate,
     "HTTP Request": httpRequestTemplate,
     Condition: conditionTemplate,
   };

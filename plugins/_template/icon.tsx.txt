@@ -1,0 +1,25 @@
+/**
+ * ICON COMPONENT TEMPLATE
+ * 
+ * Define your integration's icon here.
+ * You can use a Lucide icon, an SVG component, or an image file.
+ * 
+ * For custom SVG icons, create a component like this:
+ */
+
+export function [IntegrationName]Icon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-label="[Integration Name]"
+      className={className}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>[Integration Name]</title>
+      {/* Your SVG path here */}
+      <path d="..." />
+    </svg>
+  );
+}
+

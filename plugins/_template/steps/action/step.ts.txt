@@ -1,0 +1,48 @@
+import "server-only";
+
+import { fetchCredentials } from "@/lib/credential-fetcher";
+import { getErrorMessage } from "@/lib/utils";
+
+/**
+ * [Action Name] Step
+ * [Description of what this step does]
+ */
+export async function [actionName]Step(input: {
+  integrationId?: string;
+  // Add your input parameters here
+  [parameterName]: string;
+  [optionalParameter]?: string;
+}) {
+  "use step";
+
+  // Fetch credentials from the integration
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  const apiKey = credentials.[ENV_VAR_NAME];
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "[ENV_VAR_NAME] is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    // Your integration logic here
+    // Example: const client = new YourClient(apiKey);
+    // const result = await client.doSomething(input.parameterName);
+    
+    return {
+      success: true,
+      // Return your result data here
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to [action]: ${getErrorMessage(error)}`,
+    };
+  }
+}
+
