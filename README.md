@@ -259,7 +259,7 @@ This template is built on top of Workflow DevKit, a powerful workflow execution 
 - Built-in logging and error handling
 - Serverless deployment support
 
-Learn more about Workflow DevKit at [workflow.dev](https://workflow.dev)
+Learn more about Workflow DevKit at [workflow.dev](https://useworkflow.dev)
 
 ## License
 
