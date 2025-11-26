@@ -82,6 +82,7 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **Create Ticket** - Create Linear tickets
 - **Database Query** - Query or update PostgreSQL
 - **HTTP Request** - Call external APIs
+- **Firecrawl** - Scrape websites and search the web
 
 ## Code Generation
 
@@ -232,6 +233,29 @@ await callApi({
   url: "https://api.example.com/endpoint",
   method: "POST",
   body: { data: "value" },
+});
+```
+
+### Firecrawl (Web Scraping)
+
+Scrape websites and search the web with Firecrawl.
+
+```typescript
+import {
+  firecrawlScrapeStep,
+  firecrawlSearchStep,
+} from "@/lib/steps/firecrawl";
+
+// Scrape a URL
+const scrapeResult = await firecrawlScrapeStep({
+  url: "https://example.com",
+  formats: ["markdown"],
+});
+
+// Search the web
+const searchResult = await firecrawlSearchStep({
+  query: "AI workflow builders",
+  limit: 5,
 });
 ```
 
