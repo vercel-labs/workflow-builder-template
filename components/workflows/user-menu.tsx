@@ -3,7 +3,10 @@
 import { LogOut, Moon, Plug, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { AuthDialog } from "@/components/auth/dialog";
+import {
+  AuthDialog,
+  isSingleProviderSignInInitiated,
+} from "@/components/auth/dialog";
 import { SettingsDialog } from "@/components/settings";
 import { IntegrationsDialog } from "@/components/settings/integrations-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,8 +69,11 @@ export const UserMenu = () => {
     return "U";
   };
 
+  const signInInProgress = isSingleProviderSignInInitiated();
+
   // Don't render anything while session is loading to prevent flash
-  if (isPending) {
+  // BUT if sign-in is in progress, keep showing the AuthDialog with loading state
+  if (isPending && !signInInProgress) {
     return (
       <div className="h-9 w-9" /> // Placeholder to maintain layout
     );
