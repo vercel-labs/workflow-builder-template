@@ -49,7 +49,7 @@ import { IntegrationSelector } from "../ui/integration-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ActionConfig } from "./config/action-config";
 import { ActionGrid } from "./config/action-grid";
-import { ConditionConfig } from "./config/condition-config";
+
 import { TriggerConfig } from "./config/trigger-config";
 import { generateNodeCode } from "./utils/code-generators";
 import { WorkflowRuns } from "./workflow-runs";
@@ -574,17 +574,7 @@ export const PanelInner = () => {
             ) : null}
 
             {selectedNode.data.type === "action" &&
-            selectedNode.data.config?.actionType === "Condition" ? (
-              <ConditionConfig
-                config={selectedNode.data.config || {}}
-                disabled={isGenerating}
-                onUpdateConfig={handleUpdateConfig}
-              />
-            ) : null}
-
-            {selectedNode.data.type === "action" &&
-            selectedNode.data.config?.actionType &&
-            selectedNode.data.config?.actionType !== "Condition" ? (
+            selectedNode.data.config?.actionType ? (
               <ActionConfig
                 config={selectedNode.data.config || {}}
                 disabled={isGenerating}
