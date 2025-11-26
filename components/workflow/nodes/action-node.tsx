@@ -7,6 +7,7 @@ import {
   Check,
   Code,
   Database,
+  EyeOff,
   GitBranch,
   XCircle,
   Zap,
@@ -233,6 +234,7 @@ type ActionNodeProps = NodeProps & {
   id: string;
 };
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex UI logic with multiple conditions including disabled state
 export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const selectedExecutionId = useAtomValue(selectedExecutionIdAtom);
   const executionLogs = useAtomValue(executionLogsAtom);
@@ -254,15 +256,22 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
 
   // Handle empty action type (new node without selected action)
   if (!actionType) {
+    const isDisabled = data.enabled === false;
     return (
       <Node
         className={cn(
           "flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-          selected && "border-primary"
+          selected && "border-primary",
+          isDisabled && "opacity-50"
         )}
         handles={{ target: true, source: true }}
         status={status}
       >
+        {isDisabled && (
+          <div className="absolute top-2 left-2 rounded-full bg-gray-500/50 p-1">
+            <EyeOff className="size-3.5 text-white" />
+          </div>
+        )}
         <div className="flex flex-col items-center justify-center gap-3 p-6">
           <Zap className="size-12 text-muted-foreground" strokeWidth={1.5} />
           <div className="flex flex-col items-center gap-1 text-center">
@@ -300,18 +309,27 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   };
 
   const aiModel = getAiModel();
+  const isDisabled = data.enabled === false;
 
   return (
     <Node
       className={cn(
         "relative flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
-        selected && "border-primary"
+        selected && "border-primary",
+        isDisabled && "opacity-50"
       )}
       handles={{ target: true, source: true }}
       status={status}
     >
-      {/* Integration warning badge in top left */}
-      {integrationMissing && (
+      {/* Disabled badge in top left */}
+      {isDisabled && (
+        <div className="absolute top-2 left-2 rounded-full bg-gray-500/50 p-1">
+          <EyeOff className="size-3.5 text-white" />
+        </div>
+      )}
+
+      {/* Integration warning badge in top left (only if not disabled) */}
+      {!isDisabled && integrationMissing && (
         <div className="absolute top-2 left-2 rounded-full bg-orange-500/50 p-1">
           <AlertTriangle className="size-3.5 text-white" />
         </div>

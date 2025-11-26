@@ -37,6 +37,7 @@ async function executeActionStep(input: {
 
   // Helper to replace template variables in conditions
   // biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Template variable replacement requires nested logic for field access
   function replaceTemplateVariable(
     match: string,
     nodeId: string,
@@ -57,6 +58,9 @@ async function executeActionStep(input: {
 
     if (dotIndex === -1) {
       value = output.data;
+    } else if (output.data === null || output.data === undefined) {
+      // If data is null/undefined (e.g., from disabled node), assign undefined
+      value = undefined;
     } else {
       const fieldPath = rest.substring(dotIndex + 1);
       const fields = fieldPath.split(".");
@@ -68,10 +72,13 @@ async function executeActionStep(input: {
           current = current[field];
         } else {
           console.log("[Condition] Field access failed:", fieldPath);
-          return match;
+          value = undefined;
+          break;
         }
       }
-      value = current;
+      if (value === undefined && current !== undefined) {
+        value = current;
+      }
     }
 
     const varName = `__v${varCounter.value}`;
@@ -241,12 +248,18 @@ function processTemplates(
             // No field path, return the entire output data
             const data = output.data;
             if (data === null || data === undefined) {
-              return match;
+              // Return empty string for null/undefined data (e.g., from disabled nodes)
+              return "";
             }
             if (typeof data === "object") {
               return JSON.stringify(data);
             }
             return String(data);
+          }
+
+          // If data is null/undefined, return empty string instead of trying to access fields
+          if (output.data === null || output.data === undefined) {
+            return "";
           }
 
           const fieldPath = rest.substring(dotIndex + 1);
@@ -258,13 +271,14 @@ function processTemplates(
             if (current && typeof current === "object") {
               current = current[field];
             } else {
-              return match;
+              // Field access failed, return empty string
+              return "";
             }
           }
 
           // Convert value to string, using JSON.stringify for objects/arrays
           if (current === null || current === undefined) {
-            return match;
+            return "";
           }
           if (typeof current === "object") {
             return JSON.stringify(current);
@@ -410,6 +424,24 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
     const node = nodeMap.get(nodeId);
     if (!node) {
       console.log("[Workflow Executor] Node not found:", nodeId);
+      return;
+    }
+
+    // Skip disabled nodes
+    if (node.data.enabled === false) {
+      console.log("[Workflow Executor] Skipping disabled node:", nodeId);
+
+      // Store null output for disabled nodes so downstream templates don't fail
+      const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
+      outputs[sanitizedNodeId] = {
+        label: node.data.label || nodeId,
+        data: null,
+      };
+
+      const nextNodes = edgesBySource.get(nodeId) || [];
+      await Promise.all(
+        nextNodes.map((nextNodeId) => executeNode(nextNodeId, visited))
+      );
       return;
     }
 

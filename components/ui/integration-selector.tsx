@@ -92,7 +92,7 @@ export function IntegrationSelector({
               <div className="rounded-full bg-orange-500/50 p-0.5">
                 <AlertTriangle className="size-3 text-white" />
               </div>
-              <SelectValue placeholder="No integrations configured" />
+              <SelectValue placeholder="No integrations" />
             </div>
           </SelectTrigger>
           <SelectContent>

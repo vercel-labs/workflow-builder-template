@@ -200,6 +200,22 @@ export function WorkflowCanvas() {
     }
   }, [currentWorkflowId, hasRealNodes, fitView]);
 
+  // Keyboard shortcut for fit view (Cmd+/ or Ctrl+/)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Cmd+/ (Mac) or Ctrl+/ (Windows/Linux)
+      if ((event.metaKey || event.ctrlKey) && event.key === "/") {
+        event.preventDefault();
+        fitView({ padding: 0.2, duration: 300 });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fitView]);
+
   const nodeTypes = useMemo(
     () => ({
       trigger: TriggerNode,

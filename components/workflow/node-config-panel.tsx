@@ -2,6 +2,8 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Copy,
   Eraser,
+  Eye,
+  EyeOff,
   FileCode,
   MenuIcon,
   RefreshCw,
@@ -200,6 +202,16 @@ export const PanelInner = () => {
     if (selectedNodeId) {
       deleteNode(selectedNodeId);
       setShowDeleteNodeAlert(false);
+    }
+  };
+
+  const handleToggleEnabled = () => {
+    if (selectedNode) {
+      const currentEnabled = selectedNode.data.enabled ?? true;
+      updateNodeData({
+        id: selectedNode.id,
+        data: { enabled: !currentEnabled },
+      });
     }
   };
 
@@ -614,14 +626,31 @@ export const PanelInner = () => {
           </div>
           {selectedNode.data.type === "action" && (
             <div className="flex shrink-0 items-center justify-between border-t p-4">
-              <Button
-                onClick={() => setShowDeleteNodeAlert(true)}
-                size="sm"
-                variant="ghost"
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete Step
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleToggleEnabled}
+                  size="icon"
+                  title={
+                    selectedNode.data.enabled === false
+                      ? "Enable Step"
+                      : "Disable Step"
+                  }
+                  variant="ghost"
+                >
+                  {selectedNode.data.enabled === false ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteNodeAlert(true)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
 
               {(() => {
                 const actionType = selectedNode.data.config
