@@ -73,11 +73,7 @@ const edgeTypes = {
   temporary: Edge.Temporary,
 };
 
-type WorkflowCanvasProps = {
-  showMinimap?: boolean;
-};
-
-export function WorkflowCanvas(_props: WorkflowCanvasProps) {
+export function WorkflowCanvas() {
   const [nodes, setNodes] = useAtom(nodesAtom);
   const [edges, setEdges] = useAtom(edgesAtom);
   const [isGenerating] = useAtom(isGeneratingAtom);
@@ -90,15 +86,10 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
   const addNode = useSetAtom(addNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const triggerAutosave = useSetAtom(autosaveAtom);
-  const { screenToFlowPosition, setViewport } = useReactFlow();
+  const { screenToFlowPosition, setViewport, fitView } = useReactFlow();
 
   const connectingNodeId = useRef<string | null>(null);
   const justCreatedNodeFromConnection = useRef(false);
-  const [defaultViewport, setDefaultViewport] = useState<Viewport | undefined>(
-    undefined
-  );
-  const [viewportReady, setViewportReady] = useState(false);
-  const [shouldFitView, setShouldFitView] = useState(false);
   const viewportInitialized = useRef(false);
   const [contextMenuState, setContextMenuState] =
     useState<ContextMenuState>(null);
@@ -113,55 +104,62 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
 
   // Load saved viewport when workflow changes
   useEffect(() => {
+    console.log("[Viewport] Effect triggered", {
+      currentWorkflowId,
+      viewportInitialized: viewportInitialized.current,
+    });
+
     if (!currentWorkflowId) {
-      setViewportReady(true);
-      setDefaultViewport(undefined);
-      setShouldFitView(true);
-      viewportInitialized.current = true;
+      console.log("[Viewport] No workflow ID, using fitView");
+      // Use imperative fitView after a brief delay for React Flow to be ready
+      setTimeout(() => {
+        fitView({ maxZoom: 1, minZoom: 0.5, padding: 0.2, duration: 0 });
+        viewportInitialized.current = true;
+      }, 0);
       return;
     }
 
-    setViewportReady(false);
     const saved = localStorage.getItem(
       `workflow-viewport-${currentWorkflowId}`
     );
+    console.log("[Viewport] Checking localStorage", {
+      key: `workflow-viewport-${currentWorkflowId}`,
+      found: !!saved,
+      value: saved,
+    });
+
     if (saved) {
       try {
         const viewport = JSON.parse(saved) as Viewport;
-        setDefaultViewport(viewport);
-        setShouldFitView(false);
-        // Mark viewport as ready immediately to prevent flash
-        setViewportReady(true);
-        // Set viewport after a brief delay to ensure ReactFlow is ready
-        setTimeout(() => {
-          setViewport(viewport, { duration: 0 });
-          viewportInitialized.current = true;
-        }, 50);
+        console.log("[Viewport] Restoring saved viewport", viewport);
+        // Set viewport immediately
+        setViewport(viewport, { duration: 0 });
+        viewportInitialized.current = true;
       } catch (error) {
-        console.error("Failed to load viewport:", error);
-        setDefaultViewport(undefined);
-        setShouldFitView(true);
-        setViewportReady(true);
+        console.error("[Viewport] Failed to parse viewport:", error);
+        fitView({ maxZoom: 1, minZoom: 0.5, padding: 0.2, duration: 0 });
         viewportInitialized.current = true;
       }
     } else {
-      setDefaultViewport(undefined);
-      setShouldFitView(true);
-      setViewportReady(true);
-      // Allow saving viewport after fitView completes
-      setTimeout(() => {
-        viewportInitialized.current = true;
-        setShouldFitView(false);
-      }, 500);
+      console.log("[Viewport] No saved viewport, using fitView");
+      fitView({ maxZoom: 1, minZoom: 0.5, padding: 0.2, duration: 0 });
+      viewportInitialized.current = true;
     }
-  }, [currentWorkflowId, setViewport]);
+  }, [currentWorkflowId, setViewport, fitView]);
 
   // Save viewport changes
   const onMoveEnd = useCallback(
     (_event: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+      console.log("[Viewport] onMoveEnd", {
+        currentWorkflowId,
+        viewportInitialized: viewportInitialized.current,
+        viewport,
+      });
       if (!(currentWorkflowId && viewportInitialized.current)) {
+        console.log("[Viewport] onMoveEnd - skipping save (not initialized)");
         return;
       }
+      console.log("[Viewport] onMoveEnd - saving viewport");
       localStorage.setItem(
         `workflow-viewport-${currentWorkflowId}`,
         JSON.stringify(viewport)
@@ -396,25 +394,17 @@ export function WorkflowCanvas(_props: WorkflowCanvasProps) {
     [setSelectedNode]
   );
 
+  console.log("[Viewport] Render", { currentWorkflowId });
+
   return (
-    <div className="relative h-full w-full">
-      {!viewportReady && (
-        <div className="absolute inset-0 z-40 bg-secondary transition-opacity duration-100" />
-      )}
+    <div className="relative h-full w-full bg-background">
       <Canvas
         className="bg-background"
         connectionLineComponent={Connection}
         connectionMode={ConnectionMode.Strict}
-        defaultViewport={defaultViewport}
         edges={edges}
         edgeTypes={edgeTypes}
         elementsSelectable={!isGenerating}
-        fitView={shouldFitView}
-        fitViewOptions={{
-          maxZoom: 1,
-          minZoom: 0.5,
-          padding: 0.2,
-        }}
         isValidConnection={isValidConnection}
         nodes={nodes}
         nodesConnectable={!isGenerating}

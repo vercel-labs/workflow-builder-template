@@ -1,19 +1,12 @@
 "use client";
 
-import { ReactFlowProvider } from "@xyflow/react";
 import { useAtom, useSetAtom } from "jotai";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { use, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import { NodeConfigPanel } from "@/components/workflow/node-config-panel";
-import { WorkflowCanvas } from "@/components/workflow/workflow-canvas";
 import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
@@ -508,63 +501,32 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden">
-      <main className="relative flex size-full overflow-hidden">
-        <ReactFlowProvider>
-          {isMobile ? (
-            <div className="relative size-full overflow-hidden">
-              <WorkflowToolbar workflowId={workflowId} />
-              <WorkflowCanvas />
+      {/* Toolbar floats on top of the persistent canvas */}
+      <div className="pointer-events-auto">
+        <WorkflowToolbar workflowId={workflowId} />
+      </div>
 
-              {workflowNotFound && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
-                    <h1 className="mb-2 font-semibold text-2xl">
-                      Workflow Not Found
-                    </h1>
-                    <p className="mb-6 text-muted-foreground">
-                      The workflow you're looking for doesn't exist or has been
-                      deleted.
-                    </p>
-                    <Button asChild>
-                      <Link href="/">New Workflow</Link>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={70} minSize={30}>
-                <div className="relative size-full overflow-hidden">
-                  <WorkflowToolbar workflowId={workflowId} />
-                  <WorkflowCanvas />
+      {/* Workflow not found overlay */}
+      {workflowNotFound && (
+        <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center">
+          <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
+            <h1 className="mb-2 font-semibold text-2xl">Workflow Not Found</h1>
+            <p className="mb-6 text-muted-foreground">
+              The workflow you're looking for doesn't exist or has been deleted.
+            </p>
+            <Button asChild>
+              <Link href="/">New Workflow</Link>
+            </Button>
+          </div>
+        </div>
+      )}
 
-                  {workflowNotFound && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="rounded-lg border bg-background p-8 text-center shadow-lg">
-                        <h1 className="mb-2 font-semibold text-2xl">
-                          Workflow Not Found
-                        </h1>
-                        <p className="mb-6 text-muted-foreground">
-                          The workflow you're looking for doesn't exist or has
-                          been deleted.
-                        </p>
-                        <Button asChild>
-                          <Link href="/">New Workflow</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={30} maxSize={50} minSize={20}>
-                <NodeConfigPanel />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          )}
-        </ReactFlowProvider>
-      </main>
+      {/* Right panel overlay (desktop only) */}
+      {!isMobile && (
+        <div className="pointer-events-auto absolute top-12 right-0 bottom-0 z-20 w-[30%] min-w-[300px] max-w-[50%] border-l bg-background">
+          <NodeConfigPanel />
+        </div>
+      )}
     </div>
   );
 };

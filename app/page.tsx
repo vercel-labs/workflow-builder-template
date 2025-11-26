@@ -1,12 +1,11 @@
 "use client";
 
-import { ReactFlowProvider } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { WorkflowCanvas } from "@/components/workflow/workflow-canvas";
 import { WorkflowToolbar } from "@/components/workflow/workflow-toolbar";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
@@ -37,6 +36,7 @@ function createDefaultTriggerNode() {
 const Home = () => {
   const router = useRouter();
   const { data: session } = useSession();
+  const { getViewport } = useReactFlow();
   const nodes = useAtomValue(nodesAtom);
   const edges = useAtomValue(edgesAtom);
   const currentWorkflowId = useAtomValue(currentWorkflowIdAtom);
@@ -109,7 +109,19 @@ const Home = () => {
           edges,
         });
 
+        // Save current viewport for the new workflow before navigating
+        const viewport = getViewport();
+        console.log("[Homepage] Saving viewport before navigation", {
+          workflowId: newWorkflow.id,
+          viewport,
+        });
+        localStorage.setItem(
+          `workflow-viewport-${newWorkflow.id}`,
+          JSON.stringify(viewport)
+        );
+
         // Redirect to the workflow page
+        console.log("[Homepage] Navigating to workflow page");
         router.replace(`/workflows/${newWorkflow.id}`);
       } catch (error) {
         console.error("Failed to create workflow:", error);
@@ -118,18 +130,13 @@ const Home = () => {
     };
 
     createWorkflowAndRedirect();
-  }, [nodes, edges, router, ensureSession]);
+  }, [nodes, edges, router, ensureSession, getViewport]);
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
-      <main className="relative flex size-full overflow-hidden">
-        <ReactFlowProvider>
-          <div className="relative flex-1 overflow-hidden">
-            <WorkflowToolbar workflowId={currentWorkflowId ?? undefined} />
-            <WorkflowCanvas showMinimap={false} />
-          </div>
-        </ReactFlowProvider>
-      </main>
+      <div className="pointer-events-auto">
+        <WorkflowToolbar workflowId={currentWorkflowId ?? undefined} />
+      </div>
     </div>
   );
 };
