@@ -61,24 +61,28 @@ const plugins = [
               clientId: process.env.VERCEL_CLIENT_ID,
               clientSecret: process.env.VERCEL_CLIENT_SECRET || "",
               authorizationUrl: "https://vercel.com/oauth/authorize",
-              tokenUrl: "https://vercel.com/oauth/access_token",
-              userInfoUrl: "https://api.vercel.com/v2/user",
-              scopes: [],
+              tokenUrl: "https://api.vercel.com/login/oauth/token",
+              userInfoUrl: "https://api.vercel.com/login/oauth/userinfo",
+              scopes: ["openid", "email", "profile"],
               discoveryUrl: undefined,
-              pkce: false,
+              pkce: true,
               getUserInfo: async (tokens) => {
-                const response = await fetch("https://api.vercel.com/v2/user", {
-                  headers: {
-                    Authorization: `Bearer ${tokens.accessToken}`,
-                  },
-                });
-                const data = await response.json();
+                const response = await fetch(
+                  "https://api.vercel.com/login/oauth/userinfo",
+                  {
+                    headers: {
+                      Authorization: `Bearer ${tokens.accessToken}`,
+                    },
+                  }
+                );
+                const profile = await response.json();
+                console.log("[Vercel OAuth] userinfo response:", profile);
                 return {
-                  id: data.user.id,
-                  email: data.user.email,
-                  name: data.user.name,
-                  emailVerified: true,
-                  image: `https://vercel.com/api/www/avatar/?u=${data.user.username}`,
+                  id: profile.sub,
+                  email: profile.email,
+                  name: profile.name ?? profile.preferred_username,
+                  emailVerified: profile.email_verified ?? true,
+                  image: profile.picture,
                 };
               },
             },

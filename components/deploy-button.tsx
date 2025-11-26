@@ -7,9 +7,9 @@ export function DeployButton() {
   return (
     <Button
       asChild
-      className="h-8 gap-1.5 px-2 sm:px-3"
+      className="h-9 gap-1.5 border px-2 sm:px-3"
       size="sm"
-      variant="default"
+      variant="secondary"
     >
       <a href={VERCEL_DEPLOY_URL} rel="noopener noreferrer" target="_blank">
         <svg

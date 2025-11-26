@@ -391,6 +391,7 @@ export const userApi = {
       email: string;
       image: string | null;
       isAnonymous: boolean | null;
+      providerId: string | null;
     }>("/api/user"),
 
   update: (data: { name?: string; email?: string }) =>

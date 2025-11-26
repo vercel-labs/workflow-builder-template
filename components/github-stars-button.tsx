@@ -21,7 +21,7 @@ export function GitHubStarsButton() {
   return (
     <Button
       asChild
-      className="h-8 gap-1.5 px-2 sm:px-3"
+      className="h-9 gap-1.5 px-2 sm:px-3"
       size="sm"
       variant="ghost"
     >

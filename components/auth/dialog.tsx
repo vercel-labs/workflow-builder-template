@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { signIn, signUp } from "@/lib/auth-client";
 import {
   getEnabledAuthProviders,
@@ -24,10 +25,10 @@ type AuthDialogProps = {
   children?: ReactNode;
 };
 
-const VercelIcon = () => (
+const VercelIcon = ({ className = "mr-2 h-3 w-3" }: { className?: string }) => (
   <svg
     aria-label="Vercel"
-    className="mr-2 h-3 w-3"
+    className={className}
     fill="currentColor"
     role="img"
     viewBox="0 0 76 65"
@@ -98,10 +99,11 @@ const EmailIcon = () => (
 
 type Provider = "email" | "github" | "google" | "vercel";
 
-const getProviderIcon = (provider: Provider) => {
+const getProviderIcon = (provider: Provider, compact = false) => {
+  const iconClass = compact ? "size-3.5" : undefined;
   switch (provider) {
     case "vercel":
-      return <VercelIcon />;
+      return <VercelIcon className={iconClass} />;
     case "github":
       return <GitHubIcon />;
     case "google":
@@ -403,19 +405,25 @@ const SingleProviderButton = ({
   provider,
   loadingProvider,
   onSignIn,
-}: SingleProviderButtonProps) => (
-  <Button
-    disabled={loadingProvider !== null}
-    onClick={() => onSignIn(provider as "github" | "google" | "vercel")}
-    size="sm"
-    variant="default"
-  >
-    {getProviderIcon(provider)}
-    {loadingProvider === provider
-      ? "Loading..."
-      : `Sign in with ${getProviderLabel(provider)}`}
-  </Button>
-);
+}: SingleProviderButtonProps) => {
+  const isLoading = loadingProvider === provider;
+  return (
+    <Button
+      className="h-9 gap-1.5 px-2 sm:px-3"
+      disabled={loadingProvider !== null}
+      onClick={() => onSignIn(provider as "github" | "google" | "vercel")}
+      size="sm"
+      variant="default"
+    >
+      {isLoading ? (
+        <Spinner className="size-3.5" />
+      ) : (
+        getProviderIcon(provider, true)
+      )}
+      <span className="text-sm">Sign In</span>
+    </Button>
+  );
+};
 
 type EmailOnlyDialogProps = {
   children: ReactNode;
