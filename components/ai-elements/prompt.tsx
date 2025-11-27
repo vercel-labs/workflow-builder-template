@@ -326,8 +326,13 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
           <div className="relative size-8 shrink-0 self-end">
             <Button
               aria-label="Focus prompt input (⌘K)"
-              className="absolute w-fit inset-0 h-8 px-0 text-xs text-muted-foreground hover:bg-transparent transition-[opacity,filter] ease-out"
+              className="absolute inset-0 h-8 px-0 text-xs text-muted-foreground hover:bg-transparent transition-[opacity,filter] ease-out"
               onClick={() => inputRef.current?.focus()}
+              style={
+                !prompt.trim() && !isGenerating && !isFocused
+                  ? { opacity: 1, filter: "blur(0px)", pointerEvents: "auto", visibility: "visible" }
+                  : { opacity: 0, filter: "blur(2px)", pointerEvents: "none", visibility: "hidden" }
+              }
               type="button"
               variant="ghost"
             >
