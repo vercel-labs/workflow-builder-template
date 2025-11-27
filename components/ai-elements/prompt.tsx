@@ -69,7 +69,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
   const handleGenerate = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       if (!prompt.trim() || isGenerating) {
         return;
       }
@@ -81,7 +81,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         const existingWorkflow = hasNodes
           ? { nodes: realNodes, edges, name: _currentWorkflowName }
           : undefined;
-        
+
         console.log("[AI Prompt] Generating workflow");
         console.log("[AI Prompt] Has nodes:", hasNodes);
         console.log("[AI Prompt] Sending existing workflow:", !!existingWorkflow);
@@ -94,7 +94,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             "edges"
           );
         }
-        
+
         // Use streaming API with incremental updates
         const workflowData = await api.ai.generateStream(
           prompt,
@@ -138,7 +138,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
           },
           existingWorkflow
         );
-        
+
         console.log("[AI Prompt] Received final workflow data");
         console.log("[AI Prompt] Nodes:", workflowData.nodes?.length || 0);
         console.log("[AI Prompt] Edges:", workflowData.edges?.length || 0);
@@ -154,24 +154,24 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         const incompleteNodes = (workflowData.nodes || []).filter((node) => {
           const nodeType = node.data?.type;
           const config = node.data?.config || {};
-          
+
           console.log(`[AI Prompt] Checking node ${node.id}:`, {
             type: nodeType,
             config,
             hasActionType: !!config.actionType,
             hasTriggerType: !!config.triggerType,
           });
-          
+
           // Check trigger nodes
           if (nodeType === "trigger") {
             return !config.triggerType;
           }
-          
+
           // Check action nodes
           if (nodeType === "action") {
             return !config.actionType;
           }
-          
+
           // Allow other node types (condition, transform) without strict validation
           return false;
         });
@@ -201,19 +201,19 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
 
           // State already updated by streaming callback
           setCurrentWorkflowId(newWorkflow.id);
-          
+
           toast.success("Created workflow");
-          
+
           // Notify parent component to redirect
           if (onWorkflowCreated) {
             onWorkflowCreated(newWorkflow.id);
           }
         } else {
           setCurrentWorkflowId(workflowId);
-          
+
           console.log("[AI Prompt] Updating existing workflow:", workflowId);
           console.log("[AI Prompt] Has existingWorkflow context:", !!existingWorkflow);
-          
+
           // State already updated by streaming callback
           if (existingWorkflow) {
             console.log("[AI Prompt] REPLACING workflow with AI response");
@@ -226,7 +226,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             );
           } else {
             console.log("[AI Prompt] Setting workflow for empty canvas");
-            
+
             toast.success("Generated workflow");
           }
 
@@ -277,7 +277,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
   return (
     <>
       {/* Always visible prompt input */}
-      <div 
+      <div
         ref={containerRef}
         className="pointer-events-auto absolute bottom-4 left-1/2 z-10 -translate-x-1/2 px-4"
         style={{
