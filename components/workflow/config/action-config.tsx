@@ -710,12 +710,14 @@ function RunActorFields({
           className="h-4 w-4 rounded border-input"
           disabled={disabled}
           id="waitForFinish"
-          onChange={(e) => onUpdateConfig("waitForFinish", e.target.checked ? "true" : "false")}
+          onChange={(e) =>
+            onUpdateConfig("waitForFinish", e.target.checked ? "true" : "false")
+          }
           type="checkbox"
         />
         <div className="grid gap-1.5 leading-none">
           <Label
-            className="text-sm font-medium cursor-pointer"
+            className="cursor-pointer font-medium text-sm"
             htmlFor="waitForFinish"
           >
             Wait for results
