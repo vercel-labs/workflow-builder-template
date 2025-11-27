@@ -286,7 +286,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         }}
       >
         <form
-          className="relative flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-lg"
+          className="relative flex items-center gap-2 rounded-lg border bg-background pl-3 pr-2 py-2 shadow-lg"
           onSubmit={handleGenerate}
         >
           {isGenerating && prompt ? (
@@ -295,7 +295,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             </Shimmer>
           ) : (
             <textarea
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none min-h-[24px] max-h-[200px] py-0"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none h-[22px] min-h-[22px] max-h-[200px] py-0 leading-[22px]"
               disabled={isGenerating}
               onBlur={handleBlur}
               onChange={(e) => {
@@ -316,9 +316,9 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
               value={prompt}
             />
           )}
-          {!prompt.trim() && !isGenerating && !isFocused ? (
+          <div className="relative size-8 shrink-0 self-end">
             <Button
-              className="shrink-0 h-auto p-0 text-xs text-muted-foreground hover:bg-transparent"
+              className="absolute w-fit inset-0 h-8 px-0 text-xs text-muted-foreground hover:bg-transparent transition-[opacity,filter] ease-out"
               onClick={() => inputRef.current?.focus()}
               type="button"
               variant="ghost"
@@ -327,16 +327,20 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
                 <span className="text-xs">⌘</span>K
               </kbd>
             </Button>
-          ) : (
             <Button
-              className="shrink-0"
+              className="size-8 transition-[opacity,filter] ease-out shrink-0"
               disabled={!prompt.trim() || isGenerating}
               size="sm"
+              style={
+                !prompt.trim() && !isGenerating && !isFocused
+                  ? { opacity: 0, filter: "blur(2px)", pointerEvents: "none", visibility: "hidden" }
+                  : { opacity: 1, filter: "blur(0px)", pointerEvents: "auto", visibility: "visible" }
+              }
               type="submit"
             >
               <ArrowUp className="size-4" />
             </Button>
-          )}
+          </div>
         </form>
       </div>
     </>
