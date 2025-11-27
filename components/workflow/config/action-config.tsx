@@ -650,10 +650,87 @@ function SearchFields({
   );
 }
 
+// Run Actor fields component (Apify)
+function RunActorFields({
+  config,
+  onUpdateConfig,
+  disabled,
+}: {
+  config: Record<string, unknown>;
+  onUpdateConfig: (key: string, value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="actorId">Actor ID or Name</Label>
+        <TemplateBadgeInput
+          disabled={disabled}
+          id="actorId"
+          onChange={(value) => onUpdateConfig("actorId", value)}
+          placeholder="apify/web-scraper or {{NodeName.actorId}}"
+          value={(config?.actorId as string) || ""}
+        />
+        <p className="text-muted-foreground text-xs">
+          Enter the Actor ID (e.g., apify/web-scraper) or use a template
+          reference.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="actorInput">Actor Input (JSON)</Label>
+        <TemplateBadgeTextarea
+          disabled={disabled}
+          id="actorInput"
+          onChange={(value) => {
+            try {
+              JSON.parse(value);
+              onUpdateConfig("actorInput", value);
+            } catch {
+              // Store as string if not valid JSON yet (user is still typing)
+              onUpdateConfig("actorInputRaw", value);
+            }
+          }}
+          placeholder='{"startUrls": [{"url": "https://example.com"}]}'
+          rows={6}
+          value={
+            (config?.actorInputRaw as string) ||
+            (config?.actorInput
+              ? JSON.stringify(config.actorInput, null, 2)
+              : "")
+          }
+        />
+        <p className="text-muted-foreground text-xs">
+          JSON input for the Actor. Check the Actor's documentation for required
+          fields.
+        </p>
+      </div>
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          disabled={disabled}
+          id="waitForFinish"
+          checked={(config?.waitForFinish as boolean) !== false}
+          onChange={(e) => onUpdateConfig("waitForFinish", e.target.checked ? "true" : "false")}
+          className="h-4 w-4 rounded border-input"
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label htmlFor="waitForFinish" className="text-sm font-medium cursor-pointer">
+            Wait for results
+          </Label>
+          <p className="text-muted-foreground text-xs">
+            Wait for the Actor to finish and return dataset items
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Action categories and their actions
 const ACTION_CATEGORIES = {
   System: ["HTTP Request", "Database Query", "Condition"],
   "AI Gateway": ["Generate Text", "Generate Image"],
+  Apify: ["Run Actor"],
   Firecrawl: ["Scrape", "Search"],
   Linear: ["Create Ticket", "Find Issues"],
   Resend: ["Send Email"],
@@ -732,6 +809,12 @@ export function ActionConfig({
                 <div className="flex items-center gap-2">
                   <IntegrationIcon className="size-4" integration="vercel" />
                   <span>AI Gateway</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Apify">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon className="size-4" integration="apify" />
+                  <span>Apify</span>
                 </div>
               </SelectItem>
               <SelectItem value="Linear">
@@ -879,6 +962,15 @@ export function ActionConfig({
       {/* Search fields */}
       {config?.actionType === "Search" && (
         <SearchFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      )}
+
+      {/* Run Actor fields (Apify) */}
+      {config?.actionType === "Run Actor" && (
+        <RunActorFields
           config={config}
           disabled={disabled}
           onUpdateConfig={onUpdateConfig}

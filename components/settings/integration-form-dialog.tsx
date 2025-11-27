@@ -41,6 +41,7 @@ type IntegrationFormData = {
 
 const INTEGRATION_TYPES: IntegrationType[] = [
   "ai-gateway",
+  "apify",
   "database",
   "linear",
   "resend",
@@ -55,6 +56,7 @@ const INTEGRATION_LABELS: Record<IntegrationType, string> = {
   database: "Database",
   "ai-gateway": "AI Gateway",
   firecrawl: "Firecrawl",
+  apify: "Apify",
 };
 
 export function IntegrationFormDialog({
@@ -286,6 +288,30 @@ export function IntegrationFormDialog({
                 target="_blank"
               >
                 firecrawl.dev
+              </a>
+            </p>
+          </div>
+        );
+      case "apify":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="apifyApiKey">API Token</Label>
+            <Input
+              id="apifyApiKey"
+              onChange={(e) => updateConfig("apifyApiKey", e.target.value)}
+              placeholder="apify_api_..."
+              type="password"
+              value={formData.config.apifyApiKey || ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Get your API token from{" "}
+              <a
+                className="underline hover:text-foreground"
+                href="https://console.apify.com/account/integrations"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Apify Console
               </a>
             </p>
           </div>

@@ -5,6 +5,7 @@ import {
   Flame,
   Mail,
   MessageSquare,
+  Play,
   Search,
   Settings,
   Sparkles,
@@ -23,7 +24,7 @@ type ActionType = {
   description: string;
   category: string;
   icon: React.ComponentType<{ className?: string }>;
-  integration?: "linear" | "resend" | "slack" | "vercel" | "firecrawl";
+  integration?: "linear" | "resend" | "slack" | "vercel" | "firecrawl" | "apify";
 };
 
 const actions: ActionType[] = [
@@ -111,6 +112,14 @@ const actions: ActionType[] = [
     category: "Firecrawl",
     icon: Search,
     integration: "firecrawl",
+  },
+  {
+    id: "Run Actor",
+    label: "Run Actor",
+    description: "Run an Apify Actor",
+    category: "Apify",
+    icon: Play,
+    integration: "apify",
   },
 ];
 

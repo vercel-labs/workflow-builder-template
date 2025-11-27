@@ -68,6 +68,9 @@ export async function POST(
           integration.config.firecrawlApiKey
         );
         break;
+      case "apify":
+        result = await testApifyConnection(integration.config.apifyApiKey);
+        break;
       default:
         return NextResponse.json(
           { error: "Invalid integration type" },
@@ -273,6 +276,51 @@ async function testFirecrawlConnection(
     return {
       status: "success",
       message: "Connected successfully",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Connection failed",
+    };
+  }
+}
+
+async function testApifyConnection(
+  apiKey?: string
+): Promise<TestConnectionResult> {
+  try {
+    if (!apiKey) {
+      return {
+        status: "error",
+        message: "Apify API Token is not configured",
+      };
+    }
+
+    // Test by fetching user info from Apify API
+    const response = await fetch("https://api.apify.com/v2/users/me", {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        status: "error",
+        message: "Invalid API token",
+      };
+    }
+
+    const data = await response.json();
+    if (!data.data?.username) {
+      return {
+        status: "error",
+        message: "Failed to verify API token",
+      };
+    }
+
+    return {
+      status: "success",
+      message: `Connected as ${data.data.username}`,
     };
   } catch (error) {
     return {

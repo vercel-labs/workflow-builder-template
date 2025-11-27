@@ -3,7 +3,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface IntegrationIconProps {
-  integration: "linear" | "resend" | "slack" | "vercel" | "database" | "ai-gateway" | "firecrawl";
+  integration: "linear" | "resend" | "slack" | "vercel" | "database" | "ai-gateway" | "firecrawl" | "apify";
   className?: string;
 }
 
@@ -56,6 +56,31 @@ function FirecrawlIcon({ className }: { className?: string }) {
   );
 }
 
+function ApifyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      height="12"
+      viewBox="0 0 32 32"
+      width="12"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M16 0L29.856 8v16L16 32 2.144 24V8L16 0z"
+        fill="#97D700"
+      />
+      <path
+        d="M16 6l8.66 5v10L16 26l-8.66-5V11L16 6z"
+        fill="#71C5E8"
+      />
+      <path
+        d="M16 11l4.33 2.5v5L16 21l-4.33-2.5v-5L16 11z"
+        fill="#FFFFFF"
+      />
+    </svg>
+  );
+}
+
 export function IntegrationIcon({
   integration,
   className = "h-3 w-3",
@@ -84,6 +109,10 @@ export function IntegrationIcon({
 
   if (integration === "firecrawl") {
     return <FirecrawlIcon className={cn("text-foreground", className)} />;
+  }
+
+  if (integration === "apify") {
+    return <ApifyIcon className={className} />;
   }
 
   return (

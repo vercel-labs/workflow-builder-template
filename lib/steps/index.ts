@@ -6,6 +6,7 @@
 
 import type { generateImageStep } from "../../plugins/ai-gateway/steps/generate-image/step";
 import type { generateTextStep } from "../../plugins/ai-gateway/steps/generate-text/step";
+import type { apifyRunActorStep } from "../../plugins/apify/steps/run-actor/step";
 import type { firecrawlScrapeStep } from "../../plugins/firecrawl/steps/scrape/step";
 import type { firecrawlSearchStep } from "../../plugins/firecrawl/steps/search/step";
 import type { createTicketStep } from "../../plugins/linear/steps/create-ticket/step";
@@ -73,6 +74,10 @@ export const stepRegistry: Record<string, StepFunction> = {
     (
       await import("../../plugins/firecrawl/steps/search/step")
     ).firecrawlSearchStep(input as Parameters<typeof firecrawlSearchStep>[0]),
+  "Run Actor": async (input) =>
+    (
+      await import("../../plugins/apify/steps/run-actor/step")
+    ).apifyRunActorStep(input as Parameters<typeof apifyRunActorStep>[0]),
 };
 
 // Helper to check if a step exists

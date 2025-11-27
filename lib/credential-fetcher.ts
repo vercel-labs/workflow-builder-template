@@ -26,6 +26,7 @@ export type WorkflowCredentials = {
   AI_GATEWAY_API_KEY?: string;
   DATABASE_URL?: string;
   FIRECRAWL_API_KEY?: string;
+  APIFY_API_KEY?: string;
 };
 
 function mapResendConfig(config: IntegrationConfig): WorkflowCredentials {
@@ -82,6 +83,14 @@ function mapFirecrawlConfig(config: IntegrationConfig): WorkflowCredentials {
   return creds;
 }
 
+function mapApifyConfig(config: IntegrationConfig): WorkflowCredentials {
+  const creds: WorkflowCredentials = {};
+  if (config.apifyApiKey) {
+    creds.APIFY_API_KEY = config.apifyApiKey;
+  }
+  return creds;
+}
+
 /**
  * Map integration config to WorkflowCredentials format
  */
@@ -106,6 +115,9 @@ function mapIntegrationConfig(
   }
   if (integrationType === "firecrawl") {
     return mapFirecrawlConfig(config);
+  }
+  if (integrationType === "apify") {
+    return mapApifyConfig(config);
   }
   return {};
 }

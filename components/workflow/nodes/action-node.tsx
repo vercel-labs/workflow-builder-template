@@ -79,6 +79,7 @@ const getIntegrationFromActionType = (actionType: string): string => {
     Scrape: "Firecrawl",
     Search: "Firecrawl",
     Condition: "Condition",
+    "Run Actor": "Apify",
   };
   return integrationMap[actionType] || "System";
 };

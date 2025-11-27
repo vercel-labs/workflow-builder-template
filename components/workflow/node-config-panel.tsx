@@ -665,6 +665,7 @@ export const PanelInner = () => {
                   "Database Query": "database",
                   Scrape: "firecrawl",
                   Search: "firecrawl",
+                  "Run Actor": "apify",
                 } as const;
 
                 const integrationType =
