@@ -11,6 +11,7 @@ import {
   deleteEdgeAtom,
   deleteNodeAtom,
   nodesAtom,
+  propertiesPanelActiveTabAtom,
   selectedNodeAtom,
   type WorkflowNode,
 } from "@/lib/workflow-store";
@@ -39,6 +40,7 @@ export function WorkflowContextMenu({
   const deleteEdge = useSetAtom(deleteEdgeAtom);
   const addNode = useSetAtom(addNodeAtom);
   const setSelectedNode = useSetAtom(selectedNodeAtom);
+  const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteNode = useCallback(() => {
@@ -76,9 +78,10 @@ export function WorkflowContextMenu({
       };
       addNode(newNode);
       setSelectedNode(newNode.id);
+      setActiveTab("properties");
     }
     onClose();
-  }, [menuState, addNode, setSelectedNode, onClose]);
+  }, [menuState, addNode, setSelectedNode, setActiveTab, onClose]);
 
   // Close menu when clicking outside
   useEffect(() => {

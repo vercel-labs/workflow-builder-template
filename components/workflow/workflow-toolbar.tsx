@@ -686,6 +686,8 @@ function ToolbarActions({
     };
 
     state.addNode(newNode);
+    state.setSelectedNodeId(newNode.id);
+    state.setActiveTab("properties");
   };
 
   return (

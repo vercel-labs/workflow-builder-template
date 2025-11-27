@@ -34,6 +34,7 @@ import {
   nodesAtom,
   onEdgesChangeAtom,
   onNodesChangeAtom,
+  propertiesPanelActiveTabAtom,
   rightPanelWidthAtom,
   selectedEdgeAtom,
   selectedNodeAtom,
@@ -95,6 +96,7 @@ export function WorkflowCanvas() {
   const addNode = useSetAtom(addNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const triggerAutosave = useSetAtom(autosaveAtom);
+  const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
   const { screenToFlowPosition, fitView, getViewport, setViewport } =
     useReactFlow();
 
@@ -369,6 +371,7 @@ export function WorkflowCanvas() {
 
         addNode(newNode);
         setSelectedNode(newNode.id);
+        setActiveTab("properties");
 
         // Deselect all other nodes and select only the new node
         // Need to do this after a delay because panOnDrag will clear selection
@@ -411,6 +414,7 @@ export function WorkflowCanvas() {
       setEdges,
       setNodes,
       setSelectedNode,
+      setActiveTab,
       setHasUnsavedChanges,
       triggerAutosave,
     ]
