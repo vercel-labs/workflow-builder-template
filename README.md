@@ -171,10 +171,10 @@ pnpm build
 pnpm type-check
 
 # Linting
-pnpm lint
+pnpm check
 
 # Formatting
-pnpm format
+pnpm fix
 
 # Database
 pnpm db:generate  # Generate migrations
