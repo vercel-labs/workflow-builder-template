@@ -133,7 +133,7 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <Label className="ml-1" htmlFor="action-filter">
           Search Actions
         </Label>
