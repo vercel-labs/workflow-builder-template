@@ -286,8 +286,11 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         }}
       >
         <form
+          aria-busy={isGenerating}
+          aria-label="AI workflow prompt"
           className="relative flex items-center gap-2 rounded-lg border bg-background pl-3 pr-2 py-2 shadow-lg"
           onSubmit={handleGenerate}
+          role="search"
         >
           {isGenerating && prompt ? (
             <Shimmer className="flex-1 text-sm whitespace-pre-wrap" duration={2}>
@@ -295,6 +298,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             </Shimmer>
           ) : (
             <textarea
+              aria-label="Describe your workflow"
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none h-[22px] min-h-[22px] max-h-[200px] py-0 leading-[22px]"
               disabled={isGenerating}
               onBlur={handleBlur}
@@ -316,18 +320,23 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
               value={prompt}
             />
           )}
+          <div className="sr-only">
+            {isGenerating ? "Generating workflow, please wait..." : ""}
+          </div>
           <div className="relative size-8 shrink-0 self-end">
             <Button
+              aria-label="Focus prompt input (⌘K)"
               className="absolute w-fit inset-0 h-8 px-0 text-xs text-muted-foreground hover:bg-transparent transition-[opacity,filter] ease-out"
               onClick={() => inputRef.current?.focus()}
               type="button"
               variant="ghost"
             >
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <kbd aria-hidden="true" className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </Button>
             <Button
+              aria-label={isGenerating ? "Generating workflow..." : "Generate workflow"}
               className="size-8 transition-[opacity,filter] ease-out shrink-0"
               disabled={!prompt.trim() || isGenerating}
               size="sm"
@@ -338,7 +347,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
               }
               type="submit"
             >
-              <ArrowUp className="size-4" />
+              <ArrowUp aria-hidden="true" className="size-4" />
             </Button>
           </div>
         </form>
