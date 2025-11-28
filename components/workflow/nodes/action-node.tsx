@@ -79,6 +79,8 @@ const getIntegrationFromActionType = (actionType: string): string => {
     Scrape: "Firecrawl",
     Search: "Firecrawl",
     Condition: "Condition",
+    "Create Chat": "v0",
+    "Send Message": "v0",
   };
   return integrationMap[actionType] || "System";
 };
@@ -106,6 +108,8 @@ const requiresIntegration = (actionType: string): boolean => {
     "Database Query",
     "Scrape",
     "Search",
+    "Create Chat",
+    "Send Message",
   ];
   return requiresIntegrationActions.includes(actionType);
 };
@@ -139,6 +143,9 @@ const getProviderLogo = (actionType: string) => {
       return <Code className="size-12 text-green-300" strokeWidth={1.5} />;
     case "Condition":
       return <GitBranch className="size-12 text-pink-300" strokeWidth={1.5} />;
+    case "Create Chat":
+    case "Send Message":
+      return <IntegrationIcon className="size-12" integration="v0" />;
     default:
       return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
   }

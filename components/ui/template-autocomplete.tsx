@@ -177,6 +177,19 @@ const getCommonFields = (node: WorkflowNode) => {
   if (actionType === "Search") {
     return [{ field: "web", description: "Array of search results" }];
   }
+  if (actionType === "Create Chat") {
+    return [
+      { field: "chatId", description: "v0 chat ID" },
+      { field: "url", description: "v0 chat URL" },
+      { field: "demoUrl", description: "Demo preview URL" },
+    ];
+  }
+  if (actionType === "Send Message") {
+    return [
+      { field: "chatId", description: "v0 chat ID" },
+      { field: "demoUrl", description: "Demo preview URL" },
+    ];
+  }
   if (node.data.type === "trigger") {
     const triggerType = node.data.config?.triggerType as string | undefined;
     const webhookSchema = node.data.config?.webhookSchema as string | undefined;

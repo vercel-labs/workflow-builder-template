@@ -187,6 +187,8 @@ Action types:
 - Scrape: {"actionType": "Scrape", "url": "https://example.com"}
 - Search: {"actionType": "Search", "query": "search query", "limit": 10}
 - Condition: {"actionType": "Condition", "condition": "{{@nodeId:Label.field}} === 'value'"}
+- Create Chat (v0): {"actionType": "Create Chat", "message": "Create a line graph showing DAU over time", "system": "You are an expert coder"} - Use v0 for generating UI components, visualizations (charts, graphs, dashboards), landing pages, or any React/Next.js code. PREFER v0 over Generate Text/Image for any visual output like charts, graphs, or UI.
+- Send Message (v0): {"actionType": "Send Message", "chatId": "{{@nodeId:Label.chatId}}", "message": "Add dark mode"} - Use this to continue a v0 chat conversation
 
 CRITICAL ABOUT CONDITION NODES:
 - Condition nodes evaluate a boolean expression

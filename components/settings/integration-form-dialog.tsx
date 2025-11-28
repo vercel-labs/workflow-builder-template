@@ -42,10 +42,11 @@ type IntegrationFormData = {
 const INTEGRATION_TYPES: IntegrationType[] = [
   "ai-gateway",
   "database",
+  "firecrawl",
   "linear",
   "resend",
   "slack",
-  "firecrawl",
+  "v0",
 ];
 
 const INTEGRATION_LABELS: Record<IntegrationType, string> = {
@@ -55,6 +56,7 @@ const INTEGRATION_LABELS: Record<IntegrationType, string> = {
   database: "Database",
   "ai-gateway": "AI Gateway",
   firecrawl: "Firecrawl",
+  v0: "v0",
 };
 
 export function IntegrationFormDialog({
@@ -286,6 +288,30 @@ export function IntegrationFormDialog({
                 target="_blank"
               >
                 firecrawl.dev
+              </a>
+            </p>
+          </div>
+        );
+      case "v0":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="apiKey">API Key</Label>
+            <Input
+              id="apiKey"
+              onChange={(e) => updateConfig("apiKey", e.target.value)}
+              placeholder="v0_..."
+              type="password"
+              value={formData.config.apiKey || ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Get your API key from{" "}
+              <a
+                className="underline hover:text-foreground"
+                href="https://v0.dev/chat/settings/keys"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                v0.dev/chat/settings/keys
               </a>
             </p>
           </div>

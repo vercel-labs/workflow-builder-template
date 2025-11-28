@@ -211,6 +211,20 @@ async function executeActionStep(input: {
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await firecrawlSearchStep(stepInput as any);
   }
+  if (actionType === "Create Chat") {
+    const { createChatStep } = await import(
+      "../plugins/v0/steps/create-chat/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await createChatStep(stepInput as any);
+  }
+  if (actionType === "Send Message") {
+    const { sendMessageStep } = await import(
+      "../plugins/v0/steps/send-message/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await sendMessageStep(stepInput as any);
+  }
 
   // Fallback for unknown action types
   return {

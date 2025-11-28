@@ -7,6 +7,8 @@ import { searchCodegenTemplate } from "../plugins/firecrawl/codegen/search";
 import { createTicketCodegenTemplate } from "../plugins/linear/codegen/create-ticket";
 import { sendEmailCodegenTemplate } from "../plugins/resend/codegen/send-email";
 import { sendSlackMessageCodegenTemplate } from "../plugins/slack/codegen/send-slack-message";
+import { createChatCodegenTemplate } from "../plugins/v0/codegen/create-chat";
+import { sendMessageCodegenTemplate } from "../plugins/v0/codegen/send-message";
 // Import codegen templates directly
 import conditionTemplate from "./codegen-templates/condition";
 import databaseQueryTemplate from "./codegen-templates/database-query";
@@ -42,6 +44,8 @@ function loadStepImplementation(actionType: string): string | null {
     Search: searchCodegenTemplate,
     "HTTP Request": httpRequestTemplate,
     Condition: conditionTemplate,
+    "Create Chat": createChatCodegenTemplate,
+    "Send Message": sendMessageCodegenTemplate,
   };
 
   const template = templateMap[actionType];
@@ -592,6 +596,29 @@ export function generateWorkflowSDKCode(
 
     return params;
   }
+
+  function buildV0CreateChatParams(config: Record<string, unknown>): string[] {
+    imports.add("import { createClient } from 'v0-sdk';");
+    const params = [
+      `message: \`${convertTemplateToJS((config.message as string) || "")}\``,
+      "apiKey: process.env.V0_API_KEY!",
+    ];
+    if (config.system) {
+      params.push(
+        `system: \`${convertTemplateToJS((config.system as string) || "")}\``
+      );
+    }
+    return params;
+  }
+
+  function buildV0SendMessageParams(config: Record<string, unknown>): string[] {
+    imports.add("import { createClient } from 'v0-sdk';");
+    return [
+      `chatId: \`${convertTemplateToJS((config.chatId as string) || "")}\``,
+      `message: \`${convertTemplateToJS((config.message as string) || "")}\``,
+      "apiKey: process.env.V0_API_KEY!",
+    ];
+  }
   function buildStepInputParams(
     actionType: string,
     config: Record<string, unknown>
@@ -607,6 +634,8 @@ export function generateWorkflowSDKCode(
       Condition: () => buildConditionParams(config),
       Scrape: () => buildFirecrawlParams(actionType, config),
       Search: () => buildFirecrawlParams(actionType, config),
+      "Create Chat": () => buildV0CreateChatParams(config),
+      "Send Message": () => buildV0SendMessageParams(config),
     };
 
     const builder = paramBuilders[actionType];

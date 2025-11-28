@@ -541,6 +541,57 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  function generateV0CreateChatActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Create Chat");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const message = (config.message as string) || "";
+    const system = (config.system as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  message: ${formatTemplateValue(message)},`,
+    ];
+
+    if (system) {
+      lines.push(`${indent}  system: ${formatTemplateValue(system)},`);
+    }
+
+    lines.push(`${indent}});`);
+    return lines;
+  }
+
+  function generateV0SendMessageActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Send Message");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const chatId = (config.chatId as string) || "";
+    const message = (config.message as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  chatId: ${formatTemplateValue(chatId)},`,
+      `${indent}  message: ${formatTemplateValue(message)},`,
+      `${indent}});`,
+    ];
+
+    return lines;
+  }
+
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
@@ -637,6 +688,16 @@ export function generateWorkflowCode(
     } else if (actionType === "Scrape" || actionType === "Search") {
       lines.push(
         ...wrapActionCall(generateFirecrawlActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Create Chat") {
+      lines.push(
+        ...wrapActionCall(generateV0CreateChatActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Send Message") {
+      lines.push(
+        ...wrapActionCall(
+          generateV0SendMessageActionCode(node, indent, varName)
+        )
       );
     } else if (actionType === "Database Query") {
       lines.push(

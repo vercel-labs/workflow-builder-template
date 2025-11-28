@@ -1,0 +1,2 @@
+onlyBuiltDependencies:
+  - '@vercel/speed-insights'
