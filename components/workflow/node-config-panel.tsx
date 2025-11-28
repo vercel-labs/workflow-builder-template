@@ -26,6 +26,7 @@ import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
+import type { IntegrationType } from "@/lib/db/integrations";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
   clearNodeStatusesAtom,
@@ -44,6 +45,7 @@ import {
   showDeleteDialogAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
+import { findActionById } from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -655,25 +657,27 @@ export const PanelInner = () => {
               {(() => {
                 const actionType = selectedNode.data.config
                   ?.actionType as string;
-                const integrationMap = {
-                  "Send Email": "resend",
-                  "Send Slack Message": "slack",
-                  "Create Ticket": "linear",
-                  "Find Issues": "linear",
-                  "Generate Text": "ai-gateway",
-                  "Generate Image": "ai-gateway",
-                  "Database Query": "database",
-                  Scrape: "firecrawl",
-                  Search: "firecrawl",
-                } as const;
 
-                const integrationType =
-                  actionType &&
-                  integrationMap[actionType as keyof typeof integrationMap];
+                // Database Query is special - has integration but no plugin
+                const SYSTEM_INTEGRATION_MAP: Record<string, string> = {
+                  "Database Query": "database",
+                };
+
+                // Get integration type dynamically
+                let integrationType: string | undefined;
+                if (actionType) {
+                  if (SYSTEM_INTEGRATION_MAP[actionType]) {
+                    integrationType = SYSTEM_INTEGRATION_MAP[actionType];
+                  } else {
+                    // Look up from plugin registry
+                    const action = findActionById(actionType);
+                    integrationType = action?.integration;
+                  }
+                }
 
                 return integrationType ? (
                   <IntegrationSelector
-                    integrationType={integrationType}
+                    integrationType={integrationType as IntegrationType}
                     label="Integration"
                     onChange={(id) => handleUpdateConfig("integrationId", id)}
                     onOpenSettings={() => setShowIntegrationsDialog(true)}

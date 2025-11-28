@@ -4,7 +4,6 @@ import { registerIntegration } from "../registry";
 import { createTicketCodegenTemplate } from "./codegen/create-ticket";
 import { LinearSettings } from "./settings";
 import { CreateTicketConfigFields } from "./steps/create-ticket/config";
-import { testLinear } from "./test";
 
 const linearPlugin: IntegrationPlugin = {
   type: "linear",
@@ -53,7 +52,10 @@ const linearPlugin: IntegrationPlugin = {
   },
 
   testConfig: {
-    testFunction: testLinear,
+    getTestFunction: async () => {
+      const { testLinear } = await import("./test");
+      return testLinear;
+    },
   },
 
   actions: [

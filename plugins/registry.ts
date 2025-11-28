@@ -43,11 +43,15 @@ export type IntegrationPlugin = {
     config: Record<string, unknown>
   ) => Record<string, string>;
 
-  // Testing configuration
+  // Testing configuration (lazy-loaded to avoid bundling Node.js packages in client)
   testConfig?: {
-    testFunction: (
-      credentials: Record<string, string>
-    ) => Promise<{ success: boolean; error?: string }>;
+    // Returns a promise that resolves to the test function
+    // This allows the test module to be loaded only on the server when needed
+    getTestFunction: () => Promise<
+      (
+        credentials: Record<string, string>
+      ) => Promise<{ success: boolean; error?: string }>
+    >;
   };
 
   // Actions provided by this integration

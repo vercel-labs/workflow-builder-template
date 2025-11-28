@@ -6,7 +6,6 @@ import { generateTextCodegenTemplate } from "./codegen/generate-text";
 import { AiGatewaySettings } from "./settings";
 import { GenerateImageConfigFields } from "./steps/generate-image/config";
 import { GenerateTextConfigFields } from "./steps/generate-text/config";
-import { testAiGateway } from "./test";
 
 const aiGatewayPlugin: IntegrationPlugin = {
   type: "ai-gateway",
@@ -48,7 +47,10 @@ const aiGatewayPlugin: IntegrationPlugin = {
   },
 
   testConfig: {
-    testFunction: testAiGateway,
+    getTestFunction: async () => {
+      const { testAiGateway } = await import("./test");
+      return testAiGateway;
+    },
   },
 
   actions: [

@@ -2,9 +2,9 @@ import { Mail } from "lucide-react";
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendEmailCodegenTemplate } from "./codegen/send-email";
+import { ResendIcon } from "./icon";
 import { ResendSettings } from "./settings";
 import { SendEmailConfigFields } from "./steps/send-email/config";
-import { testResend } from "./test";
 
 const resendPlugin: IntegrationPlugin = {
   type: "resend",
@@ -12,8 +12,9 @@ const resendPlugin: IntegrationPlugin = {
   description: "Send transactional emails",
 
   icon: {
-    type: "image",
-    value: "/integrations/resend.svg",
+    type: "svg",
+    value: "ResendIcon",
+    svgComponent: ResendIcon,
   },
 
   settingsComponent: ResendSettings,
@@ -53,7 +54,10 @@ const resendPlugin: IntegrationPlugin = {
   },
 
   testConfig: {
-    testFunction: testResend,
+    getTestFunction: async () => {
+      const { testResend } = await import("./test");
+      return testResend;
+    },
   },
 
   actions: [

@@ -4,7 +4,6 @@ import { registerIntegration } from "../registry";
 import { sendSlackMessageCodegenTemplate } from "./codegen/send-slack-message";
 import { SlackSettings } from "./settings";
 import { SendSlackMessageConfigFields } from "./steps/send-slack-message/config";
-import { testSlack } from "./test";
 
 const slackPlugin: IntegrationPlugin = {
   type: "slack",
@@ -42,7 +41,10 @@ const slackPlugin: IntegrationPlugin = {
   },
 
   testConfig: {
-    testFunction: testSlack,
+    getTestFunction: async () => {
+      const { testSlack } = await import("./test");
+      return testSlack;
+    },
   },
 
   actions: [

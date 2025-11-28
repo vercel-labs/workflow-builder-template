@@ -7,7 +7,6 @@ import { FirecrawlIcon } from "./icon";
 import { FirecrawlSettings } from "./settings";
 import { ScrapeConfigFields } from "./steps/scrape/config";
 import { SearchConfigFields } from "./steps/search/config";
-import { testFirecrawl } from "./test";
 
 const firecrawlPlugin: IntegrationPlugin = {
   type: "firecrawl",
@@ -46,7 +45,10 @@ const firecrawlPlugin: IntegrationPlugin = {
   },
 
   testConfig: {
-    testFunction: testFirecrawl,
+    getTestFunction: async () => {
+      const { testFirecrawl } = await import("./test");
+      return testFirecrawl;
+    },
   },
 
   actions: [
