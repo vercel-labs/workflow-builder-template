@@ -69,7 +69,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
   const handleGenerate = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       if (!prompt.trim() || isGenerating) {
         return;
       }
@@ -81,7 +81,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         const existingWorkflow = hasNodes
           ? { nodes: realNodes, edges, name: _currentWorkflowName }
           : undefined;
-        
+
         console.log("[AI Prompt] Generating workflow");
         console.log("[AI Prompt] Has nodes:", hasNodes);
         console.log("[AI Prompt] Sending existing workflow:", !!existingWorkflow);
@@ -94,7 +94,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             "edges"
           );
         }
-        
+
         // Use streaming API with incremental updates
         const workflowData = await api.ai.generateStream(
           prompt,
@@ -138,7 +138,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
           },
           existingWorkflow
         );
-        
+
         console.log("[AI Prompt] Received final workflow data");
         console.log("[AI Prompt] Nodes:", workflowData.nodes?.length || 0);
         console.log("[AI Prompt] Edges:", workflowData.edges?.length || 0);
@@ -154,24 +154,24 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         const incompleteNodes = (workflowData.nodes || []).filter((node) => {
           const nodeType = node.data?.type;
           const config = node.data?.config || {};
-          
+
           console.log(`[AI Prompt] Checking node ${node.id}:`, {
             type: nodeType,
             config,
             hasActionType: !!config.actionType,
             hasTriggerType: !!config.triggerType,
           });
-          
+
           // Check trigger nodes
           if (nodeType === "trigger") {
             return !config.triggerType;
           }
-          
+
           // Check action nodes
           if (nodeType === "action") {
             return !config.actionType;
           }
-          
+
           // Allow other node types (condition, transform) without strict validation
           return false;
         });
@@ -201,19 +201,19 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
 
           // State already updated by streaming callback
           setCurrentWorkflowId(newWorkflow.id);
-          
+
           toast.success("Created workflow");
-          
+
           // Notify parent component to redirect
           if (onWorkflowCreated) {
             onWorkflowCreated(newWorkflow.id);
           }
         } else {
           setCurrentWorkflowId(workflowId);
-          
+
           console.log("[AI Prompt] Updating existing workflow:", workflowId);
           console.log("[AI Prompt] Has existingWorkflow context:", !!existingWorkflow);
-          
+
           // State already updated by streaming callback
           if (existingWorkflow) {
             console.log("[AI Prompt] REPLACING workflow with AI response");
@@ -226,7 +226,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             );
           } else {
             console.log("[AI Prompt] Setting workflow for empty canvas");
-            
+
             toast.success("Generated workflow");
           }
 
@@ -277,7 +277,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
   return (
     <>
       {/* Always visible prompt input */}
-      <div 
+      <div
         ref={containerRef}
         className="pointer-events-auto absolute bottom-4 left-1/2 z-10 -translate-x-1/2 px-4"
         style={{
@@ -286,8 +286,11 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
         }}
       >
         <form
-          className="relative flex items-center gap-2 rounded-lg border bg-background px-3 py-2 shadow-lg"
+          aria-busy={isGenerating}
+          aria-label="AI workflow prompt"
+          className="relative flex items-center gap-2 rounded-lg border bg-background pl-3 pr-2 py-2 shadow-lg"
           onSubmit={handleGenerate}
+          role="search"
         >
           {isGenerating && prompt ? (
             <Shimmer className="flex-1 text-sm whitespace-pre-wrap" duration={2}>
@@ -295,7 +298,8 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
             </Shimmer>
           ) : (
             <textarea
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none min-h-[24px] max-h-[200px] py-0"
+              aria-label="Describe your workflow"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground resize-none h-[22px] min-h-[22px] max-h-[200px] py-0 leading-[22px]"
               disabled={isGenerating}
               onBlur={handleBlur}
               onChange={(e) => {
@@ -316,27 +320,41 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
               value={prompt}
             />
           )}
-          {!prompt.trim() && !isGenerating && !isFocused ? (
+          <div className="sr-only">
+            {isGenerating ? "Generating workflow, please wait..." : ""}
+          </div>
+          <div className="relative size-8 shrink-0 self-end">
             <Button
-              className="shrink-0 h-auto p-0 text-xs text-muted-foreground hover:bg-transparent"
+              aria-label="Focus prompt input (⌘K)"
+              className="absolute inset-0 h-8 px-0 text-xs text-muted-foreground hover:bg-transparent transition-[opacity,filter] ease-out"
               onClick={() => inputRef.current?.focus()}
+              style={
+                !prompt.trim() && !isGenerating && !isFocused
+                  ? { opacity: 1, filter: "blur(0px)", pointerEvents: "auto", visibility: "visible" }
+                  : { opacity: 0, filter: "blur(2px)", pointerEvents: "none", visibility: "hidden" }
+              }
               type="button"
               variant="ghost"
             >
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <kbd aria-hidden="true" className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
                 <span className="text-xs">⌘</span>K
               </kbd>
             </Button>
-          ) : (
             <Button
-              className="shrink-0"
+              aria-label={isGenerating ? "Generating workflow..." : "Generate workflow"}
+              className="size-8 transition-[opacity,filter] ease-out shrink-0"
               disabled={!prompt.trim() || isGenerating}
               size="sm"
+              style={
+                !prompt.trim() && !isGenerating && !isFocused
+                  ? { opacity: 0, filter: "blur(2px)", pointerEvents: "none", visibility: "hidden" }
+                  : { opacity: 1, filter: "blur(0px)", pointerEvents: "auto", visibility: "visible" }
+              }
               type="submit"
             >
-              <ArrowUp className="size-4" />
+              <ArrowUp aria-hidden="true" className="size-4" />
             </Button>
-          )}
+          </div>
         </form>
       </div>
     </>
