@@ -15,7 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "discover-plugins": "node scripts/discover-plugins.js"
+    "discover-plugins": "node scripts/discover-plugins.mjs"
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
