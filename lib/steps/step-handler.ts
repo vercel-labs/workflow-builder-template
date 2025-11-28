@@ -14,6 +14,14 @@ export type StepContext = {
   nodeType: string;
 };
 
+/**
+ * Base input type that all steps should extend
+ * Adds optional _context for logging
+ */
+export type StepInput = {
+  _context?: StepContext;
+};
+
 type LogInfo = {
   logId: string;
   startTime: number;
@@ -21,9 +29,8 @@ type LogInfo = {
 
 /**
  * Log the start of a step execution
- * Must be called from within a "use step" context
  */
-export async function logStepStart(
+async function logStepStart(
   context: StepContext | undefined,
   input: unknown
 ): Promise<LogInfo> {
@@ -69,9 +76,8 @@ export async function logStepStart(
 
 /**
  * Log the completion of a step execution
- * Must be called from within a "use step" context
  */
-export async function logStepComplete(
+async function logStepComplete(
   logInfo: LogInfo,
   status: "success" | "error",
   output?: unknown,
@@ -104,24 +110,34 @@ export async function logStepComplete(
 }
 
 /**
- * Helper to wrap step logic with logging
+ * Strip _context from input for logging (we don't want to log internal metadata)
+ */
+function stripContext<T extends StepInput>(input: T): Omit<T, "_context"> {
+  const { _context, ...rest } = input;
+  return rest as Omit<T, "_context">;
+}
+
+/**
+ * Wrap step logic with logging
  * Call this from inside your step function (within "use step" context)
  *
  * @example
- * export async function myStep(input: MyInput & { _context?: StepContext }) {
+ * export async function myStep(input: MyInput & StepInput) {
  *   "use step";
- *   return withStepLogging(input._context, input, async () => {
+ *   return withStepLogging(input, async () => {
  *     // your step logic here
  *     return { success: true, data: ... };
  *   });
  * }
  */
-export async function withStepLogging<TOutput>(
-  context: StepContext | undefined,
-  input: unknown,
+export async function withStepLogging<TInput extends StepInput, TOutput>(
+  input: TInput,
   stepLogic: () => Promise<TOutput>
 ): Promise<TOutput> {
-  const logInfo = await logStepStart(context, input);
+  // Extract context and log input without _context
+  const context = input._context;
+  const loggedInput = stripContext(input);
+  const logInfo = await logStepStart(context, loggedInput);
 
   try {
     const result = await stepLogic();
