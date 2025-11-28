@@ -592,6 +592,121 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  // Clerk action generators
+  function generateClerkGetUserActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Get User");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const userId = (config.userId as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  userId: ${formatTemplateValue(userId)},`,
+      `${indent}});`,
+    ];
+
+    return lines;
+  }
+
+  function generateClerkCreateUserActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Create User");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const emailAddress = (config.emailAddress as string) || "";
+    const firstName = (config.firstName as string) || "";
+    const lastName = (config.lastName as string) || "";
+    const password = (config.password as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+    ];
+
+    if (emailAddress) {
+      lines.push(`${indent}  emailAddress: ${formatTemplateValue(emailAddress)},`);
+    }
+    if (firstName) {
+      lines.push(`${indent}  firstName: ${formatTemplateValue(firstName)},`);
+    }
+    if (lastName) {
+      lines.push(`${indent}  lastName: ${formatTemplateValue(lastName)},`);
+    }
+    if (password) {
+      lines.push(`${indent}  password: ${formatTemplateValue(password)},`);
+    }
+
+    lines.push(`${indent}});`);
+
+    return lines;
+  }
+
+  function generateClerkUpdateUserActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Update User");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const userId = (config.userId as string) || "";
+    const firstName = (config.firstName as string) || "";
+    const lastName = (config.lastName as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  userId: ${formatTemplateValue(userId)},`,
+    ];
+
+    if (firstName) {
+      lines.push(`${indent}  firstName: ${formatTemplateValue(firstName)},`);
+    }
+    if (lastName) {
+      lines.push(`${indent}  lastName: ${formatTemplateValue(lastName)},`);
+    }
+
+    lines.push(`${indent}});`);
+
+    return lines;
+  }
+
+  function generateClerkDeleteUserActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Delete User");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const userId = (config.userId as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  userId: ${formatTemplateValue(userId)},`,
+      `${indent}});`,
+    ];
+
+    return lines;
+  }
+
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
@@ -739,6 +854,22 @@ export function generateWorkflowCode(
     } else if (label.includes("find issues")) {
       lines.push(
         ...wrapActionCall(generateFindIssuesActionCode(indent, varName))
+      );
+    } else if (actionType === "Get User") {
+      lines.push(
+        ...wrapActionCall(generateClerkGetUserActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Create User") {
+      lines.push(
+        ...wrapActionCall(generateClerkCreateUserActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Update User") {
+      lines.push(
+        ...wrapActionCall(generateClerkUpdateUserActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Delete User") {
+      lines.push(
+        ...wrapActionCall(generateClerkDeleteUserActionCode(node, indent, varName))
       );
     } else if (outputIsUsed) {
       lines.push(`${indent}const ${varName} = { status: 'success' };`);

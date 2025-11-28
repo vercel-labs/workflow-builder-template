@@ -226,6 +226,36 @@ async function executeActionStep(input: {
     return await sendMessageStep(stepInput as any);
   }
 
+  // Clerk actions
+  if (actionType === "Get User") {
+    const { clerkGetUserStep } = await import(
+      "../plugins/clerk/steps/get-user/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await clerkGetUserStep(stepInput as any);
+  }
+  if (actionType === "Create User") {
+    const { clerkCreateUserStep } = await import(
+      "../plugins/clerk/steps/create-user/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await clerkCreateUserStep(stepInput as any);
+  }
+  if (actionType === "Update User") {
+    const { clerkUpdateUserStep } = await import(
+      "../plugins/clerk/steps/update-user/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await clerkUpdateUserStep(stepInput as any);
+  }
+  if (actionType === "Delete User") {
+    const { clerkDeleteUserStep } = await import(
+      "../plugins/clerk/steps/delete-user/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await clerkDeleteUserStep(stepInput as any);
+  }
+
   // Fallback for unknown action types
   return {
     success: false,

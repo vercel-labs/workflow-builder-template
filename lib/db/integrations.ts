@@ -101,7 +101,8 @@ export type IntegrationType =
   | "database"
   | "ai-gateway"
   | "firecrawl"
-  | "v0";
+  | "v0"
+  | "clerk";
 
 export type IntegrationConfig = {
   // Resend
@@ -117,6 +118,8 @@ export type IntegrationConfig = {
   // Firecrawl
   firecrawlApiKey?: string;
   // v0 (uses apiKey)
+  // Clerk
+  clerkSecretKey?: string;
 };
 
 export type DecryptedIntegration = {

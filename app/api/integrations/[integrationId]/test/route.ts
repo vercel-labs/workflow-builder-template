@@ -68,6 +68,11 @@ export async function POST(
           integration.config.firecrawlApiKey
         );
         break;
+      case "clerk":
+        result = await testClerkConnection(
+          integration.config.clerkSecretKey
+        );
+        break;
       default:
         return NextResponse.json(
           { error: "Invalid integration type" },
@@ -273,6 +278,54 @@ async function testFirecrawlConnection(
     return {
       status: "success",
       message: "Connected successfully",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Connection failed",
+    };
+  }
+}
+
+async function testClerkConnection(
+  secretKey?: string
+): Promise<TestConnectionResult> {
+  try {
+    if (!secretKey) {
+      return {
+        status: "error",
+        message: "Secret key is required",
+      };
+    }
+
+    // Validate key format
+    if (!secretKey.startsWith("sk_live_") && !secretKey.startsWith("sk_test_")) {
+      return {
+        status: "error",
+        message: "Invalid secret key format. Must start with sk_live_ or sk_test_",
+      };
+    }
+
+    // Test by fetching users list
+    const response = await fetch("https://api.clerk.com/v1/users?limit=1", {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+        "User-Agent": "workflow-builder.dev",
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      return {
+        status: "error",
+        message: error.errors?.[0]?.message || "Authentication failed",
+      };
+    }
+
+    return {
+      status: "success",
+      message: "Connection successful",
     };
   } catch (error) {
     return {

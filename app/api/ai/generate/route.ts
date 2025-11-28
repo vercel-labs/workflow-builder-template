@@ -198,6 +198,10 @@ Action types:
 - Condition: {"actionType": "Condition", "condition": "{{@nodeId:Label.field}} === 'value'"}
 - Create Chat (v0): {"actionType": "Create Chat", "message": "Create a line graph showing DAU over time", "system": "You are an expert coder"} - Use v0 for generating UI components, visualizations (charts, graphs, dashboards), landing pages, or any React/Next.js code. PREFER v0 over Generate Text/Image for any visual output like charts, graphs, or UI.
 - Send Message (v0): {"actionType": "Send Message", "chatId": "{{@nodeId:Label.chatId}}", "message": "Add dark mode"} - Use this to continue a v0 chat conversation
+- Get User (Clerk): {"actionType": "Get User", "userId": "user_xxx"} - Fetch a Clerk user by ID. Returns {success, user: {id, first_name, last_name, email_addresses, ...}}.
+- Create User (Clerk): {"actionType": "Create User", "emailAddress": "user@example.com", "firstName": "John", "lastName": "Doe"} - Create a new user in Clerk. Returns {success, user: {id, ...}}. Password is optional (min 8 chars if provided, or omit to let user set their own).
+- Update User (Clerk): {"actionType": "Update User", "userId": "{{@create-user-node-id:Create User.user.id}}", "firstName": "Jane"} - Update an existing Clerk user. IMPORTANT: Use exact format {{@actualNodeId:Node Label.user.id}} where actualNodeId is the node's ID from the addNode operation.
+- Delete User (Clerk): {"actionType": "Delete User", "userId": "{{@create-user-node-id:Create User.user.id}}"} - Delete a user from Clerk. IMPORTANT: Use exact format {{@actualNodeId:Node Label.user.id}} where actualNodeId is the node's ID from the addNode operation.
 
 CRITICAL ABOUT CONDITION NODES:
 - Condition nodes evaluate a boolean expression

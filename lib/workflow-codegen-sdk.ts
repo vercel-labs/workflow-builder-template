@@ -2,6 +2,10 @@ import "server-only";
 
 import { generateImageCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-image";
 import { generateTextCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-text";
+import { createUserCodegenTemplate } from "../plugins/clerk/codegen/create-user";
+import { deleteUserCodegenTemplate } from "../plugins/clerk/codegen/delete-user";
+import { getUserCodegenTemplate } from "../plugins/clerk/codegen/get-user";
+import { updateUserCodegenTemplate } from "../plugins/clerk/codegen/update-user";
 import { scrapeCodegenTemplate } from "../plugins/firecrawl/codegen/scrape";
 import { searchCodegenTemplate } from "../plugins/firecrawl/codegen/search";
 import { createTicketCodegenTemplate } from "../plugins/linear/codegen/create-ticket";
@@ -46,6 +50,11 @@ function loadStepImplementation(actionType: string): string | null {
     Condition: conditionTemplate,
     "Create Chat": createChatCodegenTemplate,
     "Send Message": sendMessageCodegenTemplate,
+    // Clerk
+    "Get User": getUserCodegenTemplate,
+    "Create User": createUserCodegenTemplate,
+    "Update User": updateUserCodegenTemplate,
+    "Delete User": deleteUserCodegenTemplate,
   };
 
   const template = templateMap[actionType];
@@ -619,6 +628,64 @@ export function generateWorkflowSDKCode(
       "apiKey: process.env.V0_API_KEY!",
     ];
   }
+
+  function buildClerkGetUserParams(config: Record<string, unknown>): string[] {
+    return [
+      `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
+      "secretKey: process.env.CLERK_SECRET_KEY!",
+    ];
+  }
+
+  function buildClerkCreateUserParams(config: Record<string, unknown>): string[] {
+    const params = [
+      `emailAddress: \`${convertTemplateToJS((config.emailAddress as string) || "")}\``,
+      "secretKey: process.env.CLERK_SECRET_KEY!",
+    ];
+    if (config.password) {
+      params.push(`password: \`${convertTemplateToJS(config.password as string)}\``);
+    }
+    if (config.firstName) {
+      params.push(`firstName: \`${convertTemplateToJS(config.firstName as string)}\``);
+    }
+    if (config.lastName) {
+      params.push(`lastName: \`${convertTemplateToJS(config.lastName as string)}\``);
+    }
+    if (config.publicMetadata) {
+      params.push(`publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``);
+    }
+    if (config.privateMetadata) {
+      params.push(`privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``);
+    }
+    return params;
+  }
+
+  function buildClerkUpdateUserParams(config: Record<string, unknown>): string[] {
+    const params = [
+      `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
+      "secretKey: process.env.CLERK_SECRET_KEY!",
+    ];
+    if (config.firstName) {
+      params.push(`firstName: \`${convertTemplateToJS(config.firstName as string)}\``);
+    }
+    if (config.lastName) {
+      params.push(`lastName: \`${convertTemplateToJS(config.lastName as string)}\``);
+    }
+    if (config.publicMetadata) {
+      params.push(`publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``);
+    }
+    if (config.privateMetadata) {
+      params.push(`privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``);
+    }
+    return params;
+  }
+
+  function buildClerkDeleteUserParams(config: Record<string, unknown>): string[] {
+    return [
+      `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
+      "secretKey: process.env.CLERK_SECRET_KEY!",
+    ];
+  }
+
   function buildStepInputParams(
     actionType: string,
     config: Record<string, unknown>
@@ -636,6 +703,11 @@ export function generateWorkflowSDKCode(
       Search: () => buildFirecrawlParams(actionType, config),
       "Create Chat": () => buildV0CreateChatParams(config),
       "Send Message": () => buildV0SendMessageParams(config),
+      // Clerk
+      "Get User": () => buildClerkGetUserParams(config),
+      "Create User": () => buildClerkCreateUserParams(config),
+      "Update User": () => buildClerkUpdateUserParams(config),
+      "Delete User": () => buildClerkDeleteUserParams(config),
     };
 
     const builder = paramBuilders[actionType];

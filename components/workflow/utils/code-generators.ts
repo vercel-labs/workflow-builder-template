@@ -7,6 +7,10 @@ import databaseQueryTemplate from "@/lib/codegen-templates/database-query";
 import httpRequestTemplate from "@/lib/codegen-templates/http-request";
 import { generateImageCodegenTemplate } from "@/plugins/ai-gateway/codegen/generate-image";
 import { generateTextCodegenTemplate } from "@/plugins/ai-gateway/codegen/generate-text";
+import { createUserCodegenTemplate } from "@/plugins/clerk/codegen/create-user";
+import { deleteUserCodegenTemplate } from "@/plugins/clerk/codegen/delete-user";
+import { getUserCodegenTemplate } from "@/plugins/clerk/codegen/get-user";
+import { updateUserCodegenTemplate } from "@/plugins/clerk/codegen/update-user";
 import { scrapeCodegenTemplate } from "@/plugins/firecrawl/codegen/scrape";
 import { searchCodegenTemplate } from "@/plugins/firecrawl/codegen/search";
 import { createTicketCodegenTemplate } from "@/plugins/linear/codegen/create-ticket";
@@ -90,6 +94,15 @@ export async function POST(request: NextRequest) {
         return createChatCodegenTemplate;
       case "Send Message":
         return sendMessageCodegenTemplate;
+      // Clerk
+      case "Get User":
+        return getUserCodegenTemplate;
+      case "Create User":
+        return createUserCodegenTemplate;
+      case "Update User":
+        return updateUserCodegenTemplate;
+      case "Delete User":
+        return deleteUserCodegenTemplate;
       default:
         return `async function actionStep(input: Record<string, unknown>) {
   "use step";

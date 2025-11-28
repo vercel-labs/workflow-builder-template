@@ -41,6 +41,7 @@ type IntegrationFormData = {
 
 const INTEGRATION_TYPES: IntegrationType[] = [
   "ai-gateway",
+  "clerk",
   "database",
   "firecrawl",
   "linear",
@@ -57,6 +58,7 @@ const INTEGRATION_LABELS: Record<IntegrationType, string> = {
   "ai-gateway": "AI Gateway",
   firecrawl: "Firecrawl",
   v0: "v0",
+  clerk: "Clerk",
 };
 
 export function IntegrationFormDialog({
@@ -313,6 +315,31 @@ export function IntegrationFormDialog({
               >
                 v0.dev/chat/settings/keys
               </a>
+            </p>
+          </div>
+        );
+      case "clerk":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="clerkSecretKey">Secret Key</Label>
+            <Input
+              id="clerkSecretKey"
+              onChange={(e) => updateConfig("clerkSecretKey", e.target.value)}
+              placeholder="sk_live_... or sk_test_..."
+              type="password"
+              value={formData.config.clerkSecretKey || ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Get your secret key from{" "}
+              <a
+                className="underline hover:text-foreground"
+                href="https://dashboard.clerk.com"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                dashboard.clerk.com
+              </a>
+              {" "}under API Keys.
             </p>
           </div>
         );
