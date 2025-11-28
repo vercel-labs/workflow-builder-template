@@ -26,80 +26,6 @@ type ActionConfigProps = {
   disabled: boolean;
 };
 
-// Find Issues fields component (kept hardcoded - Linear plugin incomplete)
-function FindIssuesFields({
-  config,
-  onUpdateConfig,
-  disabled,
-}: {
-  config: Record<string, unknown>;
-  onUpdateConfig: (key: string, value: string) => void;
-  disabled: boolean;
-}) {
-  return (
-    <>
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="linearAssigneeId">
-          Assignee (User ID)
-        </Label>
-        <TemplateBadgeInput
-          disabled={disabled}
-          id="linearAssigneeId"
-          onChange={(value) => onUpdateConfig("linearAssigneeId", value)}
-          placeholder="user-id-123 or {{NodeName.userId}}"
-          value={(config?.linearAssigneeId as string) || ""}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="linearTeamId">
-          Team ID (optional)
-        </Label>
-        <TemplateBadgeInput
-          disabled={disabled}
-          id="linearTeamId"
-          onChange={(value) => onUpdateConfig("linearTeamId", value)}
-          placeholder="team-id-456 or {{NodeName.teamId}}"
-          value={(config?.linearTeamId as string) || ""}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="linearStatus">
-          Status (optional)
-        </Label>
-        <Select
-          disabled={disabled}
-          onValueChange={(value) => onUpdateConfig("linearStatus", value)}
-          value={(config?.linearStatus as string) || "any"}
-        >
-          <SelectTrigger className="w-full" id="linearStatus">
-            <SelectValue placeholder="Any status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="any">Any</SelectItem>
-            <SelectItem value="backlog">Backlog</SelectItem>
-            <SelectItem value="todo">Todo</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="done">Done</SelectItem>
-            <SelectItem value="canceled">Canceled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="linearLabel">
-          Label (optional)
-        </Label>
-        <TemplateBadgeInput
-          disabled={disabled}
-          id="linearLabel"
-          onChange={(value) => onUpdateConfig("linearLabel", value)}
-          placeholder="bug, feature, etc. or {{NodeName.label}}"
-          value={(config?.linearLabel as string) || ""}
-        />
-      </div>
-    </>
-  );
-}
-
 // Database Query fields component
 function DatabaseQueryFields({
   config,
@@ -435,25 +361,14 @@ export function ActionConfig({
         />
       )}
 
-      {/* Find Issues - kept hardcoded (Linear plugin incomplete) */}
-      {config?.actionType === "Find Issues" && (
-        <FindIssuesFields
+      {/* Plugin actions - dynamic config fields */}
+      {pluginAction && !SYSTEM_ACTIONS.includes(actionType) && (
+        <pluginAction.configFields
           config={config}
           disabled={disabled}
-          onUpdateConfig={onUpdateConfig}
+          onUpdateConfig={handlePluginUpdateConfig}
         />
       )}
-
-      {/* Plugin actions - dynamic config fields */}
-      {pluginAction &&
-        !SYSTEM_ACTIONS.includes(actionType) &&
-        actionType !== "Find Issues" && (
-          <pluginAction.configFields
-            config={config}
-            disabled={disabled}
-            onUpdateConfig={handlePluginUpdateConfig}
-          />
-        )}
     </>
   );
 }

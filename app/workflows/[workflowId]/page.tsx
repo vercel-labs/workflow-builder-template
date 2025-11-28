@@ -711,7 +711,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
             {/* Hover indicator */}
             <div className="absolute inset-y-0 left-0 w-1 bg-transparent transition-colors group-hover:bg-blue-500 group-active:bg-blue-600" />
             {/* Collapse button - hidden while resizing */}
-            {!isDraggingResize && !panelCollapsed && (
+            {!(isDraggingResize || panelCollapsed) && (
               <button
                 className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-0 flex size-6 items-center justify-center rounded-full border bg-background opacity-0 shadow-sm transition-opacity hover:bg-muted group-hover:opacity-100"
                 onClick={(e) => {
