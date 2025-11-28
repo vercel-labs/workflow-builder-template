@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -38,6 +38,7 @@ import {
   edgesAtom,
   isGeneratingAtom,
   nodesAtom,
+  pendingIntegrationNodesAtom,
   propertiesPanelActiveTabAtom,
   selectedEdgeAtom,
   selectedNodeAtom,
@@ -61,6 +62,11 @@ import { WorkflowRuns } from "./workflow-runs";
 // Regex constants
 const NON_ALPHANUMERIC_REGEX = /[^a-zA-Z0-9\s]/g;
 const WORD_SPLIT_REGEX = /\s+/;
+
+// System actions that need integrations (not in plugin registry)
+const SYSTEM_ACTION_INTEGRATIONS: Record<string, IntegrationType> = {
+  "Database Query": "database",
+};
 
 // Multi-selection panel component
 const MultiSelectionPanel = ({
@@ -154,6 +160,7 @@ export const PanelInner = () => {
   const setShowClearDialog = useSetAtom(showClearDialogAtom);
   const setShowDeleteDialog = useSetAtom(showDeleteDialogAtom);
   const clearNodeStatuses = useSetAtom(clearNodeStatusesAtom);
+  const setPendingIntegrationNodes = useSetAtom(pendingIntegrationNodesAtom);
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
@@ -161,6 +168,9 @@ export const PanelInner = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
+  const autoSelectAbortControllersRef = useRef<Record<string, AbortController>>(
+    {}
+  );
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
 
@@ -252,11 +262,99 @@ export const PanelInner = () => {
       updateNodeData({ id: selectedNode.id, data: { description } });
     }
   };
+  const autoSelectIntegration = useCallback(
+    async (
+      nodeId: string,
+      actionType: string,
+      currentConfig: Record<string, unknown>,
+      abortSignal: AbortSignal
+    ) => {
+      // Get integration type - check plugin registry first, then system actions
+      const action = findActionById(actionType);
+      const integrationType: IntegrationType | undefined =
+        (action?.integration as IntegrationType | undefined) ||
+        SYSTEM_ACTION_INTEGRATIONS[actionType];
+
+      if (!integrationType) {
+        // No integration needed, remove from pending
+        setPendingIntegrationNodes((prev: Set<string>) => {
+          const next = new Set(prev);
+          next.delete(nodeId);
+          return next;
+        });
+        return;
+      }
+
+      try {
+        const all = await api.integration.getAll();
+
+        // Check if this operation was aborted (actionType changed)
+        if (abortSignal.aborted) {
+          return;
+        }
+
+        const filtered = all.filter((i) => i.type === integrationType);
+
+        // Auto-select if only one integration exists
+        if (filtered.length === 1 && !abortSignal.aborted) {
+          const newConfig = {
+            ...currentConfig,
+            actionType,
+            integrationId: filtered[0].id,
+          };
+          updateNodeData({ id: nodeId, data: { config: newConfig } });
+        }
+      } catch (error) {
+        console.error("Failed to auto-select integration:", error);
+      } finally {
+        // Always remove from pending set when done (unless aborted)
+        if (!abortSignal.aborted) {
+          setPendingIntegrationNodes((prev: Set<string>) => {
+            const next = new Set(prev);
+            next.delete(nodeId);
+            return next;
+          });
+        }
+      }
+    },
+    [updateNodeData, setPendingIntegrationNodes]
+  );
 
   const handleUpdateConfig = (key: string, value: string) => {
     if (selectedNode) {
-      const newConfig = { ...selectedNode.data.config, [key]: value };
+      let newConfig = { ...selectedNode.data.config, [key]: value };
+
+      // When action type changes, clear the integrationId since it may not be valid for the new action
+      if (key === "actionType" && selectedNode.data.config?.integrationId) {
+        newConfig = { ...newConfig, integrationId: undefined };
+      }
+
       updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
+
+      // When action type changes, auto-select integration if only one exists
+      if (key === "actionType") {
+        // Cancel any pending auto-select operation for this node
+        const existingController =
+          autoSelectAbortControllersRef.current[selectedNode.id];
+        if (existingController) {
+          existingController.abort();
+        }
+
+        // Create new AbortController for this operation
+        const newController = new AbortController();
+        autoSelectAbortControllersRef.current[selectedNode.id] = newController;
+
+        // Add to pending set before starting async check
+        setPendingIntegrationNodes((prev: Set<string>) =>
+          new Set(prev).add(selectedNode.id)
+        );
+        autoSelectIntegration(
+          selectedNode.id,
+          value,
+          newConfig,
+          newController.signal
+        );
+      }
     }
   };
 

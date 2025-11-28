@@ -39,6 +39,10 @@ export const hasSidebarBeenShownAtom = atom<boolean>(false);
 export const isSidebarCollapsedAtom = atom<boolean>(false);
 export const isTransitioningFromHomepageAtom = atom<boolean>(false);
 
+// Tracks nodes that are pending integration auto-select check
+// Don't show "missing integration" warning for these nodes
+export const pendingIntegrationNodesAtom = atom<Set<string>>(new Set<string>());
+
 // Execution log entry type for storing run outputs per node
 export type ExecutionLogEntry = {
   nodeId: string;
