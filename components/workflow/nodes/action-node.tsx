@@ -20,7 +20,6 @@ import {
   NodeTitle,
 } from "@/components/ai-elements/node";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { cn } from "@/lib/utils";
 import {
   executionLogsAtom,
@@ -28,6 +27,7 @@ import {
   selectedExecutionIdAtom,
   type WorkflowNodeData,
 } from "@/lib/workflow-store";
+import { findActionById, getIntegration } from "@/plugins";
 
 // Helper to get display name for AI model
 const getModelDisplayName = (modelId: string): string => {
@@ -66,24 +66,29 @@ const getModelDisplayName = (modelId: string): string => {
   return modelNames[modelId] || modelId;
 };
 
+// System action labels (non-plugin actions)
+const SYSTEM_ACTION_LABELS: Record<string, string> = {
+  "HTTP Request": "System",
+  "Database Query": "Database",
+  Condition: "Condition",
+  "Execute Code": "System",
+};
+
 // Helper to get integration name from action type
 const getIntegrationFromActionType = (actionType: string): string => {
-  const integrationMap: Record<string, string> = {
-    "Send Email": "Resend",
-    "Send Slack Message": "Slack",
-    "Create Ticket": "Linear",
-    "Find Issues": "Linear",
-    "HTTP Request": "System",
-    "Database Query": "Database",
-    "Generate Text": "AI Gateway",
-    "Generate Image": "AI Gateway",
-    Scrape: "Firecrawl",
-    Search: "Firecrawl",
-    Condition: "Condition",
-    "Create Chat": "v0",
-    "Send Message": "v0",
-  };
-  return integrationMap[actionType] || "System";
+  // Check if it's a system action first
+  if (SYSTEM_ACTION_LABELS[actionType]) {
+    return SYSTEM_ACTION_LABELS[actionType];
+  }
+
+  // Look up in plugin registry
+  const action = findActionById(actionType);
+  if (action?.integration) {
+    const plugin = getIntegration(action.integration);
+    return plugin?.label || "System";
+  }
+
+  return "System";
 };
 
 // Helper to detect if output is a base64 image from generateImage step
@@ -99,20 +104,15 @@ function isBase64ImageOutput(output: unknown): output is { base64: string } {
 
 // Helper to check if an action requires an integration
 const requiresIntegration = (actionType: string): boolean => {
-  const requiresIntegrationActions = [
-    "Send Email",
-    "Send Slack Message",
-    "Create Ticket",
-    "Find Issues",
-    "Generate Text",
-    "Generate Image",
-    "Database Query",
-    "Scrape",
-    "Search",
-    "Create Chat",
-    "Send Message",
-  ];
-  return requiresIntegrationActions.includes(actionType);
+  // System actions that require integration configuration
+  const systemActionsRequiringIntegration = ["Database Query"];
+  if (systemActionsRequiringIntegration.includes(actionType)) {
+    return true;
+  }
+
+  // Plugin actions always require integration
+  const action = findActionById(actionType);
+  return action !== undefined;
 };
 
 // Helper to check if integration is configured
@@ -122,34 +122,30 @@ const hasIntegrationConfigured = (config: Record<string, unknown>): boolean =>
 
 // Helper to get provider logo for action type
 const getProviderLogo = (actionType: string) => {
+  // Check for system actions first (non-plugin)
   switch (actionType) {
-    case "Send Email":
-      return <IntegrationIcon className="size-12" integration="resend" />;
-    case "Send Slack Message":
-      return <IntegrationIcon className="size-12" integration="slack" />;
-    case "Create Ticket":
-    case "Find Issues":
-      return <IntegrationIcon className="size-12" integration="linear" />;
     case "HTTP Request":
       return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
     case "Database Query":
       return <Database className="size-12 text-blue-300" strokeWidth={1.5} />;
-    case "Generate Text":
-    case "Generate Image":
-      return <IntegrationIcon className="size-12" integration="vercel" />;
-    case "Scrape":
-    case "Search":
-      return <IntegrationIcon className="size-12" integration="firecrawl" />;
     case "Execute Code":
       return <Code className="size-12 text-green-300" strokeWidth={1.5} />;
     case "Condition":
       return <GitBranch className="size-12 text-pink-300" strokeWidth={1.5} />;
-    case "Create Chat":
-    case "Send Message":
-      return <IntegrationIcon className="size-12" integration="v0" />;
     default:
-      return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
+      // Not a system action, continue to check plugin registry
+      break;
   }
+
+  // Look up action in plugin registry
+  const action = findActionById(actionType);
+  if (action) {
+    const ActionIcon = action.icon;
+    return <ActionIcon className="size-12" />;
+  }
+
+  // Fallback for unknown actions
+  return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
 };
 
 // Status badge component

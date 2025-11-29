@@ -2,6 +2,7 @@ import "server-only";
 
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import type { IntegrationConfig, IntegrationType } from "../types/integration";
 import { db } from "./index";
 import { integrations, type NewIntegration } from "./schema";
 
@@ -93,31 +94,6 @@ function decryptConfig(encryptedConfig: string): Record<string, unknown> {
     return {};
   }
 }
-
-export type IntegrationType =
-  | "resend"
-  | "linear"
-  | "slack"
-  | "database"
-  | "ai-gateway"
-  | "firecrawl"
-  | "v0";
-
-export type IntegrationConfig = {
-  // Resend
-  apiKey?: string;
-  fromEmail?: string;
-  // Linear
-  teamId?: string;
-  // Slack (uses apiKey)
-  // Database
-  url?: string;
-  // AI Gateway
-  openaiApiKey?: string;
-  // Firecrawl
-  firecrawlApiKey?: string;
-  // v0 (uses apiKey)
-};
 
 export type DecryptedIntegration = {
   id: string;

@@ -1,3 +1,4 @@
+import { findActionById } from "@/plugins";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 // Regex patterns at top level for performance
@@ -284,65 +285,53 @@ export function processAiSchema(aiSchema: string | undefined): string | null {
   }
 }
 
+// System actions that don't have plugins (step info for generated code)
+const SYSTEM_STEP_INFO: Record<
+  string,
+  { functionName: string; importPath: string }
+> = {
+  "Database Query": {
+    functionName: "databaseQueryStep",
+    importPath: "./steps/database-query-step",
+  },
+  "HTTP Request": {
+    functionName: "httpRequestStep",
+    importPath: "./steps/http-request-step",
+  },
+  Condition: {
+    functionName: "conditionStep",
+    importPath: "./steps/condition-step",
+  },
+};
+
 /**
  * Helper to convert action type to step function name and import path
+ * Uses plugin registry for plugin actions, hardcoded map for system actions
  */
 export function getStepInfo(actionType: string): {
   functionName: string;
   importPath: string;
 } {
-  const stepMap: Record<string, { functionName: string; importPath: string }> =
-    {
-      "Generate Text": {
-        functionName: "generateTextStep",
-        importPath: "./steps/generate-text-step",
-      },
-      "Send Email": {
-        functionName: "sendEmailStep",
-        importPath: "./steps/send-email-step",
-      },
-      "Send Slack Message": {
-        functionName: "sendSlackMessageStep",
-        importPath: "./steps/send-slack-message-step",
-      },
-      "Create Ticket": {
-        functionName: "createTicketStep",
-        importPath: "./steps/create-ticket-step",
-      },
-      "Generate Image": {
-        functionName: "generateImageStep",
-        importPath: "./steps/generate-image-step",
-      },
-      "Database Query": {
-        functionName: "databaseQueryStep",
-        importPath: "./steps/database-query-step",
-      },
-      "HTTP Request": {
-        functionName: "httpRequestStep",
-        importPath: "./steps/http-request-step",
-      },
-      Scrape: {
-        functionName: "firecrawlScrapeStep",
-        importPath: "./steps/firecrawl",
-      },
-      Search: {
-        functionName: "firecrawlSearchStep",
-        importPath: "./steps/firecrawl",
-      },
-      "Create Chat": {
-        functionName: "createChatStep",
-        importPath: "./steps/v0",
-      },
-      "Send Message": {
-        functionName: "sendMessageStep",
-        importPath: "./steps/v0",
-      },
-    };
+  // Check system actions first
+  const systemInfo = SYSTEM_STEP_INFO[actionType];
+  if (systemInfo) {
+    return systemInfo;
+  }
 
-  return (
-    stepMap[actionType] || {
-      functionName: "unknownStep",
-      importPath: "./steps/unknown-step",
-    }
-  );
+  // Look up in plugin registry
+  const action = findActionById(actionType);
+  if (action) {
+    return {
+      functionName: action.stepFunction,
+      // Convert plugin's stepImportPath to generated code import path
+      // Plugin uses "send-email", generated code uses "./steps/send-email-step"
+      importPath: `./steps/${action.stepImportPath}-step`,
+    };
+  }
+
+  // Fallback for unknown actions
+  return {
+    functionName: "unknownStep",
+    importPath: "./steps/unknown-step",
+  };
 }

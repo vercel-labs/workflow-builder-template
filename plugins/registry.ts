@@ -1,4 +1,4 @@
-import type { IntegrationType } from "@/lib/db/integrations";
+import type { IntegrationType } from "@/lib/types/integration";
 
 /**
  * Integration Plugin Definition

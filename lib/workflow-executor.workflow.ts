@@ -3,10 +3,30 @@
  * This executor captures step executions through the workflow SDK for better observability
  */
 
+import { getStepImporter, type StepImporter } from "./step-registry";
 import type { StepContext } from "./steps/step-handler";
 import { triggerStep } from "./steps/trigger";
 import { getErrorMessageAsync } from "./utils";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
+
+// System actions that don't have plugins - maps to module import functions
+const SYSTEM_ACTIONS: Record<string, StepImporter> = {
+  "Database Query": {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/database-query") as Promise<any>,
+    stepFunction: "databaseQueryStep",
+  },
+  "HTTP Request": {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/http-request") as Promise<any>,
+    stepFunction: "httpRequestStep",
+  },
+  Condition: {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/condition") as Promise<any>,
+    stepFunction: "conditionStep",
+  },
+};
 
 type ExecutionResult = {
   success: boolean;
@@ -25,212 +45,169 @@ export type WorkflowExecutionInput = {
 };
 
 /**
+ * Helper to replace template variables in conditions
+ */
+// biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
+function replaceTemplateVariable(
+  match: string,
+  nodeId: string,
+  rest: string,
+  outputs: NodeOutputs,
+  evalContext: Record<string, unknown>,
+  varCounter: { value: number }
+): string {
+  const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
+  const output = outputs[sanitizedNodeId];
+
+  if (!output) {
+    console.log("[Condition] Output not found for node:", sanitizedNodeId);
+    return match;
+  }
+
+  const dotIndex = rest.indexOf(".");
+  let value: unknown;
+
+  if (dotIndex === -1) {
+    value = output.data;
+  } else if (output.data === null || output.data === undefined) {
+    value = undefined;
+  } else {
+    const fieldPath = rest.substring(dotIndex + 1);
+    const fields = fieldPath.split(".");
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic data traversal
+    let current: any = output.data;
+
+    for (const field of fields) {
+      if (current && typeof current === "object") {
+        current = current[field];
+      } else {
+        console.log("[Condition] Field access failed:", fieldPath);
+        value = undefined;
+        break;
+      }
+    }
+    if (value === undefined && current !== undefined) {
+      value = current;
+    }
+  }
+
+  const varName = `__v${varCounter.value}`;
+  varCounter.value += 1;
+  evalContext[varName] = value;
+  return varName;
+}
+
+/**
+ * Evaluate condition expression with template variable replacement
+ * Uses Function constructor to evaluate user-defined conditions dynamically
+ */
+function evaluateConditionExpression(
+  conditionExpression: unknown,
+  outputs: NodeOutputs
+): boolean {
+  console.log("[Condition] Original expression:", conditionExpression);
+
+  if (typeof conditionExpression === "boolean") {
+    return conditionExpression;
+  }
+
+  if (typeof conditionExpression === "string") {
+    try {
+      const evalContext: Record<string, unknown> = {};
+      let transformedExpression = conditionExpression;
+      const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
+      const varCounter = { value: 0 };
+
+      transformedExpression = transformedExpression.replace(
+        templatePattern,
+        (match, nodeId, rest) =>
+          replaceTemplateVariable(
+            match,
+            nodeId,
+            rest,
+            outputs,
+            evalContext,
+            varCounter
+          )
+      );
+
+      const varNames = Object.keys(evalContext);
+      const varValues = Object.values(evalContext);
+
+      // Note: Function constructor is used here to evaluate user-defined workflow conditions
+      // This is an intentional feature for dynamic condition evaluation in workflows
+      const evalFunc = new Function(
+        ...varNames,
+        `return (${transformedExpression});`
+      );
+      const result = evalFunc(...varValues);
+      return Boolean(result);
+    } catch (error) {
+      console.error("[Condition] Failed to evaluate condition:", error);
+      console.error("[Condition] Expression was:", conditionExpression);
+      return false;
+    }
+  }
+
+  return Boolean(conditionExpression);
+}
+
+/**
  * Execute a single action step with logging via stepHandler
  * IMPORTANT: Steps receive only the integration ID as a reference to fetch credentials.
  * This prevents credentials from being logged in Vercel's workflow observability.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type dispatch requires branching logic
 async function executeActionStep(input: {
   actionType: string;
   config: Record<string, unknown>;
   outputs: NodeOutputs;
   context: StepContext;
 }) {
-  const { actionType, config, context } = input;
-
-  // Helper to replace template variables in conditions
-  // biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Template variable replacement requires nested logic for field access
-  function replaceTemplateVariable(
-    match: string,
-    nodeId: string,
-    rest: string,
-    evalContext: Record<string, unknown>,
-    varCounter: { value: number }
-  ): string {
-    const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
-    const output = input.outputs[sanitizedNodeId];
-
-    if (!output) {
-      console.log("[Condition] Output not found for node:", sanitizedNodeId);
-      return match;
-    }
-
-    const dotIndex = rest.indexOf(".");
-    let value: unknown;
-
-    if (dotIndex === -1) {
-      value = output.data;
-    } else if (output.data === null || output.data === undefined) {
-      // If data is null/undefined (e.g., from disabled node), assign undefined
-      value = undefined;
-    } else {
-      const fieldPath = rest.substring(dotIndex + 1);
-      const fields = fieldPath.split(".");
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic data traversal
-      let current: any = output.data;
-
-      for (const field of fields) {
-        if (current && typeof current === "object") {
-          current = current[field];
-        } else {
-          console.log("[Condition] Field access failed:", fieldPath);
-          value = undefined;
-          break;
-        }
-      }
-      if (value === undefined && current !== undefined) {
-        value = current;
-      }
-    }
-
-    const varName = `__v${varCounter.value}`;
-    varCounter.value += 1;
-    evalContext[varName] = value;
-    return varName;
-  }
+  const { actionType, config, outputs, context } = input;
 
   // Build step input WITHOUT credentials, but WITH integrationId reference and logging context
-  // Steps will fetch credentials internally using this reference
-  // Steps handle their own logging via withStepLogging using _context
   const stepInput: Record<string, unknown> = {
     ...config,
     _context: context,
   };
 
-  // Import and execute the appropriate step function
-  // Step functions load credentials from process.env themselves
-  // Each step handles its own logging internally via withStepLogging
-  if (actionType === "Send Email") {
-    const { sendEmailStep } = await import(
-      "../plugins/resend/steps/send-email/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await sendEmailStep(stepInput as any);
-  }
-  if (actionType === "Send Slack Message") {
-    const { sendSlackMessageStep } = await import(
-      "../plugins/slack/steps/send-slack-message/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await sendSlackMessageStep(stepInput as any);
-  }
-  if (actionType === "Create Ticket") {
-    const { createTicketStep } = await import(
-      "../plugins/linear/steps/create-ticket/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await createTicketStep(stepInput as any);
-  }
-  if (actionType === "Generate Text") {
-    const { generateTextStep } = await import(
-      "../plugins/ai-gateway/steps/generate-text/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await generateTextStep(stepInput as any);
-  }
-  if (actionType === "Generate Image") {
-    const { generateImageStep } = await import(
-      "../plugins/ai-gateway/steps/generate-image/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await generateImageStep(stepInput as any);
-  }
-  if (actionType === "Database Query") {
-    const { databaseQueryStep } = await import("./steps/database-query");
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await databaseQueryStep(stepInput as any);
-  }
-  if (actionType === "HTTP Request") {
-    const { httpRequestStep } = await import("./steps/http-request");
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await httpRequestStep(stepInput as any);
-  }
+  // Special handling for Condition action - needs template evaluation
   if (actionType === "Condition") {
-    const { conditionStep } = await import("./steps/condition");
-    // Special handling for condition: process templates and evaluate as JavaScript
-    // The condition field is kept as original template string for proper evaluation
-    const conditionExpression = stepInput.condition;
-    let evaluatedCondition: boolean;
-
-    console.log("[Condition] Original expression:", conditionExpression);
-
-    if (typeof conditionExpression === "boolean") {
-      evaluatedCondition = conditionExpression;
-    } else if (typeof conditionExpression === "string") {
-      try {
-        const evalContext: Record<string, unknown> = {};
-        let transformedExpression = conditionExpression;
-        const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
-        const varCounter = { value: 0 };
-
-        transformedExpression = transformedExpression.replace(
-          templatePattern,
-          (match, nodeId, rest) =>
-            replaceTemplateVariable(
-              match,
-              nodeId,
-              rest,
-              evalContext,
-              varCounter
-            )
-        );
-
-        const varNames = Object.keys(evalContext);
-        const varValues = Object.values(evalContext);
-
-        const evalFunc = new Function(
-          ...varNames,
-          `return (${transformedExpression});`
-        );
-        const result = evalFunc(...varValues);
-        evaluatedCondition = Boolean(result);
-      } catch (error) {
-        console.error("[Condition] Failed to evaluate condition:", error);
-        console.error("[Condition] Expression was:", conditionExpression);
-        // If evaluation fails, treat as false to be safe
-        evaluatedCondition = false;
-      }
-    } else {
-      // Coerce to boolean for other types
-      evaluatedCondition = Boolean(conditionExpression);
-    }
-
+    const systemAction = SYSTEM_ACTIONS.Condition;
+    const module = await systemAction.importer();
+    const evaluatedCondition = evaluateConditionExpression(
+      stepInput.condition,
+      outputs
+    );
     console.log("[Condition] Final result:", evaluatedCondition);
 
-    return await conditionStep({
+    return await module[systemAction.stepFunction]({
       condition: evaluatedCondition,
       _context: context,
     });
   }
 
-  if (actionType === "Scrape") {
-    const { firecrawlScrapeStep } = await import(
-      "../plugins/firecrawl/steps/scrape/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await firecrawlScrapeStep(stepInput as any);
+  // Check system actions first (Database Query, HTTP Request)
+  const systemAction = SYSTEM_ACTIONS[actionType];
+  if (systemAction) {
+    const module = await systemAction.importer();
+    const stepFunction = module[systemAction.stepFunction];
+    return await stepFunction(stepInput);
   }
-  if (actionType === "Search") {
-    const { firecrawlSearchStep } = await import(
-      "../plugins/firecrawl/steps/search/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await firecrawlSearchStep(stepInput as any);
-  }
-  if (actionType === "Create Chat") {
-    const { createChatStep } = await import(
-      "../plugins/v0/steps/create-chat/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await createChatStep(stepInput as any);
-  }
-  if (actionType === "Send Message") {
-    const { sendMessageStep } = await import(
-      "../plugins/v0/steps/send-message/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await sendMessageStep(stepInput as any);
+
+  // Look up plugin action from the generated step registry
+  const stepImporter = getStepImporter(actionType);
+  if (stepImporter) {
+    const module = await stepImporter.importer();
+    const stepFunction = module[stepImporter.stepFunction];
+    if (stepFunction) {
+      return await stepFunction(stepInput);
+    }
+
+    return {
+      success: false,
+      error: `Step function "${stepImporter.stepFunction}" not found in module`,
+    };
   }
 
   // Fallback for unknown action types

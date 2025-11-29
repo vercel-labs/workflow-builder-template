@@ -1,18 +1,18 @@
 import "server-only";
 
-import { generateImageCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-image";
-import { generateTextCodegenTemplate } from "../plugins/ai-gateway/codegen/generate-text";
-import { scrapeCodegenTemplate } from "../plugins/firecrawl/codegen/scrape";
-import { searchCodegenTemplate } from "../plugins/firecrawl/codegen/search";
-import { createTicketCodegenTemplate } from "../plugins/linear/codegen/create-ticket";
-import { sendEmailCodegenTemplate } from "../plugins/resend/codegen/send-email";
-import { sendSlackMessageCodegenTemplate } from "../plugins/slack/codegen/send-slack-message";
-import { createChatCodegenTemplate } from "../plugins/v0/codegen/create-chat";
-import { sendMessageCodegenTemplate } from "../plugins/v0/codegen/send-message";
-// Import codegen templates directly
+import { findActionById } from "@/plugins";
+// System action codegen templates (not in plugin registry)
 import conditionTemplate from "./codegen-templates/condition";
 import databaseQueryTemplate from "./codegen-templates/database-query";
 import httpRequestTemplate from "./codegen-templates/http-request";
+
+// System actions that don't have plugins
+const SYSTEM_CODEGEN_TEMPLATES: Record<string, string> = {
+  "Database Query": databaseQueryTemplate,
+  "HTTP Request": httpRequestTemplate,
+  Condition: conditionTemplate,
+};
+
 import {
   ARRAY_INDEX_PATTERN,
   analyzeNodeUsage,
@@ -27,28 +27,23 @@ import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 /**
  * Load step implementation from templates
+ * Uses plugin registry for plugin actions, hardcoded templates for system actions
  */
 const FUNCTION_BODY_REGEX =
   /export\s+(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{([\s\S]*)\}/;
 
 function loadStepImplementation(actionType: string): string | null {
-  const templateMap: Record<string, string> = {
-    "Send Email": sendEmailCodegenTemplate,
-    "Send Slack Message": sendSlackMessageCodegenTemplate,
-    "Create Ticket": createTicketCodegenTemplate,
-    "Find Issues": createTicketCodegenTemplate, // Uses same template for now
-    "Generate Text": generateTextCodegenTemplate,
-    "Generate Image": generateImageCodegenTemplate,
-    "Database Query": databaseQueryTemplate,
-    Scrape: scrapeCodegenTemplate,
-    Search: searchCodegenTemplate,
-    "HTTP Request": httpRequestTemplate,
-    Condition: conditionTemplate,
-    "Create Chat": createChatCodegenTemplate,
-    "Send Message": sendMessageCodegenTemplate,
-  };
+  // Check system actions first
+  let template = SYSTEM_CODEGEN_TEMPLATES[actionType];
 
-  const template = templateMap[actionType];
+  // Look up plugin action from registry if not a system action
+  if (!template) {
+    const action = findActionById(actionType);
+    if (action?.codegenTemplate) {
+      template = action.codegenTemplate;
+    }
+  }
+
   if (!template) {
     return null;
   }
@@ -161,227 +156,6 @@ function convertTemplateToJS(template: string): string {
 
     return match;
   });
-}
-
-// Helper to generate Send Email step body
-function _generateSendEmailStepBody(
-  config: Record<string, unknown>,
-  imports: Set<string>
-): string {
-  imports.add("import { Resend } from 'resend';");
-  const emailTo = (config.emailTo as string) || "user@example.com";
-  const emailSubject = (config.emailSubject as string) || "Notification";
-  const emailBody = (config.emailBody as string) || "No content";
-
-  const convertedEmailTo = convertTemplateToJS(emailTo);
-  const convertedSubject = convertTemplateToJS(emailSubject);
-  const convertedBody = convertTemplateToJS(emailBody);
-
-  return `  const resend = new Resend(process.env.RESEND_API_KEY);
-  
-  // Use template literals with dynamic values from outputs
-  const emailTo = \`${escapeForTemplateLiteral(convertedEmailTo)}\`;
-  const emailSubject = \`${escapeForTemplateLiteral(convertedSubject)}\`;
-  const emailBody = \`${escapeForTemplateLiteral(convertedBody)}\`;
-  
-  const result = await resend.emails.send({
-    from: '${config.resendFromEmail || "onboarding@resend.dev"}',
-    to: (input.emailTo as string) || emailTo,
-    subject: (input.emailSubject as string) || emailSubject,
-    text: (input.emailBody as string) || emailBody,
-  });
-  
-  return result;`;
-}
-
-// Helper to generate Send Slack Message step body
-function _generateSendSlackMessageStepBody(
-  config: Record<string, unknown>,
-  imports: Set<string>
-): string {
-  imports.add("import { WebClient } from '@slack/web-api';");
-  const slackMessage = (config.slackMessage as string) || "No message";
-  const slackChannel = (config.slackChannel as string) || "#general";
-  const convertedSlackMessage = convertTemplateToJS(slackMessage);
-  const convertedSlackChannel = convertTemplateToJS(slackChannel);
-
-  return `  const slack = new WebClient(process.env.SLACK_API_KEY);
-  
-  // Use template literals with dynamic values from outputs
-  const slackMessage = \`${escapeForTemplateLiteral(convertedSlackMessage)}\`;
-  const slackChannel = \`${escapeForTemplateLiteral(convertedSlackChannel)}\`;
-  
-  const result = await slack.chat.postMessage({
-    channel: (input.slackChannel as string) || slackChannel,
-    text: (input.slackMessage as string) || slackMessage,
-  });
-  
-  return result;`;
-}
-
-// Helper to generate Create Ticket step body
-function _generateCreateTicketStepBody(
-  config: Record<string, unknown>,
-  imports: Set<string>
-): string {
-  imports.add("import { LinearClient } from '@linear/sdk';");
-  const ticketTitle = (config.ticketTitle as string) || "New Issue";
-  const ticketDescription = (config.ticketDescription as string) || "";
-  const convertedTitle = convertTemplateToJS(ticketTitle);
-  const convertedDescription = convertTemplateToJS(ticketDescription);
-
-  return `  const linear = new LinearClient({ apiKey: process.env.LINEAR_API_KEY });
-  
-  // Use template literals with dynamic values from outputs
-  const ticketTitle = \`${escapeForTemplateLiteral(convertedTitle)}\`;
-  const ticketDescription = \`${escapeForTemplateLiteral(convertedDescription)}\`;
-  
-  const issue = await linear.issueCreate({
-    title: (input.ticketTitle as string) || ticketTitle,
-    description: (input.ticketDescription as string) || ticketDescription,
-    teamId: process.env.LINEAR_TEAM_ID!,
-  });
-  
-  return issue;`;
-}
-
-// Helper to generate Generate Text step body
-function _generateGenerateTextStepBody(
-  config: Record<string, unknown>,
-  imports: Set<string>
-): string {
-  imports.add("import { generateText, generateObject } from 'ai';");
-  imports.add("import { z } from 'zod';");
-  const modelId = (config.aiModel as string) || "gpt-5";
-  const provider =
-    modelId.startsWith("gpt-") || modelId.startsWith("o1")
-      ? "openai"
-      : "anthropic";
-  const aiPrompt = (config.aiPrompt as string) || "";
-  const convertedPrompt = convertTemplateToJS(aiPrompt);
-
-  return `  // Use template literal with dynamic values from outputs
-  const aiPrompt = \`${escapeForTemplateLiteral(convertedPrompt)}\`;
-  const finalPrompt = (input.aiPrompt as string) || aiPrompt;
-  
-  // Handle structured output if schema is provided
-  if (input.aiFormat === 'object' && input.aiSchema) {
-    try {
-      const schema = JSON.parse(input.aiSchema as string);
-      
-      // Build Zod schema from the schema definition
-      const schemaShape: Record<string, z.ZodTypeAny> = {};
-      for (const field of schema) {
-        if (field.type === 'string') {
-          schemaShape[field.name] = z.string();
-        } else if (field.type === 'number') {
-          schemaShape[field.name] = z.number();
-        } else if (field.type === 'boolean') {
-          schemaShape[field.name] = z.boolean();
-        }
-      }
-      
-      const zodSchema = z.object(schemaShape);
-
-      const { object } = await generateObject({
-        model: '${provider}/${modelId}',
-        prompt: finalPrompt,
-        schema: zodSchema,
-      });
-
-      return object;
-    } catch {
-      // If structured output fails, fall back to text generation
-    }
-  }
-  
-  const { text } = await generateText({
-    model: '${provider}/${modelId}',
-    prompt: finalPrompt,
-  });
-  
-  return { text };`;
-}
-
-// Helper to generate Generate Image step body
-function _generateGenerateImageStepBody(
-  config: Record<string, unknown>,
-  imports: Set<string>
-): string {
-  imports.add("import OpenAI from 'openai';");
-  const imagePrompt = (config.imagePrompt as string) || "";
-  const convertedImagePrompt = convertTemplateToJS(imagePrompt);
-
-  return `  const openai = new OpenAI({ apiKey: process.env.AI_GATEWAY_API_KEY });
-  
-  // Use template literal with dynamic values from outputs
-  const imagePrompt = \`${escapeForTemplateLiteral(convertedImagePrompt)}\`;
-  const finalPrompt = (input.imagePrompt as string) || imagePrompt;
-  
-  const response = await openai.images.generate({
-    model: '${config.imageModel || "google/imagen-4.0-generate"}',
-    prompt: finalPrompt,
-    n: 1,
-    response_format: 'b64_json',
-  });
-  
-  return { base64: response.data[0].b64_json };`;
-}
-
-// Helper to generate Database Query step body
-function _generateDatabaseQueryStepBody(
-  config: Record<string, unknown>
-): string {
-  const dbQuery = (config.dbQuery as string) || "SELECT 1";
-  const convertedQuery = convertTemplateToJS(dbQuery);
-
-  return `  // Database Query - You need to set up your database connection
-  // Install: pnpm add postgres (or your preferred database library)
-  // Set DATABASE_URL in your environment variables
-  
-  // Use template literal with dynamic values from outputs
-  const query = \`${escapeForTemplateLiteral(convertedQuery)}\`;
-  const finalQuery = (input.dbQuery as string) || query;
-  
-  // Example using postgres library:
-  // import postgres from 'postgres';
-  // const sql = postgres(process.env.DATABASE_URL!);
-  // const result = await sql.unsafe(finalQuery);
-  // await sql.end();
-  
-  throw new Error('Database Query not implemented - see comments in generated code');`;
-}
-
-// Helper to generate HTTP Request step body
-function _generateHTTPRequestStepBody(config: Record<string, unknown>): string {
-  let headersCode = "'Content-Type': 'application/json'";
-  if (config.httpHeaders) {
-    try {
-      const headers =
-        typeof config.httpHeaders === "string"
-          ? JSON.parse(config.httpHeaders as string)
-          : config.httpHeaders;
-      const headerEntries = Object.entries(headers as Record<string, string>)
-        .map(([key, value]) => `'${key}': '${value}'`)
-        .join(",\n      ");
-      if (headerEntries) {
-        headersCode = headerEntries;
-      }
-    } catch {
-      headersCode = "'Content-Type': 'application/json'";
-    }
-  }
-
-  return `  const response = await fetch('${config.endpoint || "https://api.example.com"}', {
-    method: '${config.httpMethod || "POST"}',
-    headers: {
-      ${headersCode}
-    },
-    body: JSON.stringify(input),
-  });
-  
-  const data = await response.json();
-  return data;`;
 }
 
 // Helper to analyze which node outputs are used (extended from shared for SDK)
