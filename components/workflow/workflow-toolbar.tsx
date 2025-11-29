@@ -52,9 +52,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { api, type IntegrationType } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import { integrationsAtom } from "@/lib/integrations-store";
+import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
   canRedoAtom,

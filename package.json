@@ -15,7 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "discover-plugins": "node scripts/discover-plugins.mjs"
+    "discover-plugins": "tsx scripts/discover-plugins.ts"
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
@@ -59,6 +59,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "tsx": "^4.19.0",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -2,7 +2,7 @@
 
 import { Database, HelpCircle } from "lucide-react";
 import Image from "next/image";
-import type { IntegrationType } from "@/lib/db/integrations";
+import type { IntegrationType } from "@/lib/types/integration";
 import { cn } from "@/lib/utils";
 import { getIntegration } from "@/plugins";
 

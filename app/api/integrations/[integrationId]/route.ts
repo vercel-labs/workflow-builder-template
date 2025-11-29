@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 import {
   deleteIntegration,
   getIntegration,
-  type IntegrationConfig,
   updateIntegration,
 } from "@/lib/db/integrations";
+import type { IntegrationConfig } from "@/lib/types/integration";
 
 export type GetIntegrationResponse = {
   id: string;

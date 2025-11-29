@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { boolean, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import type { IntegrationType } from "../types/integration";
 import { generateId } from "../utils/id";
 
 // Better Auth tables
@@ -82,17 +83,7 @@ export const integrations = pgTable("integrations", {
     .notNull()
     .references(() => users.id),
   name: text("name").notNull(),
-  type: text("type")
-    .notNull()
-    .$type<
-      | "resend"
-      | "linear"
-      | "slack"
-      | "database"
-      | "ai-gateway"
-      | "firecrawl"
-      | "v0"
-    >(),
+  type: text("type").notNull().$type<IntegrationType>(),
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - encrypted credentials stored as JSON
   config: jsonb("config").notNull().$type<any>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
