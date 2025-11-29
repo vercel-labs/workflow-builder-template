@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   FileCode,
-  MenuIcon,
   RefreshCw,
   Trash2,
 } from "lucide-react";
@@ -47,9 +46,7 @@ import {
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
 import { findActionById } from "@/plugins";
-import { Panel } from "../ai-elements/panel";
 import { IntegrationsDialog } from "../settings/integrations-dialog";
-import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import { IntegrationSelector } from "../ui/integration-selector";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ActionConfig } from "./config/action-config";
@@ -143,7 +140,7 @@ const MultiSelectionPanel = ({
 };
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex UI logic with multiple conditions
-export const PanelInner = () => {
+export const NodeConfigPanel = () => {
   const [selectedNodeId] = useAtom(selectedNodeAtom);
   const [selectedEdgeId] = useAtom(selectedEdgeAtom);
   const [nodes] = useAtom(nodesAtom);
@@ -939,32 +936,6 @@ export const PanelInner = () => {
         onOpenChange={setShowIntegrationsDialog}
         open={showIntegrationsDialog}
       />
-    </>
-  );
-};
-export const NodeConfigPanel = () => {
-  return (
-    <>
-      {/* Mobile: Drawer */}
-      <div className="md:hidden">
-        <Drawer>
-          <DrawerTrigger asChild>
-            <Panel position="bottom-right">
-              <Button className="h-8 w-8" size="icon" variant="ghost">
-                <MenuIcon className="size-4" />
-              </Button>
-            </Panel>
-          </DrawerTrigger>
-          <DrawerContent>
-            <PanelInner />
-          </DrawerContent>
-        </Drawer>
-      </div>
-
-      {/* Desktop: Docked sidebar - now resizable */}
-      <div className="hidden size-full flex-col bg-background md:flex">
-        <PanelInner />
-      </div>
     </>
   );
 };

@@ -588,7 +588,11 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
               </button>
             )}
           </div>
-          <NodeConfigPanel />
+
+          {/* Desktop: Docked sidebar - now resizable */}
+          <div className="flex size-full flex-col bg-background">
+            <NodeConfigPanel />
+          </div>
         </div>
       )}
     </div>

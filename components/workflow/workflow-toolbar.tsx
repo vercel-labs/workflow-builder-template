@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { api, type IntegrationType } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import { integrationsAtom } from "@/lib/integrations-store";
@@ -91,7 +91,7 @@ import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { IntegrationIcon } from "../ui/integration-icon";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
-import { PanelInner } from "./node-config-panel";
+import { NodeConfigPanel } from "./node-config-panel";
 
 type WorkflowToolbarProps = {
   workflowId?: string;
@@ -854,7 +854,7 @@ function ToolbarActions({
       </ButtonGroup>
 
       {/* Properties - Mobile Vertical (always visible) */}
-      <ButtonGroup className="flex lg:hidden" orientation="vertical">
+      <ButtonGroup className="flex md:hidden" orientation="vertical">
         <Button
           className="border hover:bg-black/5 dark:hover:bg-white/5"
           onClick={() => setShowPropertiesSheet(true)}
@@ -881,8 +881,9 @@ function ToolbarActions({
       {/* Properties Sheet - Mobile Only */}
       <Sheet onOpenChange={setShowPropertiesSheet} open={showPropertiesSheet}>
         <SheetContent className="w-full p-0 sm:max-w-full" side="bottom">
+          <SheetTitle className="sr-only" />
           <div className="h-[80vh]">
-            <PanelInner />
+            <NodeConfigPanel />
           </div>
         </SheetContent>
       </Sheet>
