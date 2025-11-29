@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
+import { inferSchemaFromJSON } from "../utils/json-parser";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
 type TriggerConfigProps = {
@@ -38,6 +39,12 @@ export function TriggerConfig({
       navigator.clipboard.writeText(webhookUrl);
       toast.success("Webhook URL copied to clipboard");
     }
+  };
+
+  const handleInferSchema = (mockRequest: string) => {
+    const inferredSchema = inferSchemaFromJSON(mockRequest);
+    onUpdateConfig("webhookSchema", JSON.stringify(inferredSchema));
+    toast.success("Schema inferred from mock payload");
   };
 
   return (
@@ -137,9 +144,28 @@ export function TriggerConfig({
                 value={(config?.webhookMockRequest as string) || ""}
               />
             </div>
-            <p className="text-muted-foreground text-xs">
-              Enter a sample JSON payload to test the webhook trigger.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-xs">
+                Enter a sample JSON payload to test the webhook trigger.
+              </p>
+              <Button
+                disabled={disabled || !config?.webhookMockRequest}
+                onClick={() => {
+                  const mockRequest = config?.webhookMockRequest as string;
+                  if (mockRequest) {
+                    try {
+                      handleInferSchema(config?.webhookMockRequest as string);
+                    } catch {
+                      toast.error("Failed to infer schema from mock payload");
+                    }
+                  }
+                }}
+                size="sm"
+                variant="outline"
+              >
+                Infer Schema
+              </Button>
+            </div>
           </div>
         </>
       )}
