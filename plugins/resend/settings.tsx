@@ -48,18 +48,18 @@ export function ResendSettings({
       {onConfigChange && (
         <div className="space-y-2">
           <Label className="ml-1" htmlFor="resendFromEmail">
-            From Email
+            Default Sender
           </Label>
           <Input
             className="bg-background"
             id="resendFromEmail"
             onChange={(e) => onConfigChange("fromEmail", e.target.value)}
-            placeholder="noreply@yourdomain.com"
-            type="email"
+            placeholder="Your Name <noreply@yourdomain.com>"
+            type="text"
             value={config?.fromEmail || ""}
           />
           <p className="text-muted-foreground text-sm">
-            The email address that will appear as the sender.
+            The name and email that will appear as the sender.
           </p>
         </div>
       )}

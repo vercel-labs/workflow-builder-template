@@ -1,5 +1,6 @@
 import "server-only";
 
+import { nanoid } from "nanoid";
 import { Resend } from "resend";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
@@ -11,9 +12,15 @@ type SendEmailResult =
 
 export type SendEmailInput = StepInput & {
   integrationId?: string;
+  emailFrom?: string;
   emailTo: string;
   emailSubject: string;
   emailBody: string;
+  emailCc?: string;
+  emailBcc?: string;
+  emailReplyTo?: string;
+  emailScheduledAt?: string;
+  emailTopicId?: string;
 };
 
 /**
@@ -35,23 +42,36 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
     };
   }
 
-  if (!fromEmail) {
+  // Use action-level from if provided, otherwise fall back to plugin settings
+  const senderEmail = input.emailFrom || fromEmail;
+
+  if (!senderEmail) {
     return {
       success: false,
       error:
-        "RESEND_FROM_EMAIL is not configured. Please add it in Project Integrations.",
+        "From email is not configured. Please add it in the action or in Project Integrations.",
     };
   }
 
   try {
     const resend = new Resend(apiKey);
 
-    const result = await resend.emails.send({
-      from: fromEmail,
-      to: input.emailTo,
-      subject: input.emailSubject,
-      text: input.emailBody,
-    });
+    const result = await resend.emails.send(
+      {
+        from: senderEmail,
+        to: input.emailTo,
+        subject: input.emailSubject,
+        text: input.emailBody,
+        ...(input.emailCc && { cc: input.emailCc }),
+        ...(input.emailBcc && { bcc: input.emailBcc }),
+        ...(input.emailReplyTo && { replyTo: input.emailReplyTo }),
+        ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
+        ...(input.emailTopicId && { topicId: input.emailTopicId }),
+      },
+      {
+        idempotencyKey: nanoid(),
+      }
+    );
 
     if (result.error) {
       return {
