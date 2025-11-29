@@ -636,50 +636,74 @@ export function generateWorkflowSDKCode(
     ];
   }
 
-  function buildClerkCreateUserParams(config: Record<string, unknown>): string[] {
+  function buildClerkCreateUserParams(
+    config: Record<string, unknown>
+  ): string[] {
     const params = [
       `emailAddress: \`${convertTemplateToJS((config.emailAddress as string) || "")}\``,
       "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
     if (config.password) {
-      params.push(`password: \`${convertTemplateToJS(config.password as string)}\``);
+      params.push(
+        `password: \`${convertTemplateToJS(config.password as string)}\``
+      );
     }
     if (config.firstName) {
-      params.push(`firstName: \`${convertTemplateToJS(config.firstName as string)}\``);
+      params.push(
+        `firstName: \`${convertTemplateToJS(config.firstName as string)}\``
+      );
     }
     if (config.lastName) {
-      params.push(`lastName: \`${convertTemplateToJS(config.lastName as string)}\``);
+      params.push(
+        `lastName: \`${convertTemplateToJS(config.lastName as string)}\``
+      );
     }
     if (config.publicMetadata) {
-      params.push(`publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``);
+      params.push(
+        `publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``
+      );
     }
     if (config.privateMetadata) {
-      params.push(`privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``);
+      params.push(
+        `privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``
+      );
     }
     return params;
   }
 
-  function buildClerkUpdateUserParams(config: Record<string, unknown>): string[] {
+  function buildClerkUpdateUserParams(
+    config: Record<string, unknown>
+  ): string[] {
     const params = [
       `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
       "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
     if (config.firstName) {
-      params.push(`firstName: \`${convertTemplateToJS(config.firstName as string)}\``);
+      params.push(
+        `firstName: \`${convertTemplateToJS(config.firstName as string)}\``
+      );
     }
     if (config.lastName) {
-      params.push(`lastName: \`${convertTemplateToJS(config.lastName as string)}\``);
+      params.push(
+        `lastName: \`${convertTemplateToJS(config.lastName as string)}\``
+      );
     }
     if (config.publicMetadata) {
-      params.push(`publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``);
+      params.push(
+        `publicMetadata: \`${convertTemplateToJS(config.publicMetadata as string)}\``
+      );
     }
     if (config.privateMetadata) {
-      params.push(`privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``);
+      params.push(
+        `privateMetadata: \`${convertTemplateToJS(config.privateMetadata as string)}\``
+      );
     }
     return params;
   }
 
-  function buildClerkDeleteUserParams(config: Record<string, unknown>): string[] {
+  function buildClerkDeleteUserParams(
+    config: Record<string, unknown>
+  ): string[] {
     return [
       `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
       "secretKey: process.env.CLERK_SECRET_KEY!",

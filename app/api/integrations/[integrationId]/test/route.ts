@@ -69,9 +69,7 @@ export async function POST(
         );
         break;
       case "clerk":
-        result = await testClerkConnection(
-          integration.config.clerkSecretKey
-        );
+        result = await testClerkConnection(integration.config.clerkSecretKey);
         break;
       default:
         return NextResponse.json(
@@ -299,10 +297,13 @@ async function testClerkConnection(
     }
 
     // Validate key format
-    if (!secretKey.startsWith("sk_live_") && !secretKey.startsWith("sk_test_")) {
+    if (
+      !(secretKey.startsWith("sk_live_") || secretKey.startsWith("sk_test_"))
+    ) {
       return {
         status: "error",
-        message: "Invalid secret key format. Must start with sk_live_ or sk_test_",
+        message:
+          "Invalid secret key format. Must start with sk_live_ or sk_test_",
       };
     }
 

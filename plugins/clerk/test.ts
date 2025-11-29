@@ -10,10 +10,14 @@ export async function testClerk(credentials: Record<string, string>) {
     }
 
     // Validate format - Clerk secret keys start with sk_live_ or sk_test_
-    if (!secretKey.startsWith("sk_live_") && !secretKey.startsWith("sk_test_")) {
+    if (
+      !secretKey.startsWith("sk_live_") &&
+      !secretKey.startsWith("sk_test_")
+    ) {
       return {
         success: false,
-        error: "Invalid secret key format. Clerk secret keys start with 'sk_live_' or 'sk_test_'",
+        error:
+          "Invalid secret key format. Clerk secret keys start with 'sk_live_' or 'sk_test_'",
       };
     }
 
@@ -22,6 +26,7 @@ export async function testClerk(credentials: Record<string, string>) {
       headers: {
         Authorization: `Bearer ${secretKey}`,
         "Content-Type": "application/json",
+        "User-Agent": "workflow-builder.dev",
       },
     });
 

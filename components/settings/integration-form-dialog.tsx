@@ -338,8 +338,8 @@ export function IntegrationFormDialog({
                 target="_blank"
               >
                 dashboard.clerk.com
-              </a>
-              {" "}under API Keys.
+              </a>{" "}
+              under API Keys.
             </p>
           </div>
         );

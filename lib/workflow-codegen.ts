@@ -636,7 +636,9 @@ export function generateWorkflowCode(
     ];
 
     if (emailAddress) {
-      lines.push(`${indent}  emailAddress: ${formatTemplateValue(emailAddress)},`);
+      lines.push(
+        `${indent}  emailAddress: ${formatTemplateValue(emailAddress)},`
+      );
     }
     if (firstName) {
       lines.push(`${indent}  firstName: ${formatTemplateValue(firstName)},`);
@@ -861,15 +863,21 @@ export function generateWorkflowCode(
       );
     } else if (actionType === "Create User") {
       lines.push(
-        ...wrapActionCall(generateClerkCreateUserActionCode(node, indent, varName))
+        ...wrapActionCall(
+          generateClerkCreateUserActionCode(node, indent, varName)
+        )
       );
     } else if (actionType === "Update User") {
       lines.push(
-        ...wrapActionCall(generateClerkUpdateUserActionCode(node, indent, varName))
+        ...wrapActionCall(
+          generateClerkUpdateUserActionCode(node, indent, varName)
+        )
       );
     } else if (actionType === "Delete User") {
       lines.push(
-        ...wrapActionCall(generateClerkDeleteUserActionCode(node, indent, varName))
+        ...wrapActionCall(
+          generateClerkDeleteUserActionCode(node, indent, varName)
+        )
       );
     } else if (outputIsUsed) {
       lines.push(`${indent}const ${varName} = { status: 'success' };`);
