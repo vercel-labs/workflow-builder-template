@@ -38,7 +38,7 @@ You can deploy your own version of the workflow builder to Vercel with one click
 
 ### Environment Variables
 
-Create a `.env.local` file with the following:
+Create a `.env.local` file (or rename the existing `.env.example` file) with the following:
 
 ```env
 # Database
@@ -50,7 +50,16 @@ BETTER_AUTH_URL=http://localhost:3000
 
 # AI Gateway (for AI workflow generation)
 AI_GATEWAY_API_KEY=your-openai-api-key
+
+# API URL (for application Route Handlers)
+NEXT_PUBLIC_API_URL=http://localhost:3000
+
+# Integration Encryption Key (for securely storing integration credentials)
+INTEGRATION_ENCRYPTION_KEY=your-32-byte-hexadecimal-key
 ```
+
+- The `BETTER_AUTH_SECRET` variable can be generated from within [better-auth's documentation](https://www.better-auth.com/docs/installation#set-environment-variables)
+- The `INTEGRATION_ENCRYPTION_KEY` variable is a 32-byte (64 character) hex string. It can be generated from the terminal by executing `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
 ### Installation
 
