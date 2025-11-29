@@ -337,6 +337,23 @@ export function getStepInfo(actionType: string): {
         functionName: "sendMessageStep",
         importPath: "./steps/v0",
       },
+      // Clerk
+      "Get User": {
+        functionName: "clerkGetUserStep",
+        importPath: "./steps/clerk",
+      },
+      "Create User": {
+        functionName: "clerkCreateUserStep",
+        importPath: "./steps/clerk",
+      },
+      "Update User": {
+        functionName: "clerkUpdateUserStep",
+        importPath: "./steps/clerk",
+      },
+      "Delete User": {
+        functionName: "clerkDeleteUserStep",
+        importPath: "./steps/clerk",
+      },
     };
 
   return (

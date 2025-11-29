@@ -92,6 +92,7 @@ export const integrations = pgTable("integrations", {
       | "ai-gateway"
       | "firecrawl"
       | "v0"
+      | "clerk"
     >(),
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - encrypted credentials stored as JSON
   config: jsonb("config").notNull().$type<any>(),

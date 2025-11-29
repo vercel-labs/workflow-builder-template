@@ -82,6 +82,11 @@ const getIntegrationFromActionType = (actionType: string): string => {
     Condition: "Condition",
     "Create Chat": "v0",
     "Send Message": "v0",
+    // Clerk
+    "Get User": "Clerk",
+    "Create User": "Clerk",
+    "Update User": "Clerk",
+    "Delete User": "Clerk",
   };
   return integrationMap[actionType] || "System";
 };
@@ -111,6 +116,11 @@ const requiresIntegration = (actionType: string): boolean => {
     "Search",
     "Create Chat",
     "Send Message",
+    // Clerk
+    "Get User",
+    "Create User",
+    "Update User",
+    "Delete User",
   ];
   return requiresIntegrationActions.includes(actionType);
 };
@@ -147,6 +157,11 @@ const getProviderLogo = (actionType: string) => {
     case "Create Chat":
     case "Send Message":
       return <IntegrationIcon className="size-12" integration="v0" />;
+    case "Get User":
+    case "Create User":
+    case "Update User":
+    case "Delete User":
+      return <IntegrationIcon className="size-12" integration="clerk" />;
     default:
       return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
   }

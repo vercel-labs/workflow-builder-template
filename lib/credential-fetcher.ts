@@ -27,6 +27,7 @@ export type WorkflowCredentials = {
   DATABASE_URL?: string;
   FIRECRAWL_API_KEY?: string;
   V0_API_KEY?: string;
+  CLERK_SECRET_KEY?: string;
 };
 
 function mapResendConfig(config: IntegrationConfig): WorkflowCredentials {
@@ -91,6 +92,14 @@ function mapV0Config(config: IntegrationConfig): WorkflowCredentials {
   return creds;
 }
 
+function mapClerkConfig(config: IntegrationConfig): WorkflowCredentials {
+  const creds: WorkflowCredentials = {};
+  if (config.clerkSecretKey) {
+    creds.CLERK_SECRET_KEY = config.clerkSecretKey;
+  }
+  return creds;
+}
+
 /**
  * Map integration config to WorkflowCredentials format
  */
@@ -118,6 +127,9 @@ function mapIntegrationConfig(
   }
   if (integrationType === "v0") {
     return mapV0Config(config);
+  }
+  if (integrationType === "clerk") {
+    return mapClerkConfig(config);
   }
   return {};
 }

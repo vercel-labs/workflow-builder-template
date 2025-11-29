@@ -318,7 +318,8 @@ export type IntegrationType =
   | "database"
   | "ai-gateway"
   | "firecrawl"
-  | "v0";
+  | "v0"
+  | "clerk";
 
 export type IntegrationConfig = {
   apiKey?: string;
@@ -327,6 +328,7 @@ export type IntegrationConfig = {
   url?: string;
   openaiApiKey?: string;
   firecrawlApiKey?: string;
+  clerkSecretKey?: string;
 };
 
 export type Integration = {
