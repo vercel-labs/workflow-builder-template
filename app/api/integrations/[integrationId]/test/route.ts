@@ -68,6 +68,11 @@ export async function POST(
           integration.config.firecrawlApiKey
         );
         break;
+      case "superagent":
+        result = await testSuperagentConnection(
+          integration.config.superagentApiKey
+        );
+        break;
       default:
         return NextResponse.json(
           { error: "Invalid integration type" },
@@ -267,6 +272,48 @@ async function testFirecrawlConnection(
       return {
         status: "error",
         message: "Authentication or scrape failed",
+      };
+    }
+
+    return {
+      status: "success",
+      message: "Connected successfully",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Connection failed",
+    };
+  }
+}
+
+async function testSuperagentConnection(
+  apiKey?: string
+): Promise<TestConnectionResult> {
+  try {
+    if (!apiKey) {
+      return {
+        status: "error",
+        message: "Superagent API Key is not configured",
+      };
+    }
+
+    const response = await fetch("https://app.superagent.sh/api/guard", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        text: "Hello, this is a test message.",
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return {
+        status: "error",
+        message: error || "Authentication failed",
       };
     }
 
