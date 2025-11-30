@@ -230,16 +230,12 @@ async function main(): Promise<void> {
   console.log("  4. Test: pnpm dev\n");
 }
 
-// Handle user cancellation (Ctrl+C) gracefully
-process.on("uncaughtException", (error) => {
+main().catch((error: unknown) => {
+  // Handle user cancellation (Ctrl+C) gracefully
   if (error instanceof Error && error.name === "ExitPromptError") {
     console.log("\n👋 Come back anytime to create your plugin.\n");
     process.exit(0);
   }
-  throw error;
-});
-
-main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error("❌ Error:", message);
   process.exit(1);
