@@ -7,6 +7,8 @@ import { searchCodegenTemplate } from "../plugins/firecrawl/codegen/search";
 import { createTicketCodegenTemplate } from "../plugins/linear/codegen/create-ticket";
 import { sendEmailCodegenTemplate } from "../plugins/resend/codegen/send-email";
 import { sendSlackMessageCodegenTemplate } from "../plugins/slack/codegen/send-slack-message";
+import { guardCodegenTemplate } from "../plugins/superagent/codegen/guard";
+import { redactCodegenTemplate } from "../plugins/superagent/codegen/redact";
 // Import codegen templates directly
 import conditionTemplate from "./codegen-templates/condition";
 import databaseQueryTemplate from "./codegen-templates/database-query";
@@ -40,6 +42,8 @@ function loadStepImplementation(actionType: string): string | null {
     "Database Query": databaseQueryTemplate,
     Scrape: scrapeCodegenTemplate,
     Search: searchCodegenTemplate,
+    Guard: guardCodegenTemplate,
+    Redact: redactCodegenTemplate,
     "HTTP Request": httpRequestTemplate,
     Condition: conditionTemplate,
   };

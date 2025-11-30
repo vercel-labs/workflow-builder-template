@@ -46,6 +46,7 @@ const INTEGRATION_TYPES: IntegrationType[] = [
   "resend",
   "slack",
   "firecrawl",
+  "superagent",
 ];
 
 const INTEGRATION_LABELS: Record<IntegrationType, string> = {
@@ -55,6 +56,7 @@ const INTEGRATION_LABELS: Record<IntegrationType, string> = {
   database: "Database",
   "ai-gateway": "AI Gateway",
   firecrawl: "Firecrawl",
+  superagent: "Superagent",
 };
 
 export function IntegrationFormDialog({
@@ -286,6 +288,30 @@ export function IntegrationFormDialog({
                 target="_blank"
               >
                 firecrawl.dev
+              </a>
+            </p>
+          </div>
+        );
+      case "superagent":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="superagentApiKey">API Key</Label>
+            <Input
+              id="superagentApiKey"
+              onChange={(e) => updateConfig("superagentApiKey", e.target.value)}
+              placeholder="Enter your Superagent API key"
+              type="password"
+              value={formData.config.superagentApiKey || ""}
+            />
+            <p className="text-muted-foreground text-xs">
+              Get your API key from{" "}
+              <a
+                className="underline hover:text-foreground"
+                href="https://app.superagent.sh"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Superagent
               </a>
             </p>
           </div>

@@ -665,6 +665,8 @@ export const PanelInner = () => {
                   "Database Query": "database",
                   Scrape: "firecrawl",
                   Search: "firecrawl",
+                  Guard: "superagent",
+                  Redact: "superagent",
                 } as const;
 
                 const integrationType =

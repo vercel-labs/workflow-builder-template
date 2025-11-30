@@ -107,6 +107,9 @@ importers:
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      superagent-ai:
+        specifier: ^0.0.18
+        version: 0.0.18
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
@@ -4040,6 +4043,10 @@ packages:
         optional: true
       babel-plugin-macros:
         optional: true
+
+  superagent-ai@0.0.18:
+    resolution: {integrity: sha512-sNWdgM8ONUe4CT/AvEqh/TYRW7PKyVmnjRaT/NRxm2Y5OMTX2LvxGq82wQq8Xt7rUNIk1tzhTpN7tFwEIL/AeA==}
+    engines: {node: '>=18'}
 
   supports-color@10.2.2:
     resolution: {integrity: sha512-SS+jx45GF1QjgEXQx4NJZV9ImqmO2NPz5FNsIHrsDjh2YsHnawpan7SNQ1o8NuhrbHZy9AZhIoCUiCeaW/C80g==}
@@ -8528,6 +8535,8 @@ snapshots:
       react: 19.2.0
     optionalDependencies:
       '@babel/core': 7.28.5
+
+  superagent-ai@0.0.18: {}
 
   supports-color@10.2.2: {}
 

@@ -12,6 +12,8 @@ import { searchCodegenTemplate } from "@/plugins/firecrawl/codegen/search";
 import { createTicketCodegenTemplate } from "@/plugins/linear/codegen/create-ticket";
 import { sendEmailCodegenTemplate } from "@/plugins/resend/codegen/send-email";
 import { sendSlackMessageCodegenTemplate } from "@/plugins/slack/codegen/send-slack-message";
+import { guardCodegenTemplate } from "@/plugins/superagent/codegen/guard";
+import { redactCodegenTemplate } from "@/plugins/superagent/codegen/redact";
 
 // Generate code snippet for a single node
 export const generateNodeCode = (node: {
@@ -84,6 +86,10 @@ export async function POST(request: NextRequest) {
         return scrapeCodegenTemplate;
       case "Search":
         return searchCodegenTemplate;
+      case "Guard":
+        return guardCodegenTemplate;
+      case "Redact":
+        return redactCodegenTemplate;
       default:
         return `async function actionStep(input: Record<string, unknown>) {
   "use step";

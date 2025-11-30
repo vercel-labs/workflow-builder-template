@@ -68,6 +68,11 @@ export async function POST(
           integration.config.firecrawlApiKey
         );
         break;
+      case "superagent":
+        result = await testSuperagentConnection(
+          integration.config.superagentApiKey
+        );
+        break;
       default:
         return NextResponse.json(
           { error: "Invalid integration type" },
@@ -278,6 +283,83 @@ async function testFirecrawlConnection(
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Connection failed",
+    };
+  }
+}
+
+async function testSuperagentConnection(
+  apiKey?: string
+): Promise<TestConnectionResult> {
+  try {
+    if (!apiKey) {
+      return {
+        status: "error",
+        message: "Superagent API Key is not configured",
+      };
+    }
+
+    // Use the REST API endpoint as documented: https://docs.superagent.sh/rest-api/guard
+    const response = await fetch("https://app.superagent.sh/api/guard", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        text: "Hello, this is a test message",
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Connection failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        // If response is not JSON, try text
+        const errorText = await response.text();
+        errorMessage = errorText || errorMessage;
+      }
+
+      // Handle specific error codes
+      if (response.status === 401) {
+        return {
+          status: "error",
+          message: "Invalid API key",
+        };
+      }
+      if (response.status === 402) {
+        return {
+          status: "error",
+          message: "No subscription found",
+        };
+      }
+
+      return {
+        status: "error",
+        message: errorMessage,
+      };
+    }
+
+    // Parse response to verify it's valid
+    const data = await response.json();
+    if (data.error) {
+      return {
+        status: "error",
+        message: data.error,
+      };
+    }
+
+    return {
+      status: "success",
+      message: "Connection successful",
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    return {
+      status: "error",
+      message: errorMessage || "Connection failed",
     };
   }
 }

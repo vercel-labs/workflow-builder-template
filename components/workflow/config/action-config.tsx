@@ -20,6 +20,8 @@ import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
 } from "@/lib/workflow-store";
+import { GuardConfigFields } from "@/plugins/superagent/steps/guard/config";
+import { RedactConfigFields } from "@/plugins/superagent/steps/redact/config";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
 type ActionConfigProps = {
@@ -658,6 +660,7 @@ const ACTION_CATEGORIES = {
   Linear: ["Create Ticket", "Find Issues"],
   Resend: ["Send Email"],
   Slack: ["Send Slack Message"],
+  Superagent: ["Guard", "Redact"],
 } as const;
 
 type ActionCategory = keyof typeof ACTION_CATEGORIES;
@@ -756,6 +759,15 @@ export function ActionConfig({
                 <div className="flex items-center gap-2">
                   <IntegrationIcon className="size-4" integration="firecrawl" />
                   <span>Firecrawl</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="Superagent">
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon
+                    className="size-4"
+                    integration="superagent"
+                  />
+                  <span>Superagent</span>
                 </div>
               </SelectItem>
             </SelectContent>
@@ -879,6 +891,24 @@ export function ActionConfig({
       {/* Search fields */}
       {config?.actionType === "Search" && (
         <SearchFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      )}
+
+      {/* Guard fields */}
+      {config?.actionType === "Guard" && (
+        <GuardConfigFields
+          config={config}
+          disabled={disabled}
+          onUpdateConfig={onUpdateConfig}
+        />
+      )}
+
+      {/* Redact fields */}
+      {config?.actionType === "Redact" && (
+        <RedactConfigFields
           config={config}
           disabled={disabled}
           onUpdateConfig={onUpdateConfig}

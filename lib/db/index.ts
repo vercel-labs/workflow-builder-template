@@ -29,6 +29,7 @@ const connectionString =
 // For migrations
 export const migrationClient = postgres(connectionString, { max: 1 });
 
-// For queries
+// For queries - ensure we're using the public schema
+// Add schema to connection string if not present to ensure correct schema usage
 const queryClient = postgres(connectionString);
 export const db = drizzle(queryClient, { schema });

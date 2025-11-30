@@ -11,6 +11,8 @@ import type { firecrawlSearchStep } from "../../plugins/firecrawl/steps/search/s
 import type { createTicketStep } from "../../plugins/linear/steps/create-ticket/step";
 import type { sendEmailStep } from "../../plugins/resend/steps/send-email/step";
 import type { sendSlackMessageStep } from "../../plugins/slack/steps/send-slack-message/step";
+import type { superagentGuardStep } from "../../plugins/superagent/steps/guard/step";
+import type { superagentRedactStep } from "../../plugins/superagent/steps/redact/step";
 import type { conditionStep } from "./condition";
 import type { databaseQueryStep } from "./database-query";
 import type { httpRequestStep } from "./http-request";
@@ -73,6 +75,14 @@ export const stepRegistry: Record<string, StepFunction> = {
     (
       await import("../../plugins/firecrawl/steps/search/step")
     ).firecrawlSearchStep(input as Parameters<typeof firecrawlSearchStep>[0]),
+  Guard: async (input) =>
+    (
+      await import("../../plugins/superagent/steps/guard/step")
+    ).superagentGuardStep(input as Parameters<typeof superagentGuardStep>[0]),
+  Redact: async (input) =>
+    (
+      await import("../../plugins/superagent/steps/redact/step")
+    ).superagentRedactStep(input as Parameters<typeof superagentRedactStep>[0]),
 };
 
 // Helper to check if a step exists

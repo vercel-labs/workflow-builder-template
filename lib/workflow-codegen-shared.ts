@@ -329,6 +329,14 @@ export function getStepInfo(actionType: string): {
         functionName: "firecrawlSearchStep",
         importPath: "./steps/firecrawl",
       },
+      Guard: {
+        functionName: "superagentGuardStep",
+        importPath: "./steps/superagent",
+      },
+      Redact: {
+        functionName: "superagentRedactStep",
+        importPath: "./steps/superagent",
+      },
     };
 
   return (

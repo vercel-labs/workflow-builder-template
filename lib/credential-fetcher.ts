@@ -26,6 +26,7 @@ export type WorkflowCredentials = {
   AI_GATEWAY_API_KEY?: string;
   DATABASE_URL?: string;
   FIRECRAWL_API_KEY?: string;
+  SUPERAGENT_API_KEY?: string;
 };
 
 function mapResendConfig(config: IntegrationConfig): WorkflowCredentials {
@@ -82,6 +83,14 @@ function mapFirecrawlConfig(config: IntegrationConfig): WorkflowCredentials {
   return creds;
 }
 
+function mapSuperagentConfig(config: IntegrationConfig): WorkflowCredentials {
+  const creds: WorkflowCredentials = {};
+  if (config.superagentApiKey) {
+    creds.SUPERAGENT_API_KEY = config.superagentApiKey;
+  }
+  return creds;
+}
+
 /**
  * Map integration config to WorkflowCredentials format
  */
@@ -106,6 +115,9 @@ function mapIntegrationConfig(
   }
   if (integrationType === "firecrawl") {
     return mapFirecrawlConfig(config);
+  }
+  if (integrationType === "superagent") {
+    return mapSuperagentConfig(config);
   }
   return {};
 }

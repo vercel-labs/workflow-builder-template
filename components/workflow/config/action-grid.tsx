@@ -2,11 +2,13 @@
 
 import {
   Database,
+  Eraser,
   Flame,
   Mail,
   MessageSquare,
   Search,
   Settings,
+  Shield,
   Sparkles,
   Ticket,
   Zap,
@@ -23,7 +25,13 @@ type ActionType = {
   description: string;
   category: string;
   icon: React.ComponentType<{ className?: string }>;
-  integration?: "linear" | "resend" | "slack" | "vercel" | "firecrawl";
+  integration?:
+    | "linear"
+    | "resend"
+    | "slack"
+    | "vercel"
+    | "firecrawl"
+    | "superagent";
 };
 
 const actions: ActionType[] = [
@@ -111,6 +119,22 @@ const actions: ActionType[] = [
     category: "Firecrawl",
     icon: Search,
     integration: "firecrawl",
+  },
+  {
+    id: "Guard",
+    label: "Guard",
+    description: "Analyze text for security threats",
+    category: "Superagent",
+    icon: Shield,
+    integration: "superagent",
+  },
+  {
+    id: "Redact",
+    label: "Redact",
+    description: "Remove sensitive data from text",
+    category: "Superagent",
+    icon: Eraser,
+    integration: "superagent",
   },
 ];
 

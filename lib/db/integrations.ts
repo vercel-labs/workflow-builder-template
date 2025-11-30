@@ -100,7 +100,8 @@ export type IntegrationType =
   | "slack"
   | "database"
   | "ai-gateway"
-  | "firecrawl";
+  | "firecrawl"
+  | "superagent";
 
 export type IntegrationConfig = {
   // Resend
@@ -115,6 +116,8 @@ export type IntegrationConfig = {
   openaiApiKey?: string;
   // Firecrawl
   firecrawlApiKey?: string;
+  // Superagent
+  superagentApiKey?: string;
 };
 
 export type DecryptedIntegration = {

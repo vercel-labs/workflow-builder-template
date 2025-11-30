@@ -211,6 +211,20 @@ async function executeActionStep(input: {
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
     return await firecrawlSearchStep(stepInput as any);
   }
+  if (actionType === "Guard") {
+    const { superagentGuardStep } = await import(
+      "../plugins/superagent/steps/guard/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await superagentGuardStep(stepInput as any);
+  }
+  if (actionType === "Redact") {
+    const { superagentRedactStep } = await import(
+      "../plugins/superagent/steps/redact/step"
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
+    return await superagentRedactStep(stepInput as any);
+  }
 
   // Fallback for unknown action types
   return {

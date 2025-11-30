@@ -3,7 +3,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface IntegrationIconProps {
-  integration: "linear" | "resend" | "slack" | "vercel" | "database" | "ai-gateway" | "firecrawl";
+  integration: "linear" | "resend" | "slack" | "vercel" | "database" | "ai-gateway" | "firecrawl" | "superagent";
   className?: string;
 }
 
@@ -63,6 +63,7 @@ export function IntegrationIcon({
   const iconMap = {
     linear: "/integrations/linear.svg",
     slack: "/integrations/slack.svg",
+    superagent: "/integrations/superagent.svg",
   };
 
   // Use inline SVG for resend and vercel to support currentColor
@@ -84,6 +85,18 @@ export function IntegrationIcon({
 
   if (integration === "firecrawl") {
     return <FirecrawlIcon className={cn("text-foreground", className)} />;
+  }
+
+  if (integration === "superagent") {
+    return (
+      <Image
+        alt="Superagent logo"
+        className={className}
+        height={12}
+        src={iconMap.superagent}
+        width={12}
+      />
+    );
   }
 
   return (
