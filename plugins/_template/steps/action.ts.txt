@@ -1,0 +1,98 @@
+/**
+ * STEP FUNCTION TEMPLATE
+ *
+ * This file contains the server-side execution logic for your action.
+ * It runs when the workflow executes this step.
+ *
+ * TODO:
+ * 1. Update the input/result types to match your action's fields
+ * 2. Implement your API call logic in the main function
+ * 3. The step function must be exported and match the name in index.ts
+ */
+
+import "server-only";
+
+import { fetchCredentials } from "@/lib/credential-fetcher";
+import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
+import { getErrorMessage } from "@/lib/utils";
+
+// TODO: Customize result fields for your action
+type [ActionName]Result =
+  | { success: true; resultId: string }
+  | { success: false; error: string };
+
+// TODO: Customize input fields for your action
+export type [ActionName]Input = StepInput & {
+  integrationId?: string;
+  fieldA: string;
+  fieldB?: string;
+};
+
+/**
+ * [Action Name] logic - separated for clarity and testability
+ * This function contains the actual business logic
+ */
+async function [actionName](input: [ActionName]Input): Promise<[ActionName]Result> {
+  // Fetch credentials using the integrationId
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  const apiKey = credentials.[INTEGRATION_NAME]_API_KEY;
+
+  // Validate required credentials
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "[INTEGRATION_NAME]_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    // Your API call or business logic here
+    // Example:
+    // const client = new MyClient(apiKey);
+    // const result = await client.doSomething(input.fieldA);
+
+    const response = await fetch("https://api.[integration-name].com/endpoint", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        fieldA: input.fieldA,
+        fieldB: input.fieldB,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    return { success: true, resultId: result.id };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to execute action: ${getErrorMessage(error)}`,
+    };
+  }
+}
+
+/**
+ * [Action Name] Step
+ * [Brief description of what this step does]
+ *
+ * The step function wraps the logic with:
+ * - "use step" directive for workflow tracking
+ * - withStepLogging for automatic execution logging
+ */
+export async function [actionName]Step(
+  input: [ActionName]Input
+): Promise<[ActionName]Result> {
+  "use step";
+  return withStepLogging(input, () => [actionName](input));
+}

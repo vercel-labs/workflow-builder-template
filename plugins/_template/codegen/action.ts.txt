@@ -1,58 +1,44 @@
 /**
  * CODE GENERATION TEMPLATE
- * 
- * This template is used when users export/download their workflow as a standalone Next.js project.
- * It generates code that doesn't depend on your server infrastructure.
- * 
- * Key differences from step functions:
- * - Uses environment variables (process.env) instead of integrationId
- * - No fetchCredentials() - credentials come from env vars
- * - Same logic and return structure as the step function
- * - Should be a template string export
+ *
+ * This template generates standalone code when users export their workflow.
+ * The generated code uses environment variables instead of integrationId.
+ *
+ * Key differences from step.ts:
+ * - Uses process.env.[VAR] instead of fetchCredentials()
+ * - No integrationId parameter
+ * - Simpler error handling (throw instead of return error objects)
+ * - Same core logic and return structure
+ *
+ * Note: Escape backticks with backslash in template literals
  */
 
-export const [actionName]CodegenTemplate = `import { [PACKAGE_NAME] } from '[PACKAGE_IMPORT_PATH]';
+export const [actionName]CodegenTemplate = `import { [ClientName] } from '[package-name]';
 
 export async function [actionName]Step(input: {
-  [parameterName]: string;
-  [optionalParameter]?: string;
+  fieldA: string;
+  fieldB?: string;
 }) {
   "use step";
 
-  // Use environment variable instead of integrationId
-  const apiKey = process.env.[ENV_VAR_NAME];
+  const apiKey = process.env.[INTEGRATION_NAME]_API_KEY;
 
   if (!apiKey) {
-    throw new Error('[ENV_VAR_NAME] environment variable is required');
+    throw new Error('[INTEGRATION_NAME]_API_KEY environment variable is required');
   }
 
-  try {
-    // Your integration logic here - should match the step function
-    const response = await fetch('[API_ENDPOINT]', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': \\\`Bearer \\\${apiKey}\\\`,
-      },
-      body: JSON.stringify({
-        [apiField]: input.[parameterName],
-      }),
-    });
+  // Initialize client with API key from environment
+  const client = new [ClientName](apiKey);
 
-    if (!response.ok) {
-      throw new Error(\\\`API request failed: \\\${response.statusText}\\\`);
-    }
+  // Your API call logic here
+  const result = await client.doSomething({
+    fieldA: input.fieldA,
+    fieldB: input.fieldB,
+  });
 
-    const result = await response.json();
-
-    // Return the same structure as your step function
-    return {
-      id: result.id,
-      url: result.url,
-      // Match the same return structure as your step function
-    };
-  } catch (error) {
-    throw new Error(\\\`Failed to [action description]: \\\${error instanceof Error ? error.message : String(error)}\\\`);
-  }
+  return {
+    success: true,
+    id: result.id,
+    // Include other relevant fields from the result
+  };
 }`;
-
