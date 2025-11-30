@@ -259,7 +259,7 @@ async function generateStepRegistry(): Promise<void> {
     .flatMap(({ actionId, integration, stepImportPath, stepFunction }) => {
       const entries = [
         `  "${actionId}": {
-    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
+    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}"),
     stepFunction: "${stepFunction}",
   },`,
       ];
@@ -268,7 +268,7 @@ async function generateStepRegistry(): Promise<void> {
       for (const legacyLabel of legacyLabels) {
         entries.push(
           `  "${legacyLabel}": {
-    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
+    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}"),
     stepFunction: "${stepFunction}",
   },`
         );
