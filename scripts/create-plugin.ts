@@ -18,6 +18,7 @@ const TEMPLATE_DIR = join(PLUGINS_DIR, "_template");
 
 // Regex patterns used for case conversions (hoisted for performance)
 const LEADING_UPPERCASE_REGEX = /^[A-Z]/;
+const VALID_IDENTIFIER_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 /**
  * Convert a string to various case formats
@@ -54,6 +55,13 @@ function toTitleCase(str: string): string {
       /\w\S*/g,
       (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase()
     );
+}
+
+/**
+ * Check if a string is a valid JavaScript identifier
+ */
+function isValidIdentifier(str: string): boolean {
+  return VALID_IDENTIFIER_REGEX.test(str);
 }
 
 type PluginConfig = {
@@ -147,6 +155,11 @@ async function main(): Promise<void> {
       if (!value.trim()) {
         return "Integration name is required";
       }
+      const camel = toCamelCase(value);
+      const pascal = toPascalCase(value);
+      if (!(isValidIdentifier(camel) && isValidIdentifier(pascal))) {
+        return `Integration name must produce valid JavaScript identifiers. "${value}" converts to "${camel}" (camelCase) and "${pascal}" (PascalCase). Use only letters, numbers, underscores, and dollar signs.`;
+      }
       const kebab = toKebabCase(value);
       const dir = join(PLUGINS_DIR, kebab);
       if (existsSync(dir)) {
@@ -158,17 +171,37 @@ async function main(): Promise<void> {
 
   const integrationDescription = await input({
     message: "Integration description (<10 words):",
-    required: true,
+    validate: (value) => {
+      if (!value.trim()) {
+        return "Integration description is required";
+      }
+      return true;
+    },
   });
 
   const actionName = await input({
     message: "Action name:",
-    required: true,
+    validate: (value) => {
+      if (!value.trim()) {
+        return "Action name is required";
+      }
+      const camel = toCamelCase(value);
+      const pascal = toPascalCase(value);
+      if (!(isValidIdentifier(camel) && isValidIdentifier(pascal))) {
+        return `Action name must produce valid JavaScript identifiers. "${value}" converts to "${camel}" (camelCase) and "${pascal}" (PascalCase). Use only letters, numbers, underscores, and dollar signs.`;
+      }
+      return true;
+    },
   });
 
   const actionDescription = await input({
     message: "Action description (<10 words):",
-    required: true,
+    validate: (value) => {
+      if (!value.trim()) {
+        return "Action description is required";
+      }
+      return true;
+    },
   });
 
   const answers: PluginConfig = {
