@@ -1303,6 +1303,21 @@ function WorkflowMenuComponent({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
+
+  useEffect(() => {
+    if (workflowId !== undefined) {
+      toast.dismiss("workflow-navigation");
+    }
+  }, [workflowId]);
+
+  const handleWorkflowClick = (workflow: { id: string; name: string }) => {
+    if (workflow.id === state.currentWorkflowId) {
+      return;
+    }
+    toast.loading(`Opening ${workflow.name}...`, { id: "workflow-navigation" });
+    state.router.push(`/workflows/${workflow.id}`);
+  };
+
   return (
     <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
       <DropdownMenu onOpenChange={(open) => open && actions.loadWorkflows()}>
@@ -1340,7 +1355,7 @@ function WorkflowMenuComponent({
                 <DropdownMenuItem
                   className="flex items-center justify-between"
                   key={workflow.id}
-                  onClick={() => state.router.push(`/workflows/${workflow.id}`)}
+                  onClick={() => handleWorkflowClick(workflow)}
                 >
                   <span className="truncate">{workflow.name}</span>
                   {workflow.id === state.currentWorkflowId && (
