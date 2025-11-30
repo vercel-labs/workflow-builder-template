@@ -154,13 +154,11 @@ function getTemplateFiles(actionSlug: string) {
  * Main execution
  */
 async function main(): Promise<void> {
-  console.log("\n🔧 Create New Plugin for Workflow Builder\n");
+  console.log("\nCreate New Plugin for Workflow Builder\n");
 
   // Check if template directory exists
   if (!existsSync(TEMPLATE_DIR)) {
-    console.error(
-      "❌ Error: Template directory not found at plugins/_template/"
-    );
+    console.error("Error: Template directory not found at plugins/_template/");
     console.error("   Make sure the template files are present.\n");
     process.exit(1);
   }
@@ -238,7 +236,7 @@ async function main(): Promise<void> {
   const actionSlug = toKebabCase(actionName);
   const pluginDir = join(PLUGINS_DIR, pluginName);
 
-  console.log(`\n📁 Generating plugin: ${pluginName}`);
+  console.log(`\nGenerating plugin: ${pluginName}`);
 
   // Create directories
   mkdirSync(join(pluginDir, "steps"), { recursive: true });
@@ -253,7 +251,7 @@ async function main(): Promise<void> {
     const destPath = join(pluginDir, dest);
 
     if (!existsSync(srcPath)) {
-      console.error(`\n❌ Error: Template file not found: ${src}`);
+      console.error(`\nError: Template file not found: ${src}`);
       console.error("   The template directory may be corrupted.\n");
       process.exit(1);
     }
@@ -266,18 +264,18 @@ async function main(): Promise<void> {
   }
 
   // Print created files
-  console.log(`\n✅ Created plugin at plugins/${pluginName}/\n`);
+  console.log(`\nCreated plugin at plugins/${pluginName}/\n`);
   console.log("Files created:");
   for (const file of createdFiles) {
     console.log(`  - ${file}`);
   }
 
   // Run discover-plugins to register the new plugin
-  console.log("\n🔍 Adding plugin to registry...");
+  console.log("\nAdding plugin to registry...");
   execFileSync("pnpm", ["discover-plugins"], { stdio: "inherit" });
 
   console.log(
-    `\n🎉 Plugin "${answers.integrationName}" has been added to the registry!\n`
+    `\nPlugin "${answers.integrationName}" has been added to the registry!\n`
   );
   console.log("Next steps:");
   console.log(`  1. Review and customize the files in plugins/${pluginName}/`);
@@ -288,10 +286,10 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   if (error instanceof Error && error.name === "ExitPromptError") {
-    console.log("\n👋 Come back anytime to create your plugin.\n");
+    console.log("\nCome back anytime to create your plugin.\n");
     process.exit(0);
   }
   const message = error instanceof Error ? error.message : String(error);
-  console.error("❌ Error:", message);
+  console.error("Error:", message);
   process.exit(1);
 });
