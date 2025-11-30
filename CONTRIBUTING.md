@@ -163,42 +163,28 @@ The Workflow Builder uses a **modular plugin-based system** that makes adding in
 Adding an integration requires:
 
 1. Create a plugin directory with modular files
-2. Add your integration type to the database schema
-3. Import your plugin
-4. Run database migrations
-5. Test your integration
+2. Run `pnpm discover-plugins` (auto-generates types)
+3. Test your integration
 
 That's it! The system handles registration and discovery automatically.
 
 ### Quick Start
 
 ```bash
-# 1. Create your plugin directory structure
-mkdir -p plugins/my-integration/steps/my-action
-mkdir -p plugins/my-integration/codegen
-
-# 2. Copy template files
-cp plugins/_template/icon.tsx.txt plugins/my-integration/icon.tsx
-cp plugins/_template/settings.tsx.txt plugins/my-integration/settings.tsx
-cp plugins/_template/test.ts.txt plugins/my-integration/test.ts
-cp plugins/_template/steps/action/step.ts.txt plugins/my-integration/steps/my-action/step.ts
-cp plugins/_template/steps/action/config.tsx.txt plugins/my-integration/steps/my-action/config.tsx
-cp plugins/_template/codegen/action.ts.txt plugins/my-integration/codegen/my-action.ts
-cp plugins/_template/index.tsx.txt plugins/my-integration/index.tsx
-
-# 3. Fill in the templates with your integration details
-
-# 4. Add your integration type to lib/db/integrations.ts
-
-# 5. Generate and apply database migration
-pnpm db:generate
-pnpm db:push
-
-# 6. Test it!
-pnpm dev
+pnpm create-plugin
 ```
 
-Now let's go through each step in detail.
+This launches an interactive wizard that asks for:
+- **Integration name** (e.g., "Stripe")
+- **Integration description** (e.g., "Process payments with Stripe")
+- **Action name** (e.g., "Create Payment")
+- **Action description** (e.g., "Creates a new payment intent")
+
+The script creates the full plugin structure with integration and action names filled in, then registers it automatically. You'll still need to customize the generated files (API logic, input/output types, icon, etc.).
+
+Once you've built your plugin, run `pnpm dev` to test!
+
+Let's go through each file in detail.
 
 ---
 
@@ -210,16 +196,13 @@ The plugin system uses a **modular file structure** where each integration is se
 
 ```
 plugins/my-integration/
-├── icon.tsx              # Icon component (optional if using Lucide)
-├── settings.tsx          # Settings UI for credential configuration
-├── test.ts              # Connection test function
-├── steps/               # Action implementations
-│   └── my-action/
-│       ├── step.ts      # Server-side step function
-│       └── config.tsx   # Client-side UI for configuring the action
-├── codegen/             # Export templates for standalone workflows
-│   └── my-action.ts     # Code generation template
-└── index.tsx            # Plugin definition (ties everything together)
+├── icon.tsx              # Icon component (SVG)
+├── test.ts               # Connection test function
+├── steps/                # Action implementations
+│   └── my-action.ts      # Server-side step function
+├── codegen/              # Export templates for standalone workflows
+│   └── my-action.ts      # Code generation template
+└── index.ts              # Plugin definition (ties everything together)
 ```
 
 **Key Benefits:**
@@ -228,14 +211,15 @@ plugins/my-integration/
 - **Organized**: All integration code in one directory
 - **Scalable**: Easy to add new actions
 - **Self-contained**: No scattered files across the codebase
-- **Discoverable**: Automatically detected by the system
+- **Auto-discovered**: Automatically detected by `pnpm discover-plugins`
+- **Declarative**: Action config fields defined as data, not React components
 
 ### Step-by-Step Plugin Creation
 
 #### Step 1: Create Plugin Directory Structure
 
 ```bash
-mkdir -p plugins/my-integration/steps/send-message
+mkdir -p plugins/my-integration/steps
 mkdir -p plugins/my-integration/codegen
 ```
 
@@ -247,7 +231,7 @@ mkdir -p plugins/my-integration/codegen
 export function MyIntegrationIcon({ className }: { className?: string }) {
   return (
     <svg
-      aria-label="My Integration"
+      aria-label="My Integration logo"
       className={className}
       fill="currentColor"
       viewBox="0 0 24 24"
@@ -260,65 +244,9 @@ export function MyIntegrationIcon({ className }: { className?: string }) {
 }
 ```
 
-**OR** use a Lucide icon (skip this file entirely if using Lucide).
+**OR** use a Lucide icon directly in your index.ts (skip this file if using Lucide).
 
-#### Step 3: Create Settings Component
-
-**File:** `plugins/my-integration/settings.tsx`
-
-This component is displayed when users configure your integration in settings:
-
-```tsx
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
-export function MyIntegrationSettings({
-  apiKey,
-  hasKey,
-  onApiKeyChange,
-  config,
-  onConfigChange,
-}: {
-  apiKey: string;
-  hasKey?: boolean;
-  onApiKeyChange: (key: string) => void;
-  showCard?: boolean;
-  config?: Record<string, string>;
-  onConfigChange?: (key: string, value: string) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label className="ml-1" htmlFor="myIntegrationApiKey">
-          API Key
-        </Label>
-        <Input
-          className="bg-background"
-          id="myIntegrationApiKey"
-          onChange={(e) => onApiKeyChange(e.target.value)}
-          placeholder={hasKey ? "API key is configured" : "Enter your API key"}
-          type="password"
-          value={apiKey}
-        />
-        <p className="text-muted-foreground text-sm">
-          Get your API key from{" "}
-          <a
-            className="text-primary underline"
-            href="https://my-integration.com/api-keys"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            My Integration Dashboard
-          </a>
-          .
-        </p>
-      </div>
-    </div>
-  );
-}
-```
-
-#### Step 4: Create Test Function
+#### Step 3: Create Test Function
 
 **File:** `plugins/my-integration/test.ts`
 
@@ -357,9 +285,9 @@ export async function testMyIntegration(credentials: Record<string, string>) {
 }
 ```
 
-#### Step 5: Create Step Function (Server Logic)
+#### Step 4: Create Step Function (Server Logic)
 
-**File:** `plugins/my-integration/steps/send-message/step.ts`
+**File:** `plugins/my-integration/steps/send-message.ts`
 
 This runs on the server during workflow execution. Steps use the `withStepLogging` wrapper to automatically log execution for the workflow builder UI:
 
@@ -450,59 +378,7 @@ export async function sendMessageStep(
 3. **Wrap with `withStepLogging`**: The step function just wraps the logic with `withStepLogging(input, () => logic(input))`
 4. **Return success/error objects**: Steps should return `{ success: true, ... }` or `{ success: false, error: "..." }`
 
-#### Step 6: Create Config UI Component
-
-**File:** `plugins/my-integration/steps/send-message/config.tsx`
-
-This is the UI for configuring the action in the workflow builder:
-
-```tsx
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
-
-/**
- * Send Message Config Fields Component
- * UI for configuring the send message action
- */
-export function SendMessageConfigFields({
-  config,
-  onUpdateConfig,
-  disabled,
-}: {
-  config: Record<string, unknown>;
-  onUpdateConfig: (key: string, value: unknown) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <>
-      <div className="space-y-2">
-        <Label htmlFor="message">Message</Label>
-        <TemplateBadgeInput
-          disabled={disabled}
-          id="message"
-          onChange={(value) => onUpdateConfig("message", value)}
-          placeholder="Enter message or use {{NodeName.field}}"
-          value={(config?.message as string) || ""}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="channel">Channel</Label>
-        <Input
-          disabled={disabled}
-          id="channel"
-          onChange={(e) => onUpdateConfig("channel", e.target.value)}
-          placeholder="#general"
-          value={(config?.channel as string) || ""}
-        />
-      </div>
-    </>
-  );
-}
-```
-
-#### Step 7: Create Codegen Template
+#### Step 5: Create Codegen Template
 
 **File:** `plugins/my-integration/codegen/send-message.ts`
 
@@ -552,44 +428,35 @@ export async function sendMessageStep(input: {
 }`;
 ```
 
-#### Step 8: Create Plugin Index
+#### Step 6: Create Plugin Index
 
-**File:** `plugins/my-integration/index.tsx`
+**File:** `plugins/my-integration/index.ts`
 
-This ties everything together:
+This ties everything together. The plugin uses a **declarative approach** where action config fields are defined as data (not React components):
 
-```tsx
-import { MessageSquare } from "lucide-react";
+```typescript
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { MyIntegrationIcon } from "./icon";
-import { MyIntegrationSettings } from "./settings";
-import { SendMessageConfigFields } from "./steps/send-message/config";
-import { testMyIntegration } from "./test";
 
 const myIntegrationPlugin: IntegrationPlugin = {
-  type: "my-integration", // Must match type in lib/db/integrations.ts
+  type: "my-integration",
   label: "My Integration",
   description: "Send messages and create records",
 
-  icon: {
-    type: "svg", // or "lucide" for Lucide icons
-    value: "MyIntegrationIcon",
-    svgComponent: MyIntegrationIcon,
-  },
-  // For Lucide icons, use:
-  // icon: { type: "lucide", value: "MessageSquare" },
+  // Direct component reference
+  icon: MyIntegrationIcon,
 
-  settingsComponent: MyIntegrationSettings,
-
+  // Form fields for integration settings (API keys, etc.)
   formFields: [
     {
-      id: "myIntegrationApiKey",
+      id: "apiKey",
       label: "API Key",
       type: "password",
       placeholder: "sk_...",
-      configKey: "myIntegrationApiKey",
+      configKey: "apiKey",
+      envVar: "MY_INTEGRATION_API_KEY", // Maps to environment variable
       helpText: "Get your API key from ",
       helpLink: {
         text: "my-integration.com",
@@ -598,28 +465,43 @@ const myIntegrationPlugin: IntegrationPlugin = {
     },
   ],
 
-  credentialMapping: (config) => {
-    const creds: Record<string, string> = {};
-    if (config.myIntegrationApiKey) {
-      creds.MY_INTEGRATION_API_KEY = String(config.myIntegrationApiKey);
-    }
-    return creds;
+  // Lazy-loaded test function (avoids bundling server code in client)
+  testConfig: {
+    getTestFunction: async () => {
+      const { testMyIntegration } = await import("./test");
+      return testMyIntegration;
+    },
   },
 
-  testConfig: {
-    testFunction: testMyIntegration,
+  // NPM dependencies for code export
+  dependencies: {
+    "my-integration-sdk": "^1.0.0",
   },
 
   actions: [
     {
-      id: "Send Message",
+      slug: "send-message", // Action ID: "my-integration/send-message"
       label: "Send Message",
       description: "Send a message to a channel",
       category: "My Integration",
-      icon: MessageSquare,
       stepFunction: "sendMessageStep",
       stepImportPath: "send-message",
-      configFields: SendMessageConfigFields,
+      // Declarative config fields (not React components)
+      configFields: [
+        {
+          key: "message",
+          label: "Message",
+          type: "template-input", // Supports {{NodeName.field}} syntax
+          placeholder: "Enter message or use {{NodeName.field}}",
+          required: true,
+        },
+        {
+          key: "channel",
+          label: "Channel",
+          type: "text",
+          placeholder: "#general",
+        },
+      ],
       codegenTemplate: sendMessageCodegenTemplate,
     },
     // Add more actions as needed
@@ -632,34 +514,35 @@ registerIntegration(myIntegrationPlugin);
 export default myIntegrationPlugin;
 ```
 
-#### Step 9: Add Integration Type to Database Schema
+**Key Points:**
 
-**Edit:** `lib/db/integrations.ts`
+1. **Icon**: Direct component reference (not an object with type/value)
+2. **envVar**: Maps formField to environment variable (auto-generates credential mapping)
+3. **getTestFunction**: Lazy-loads test function to avoid bundling server code
+4. **dependencies**: NPM packages included when exporting workflows
+5. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
+6. **configFields**: Declarative array defining UI fields (not React components)
 
-```typescript
-export type IntegrationType =
-  | "resend"
-  | "linear"
-  | "slack"
-  | "database"
-  | "ai-gateway"
-  | "firecrawl"
-  | "my-integration"; // Add this
+**Supported configField types:**
+- `template-input`: Single-line input with `{{variable}}` support
+- `template-textarea`: Multi-line textarea with `{{variable}}` support
+- `text`: Plain text input
+- `number`: Number input (with optional `min` property)
+- `select`: Dropdown (requires `options` array)
+- `schema-builder`: JSON schema builder for structured output
 
-export type IntegrationConfig = {
-  // ... existing config
-  myIntegrationApiKey?: string; // Add this
-};
-```
+#### Step 7: Run Plugin Discovery
 
-#### Step 10: Generate and Apply Migration
+The `discover-plugins` script auto-generates:
+- `plugins/index.ts` - Import registry
+- `lib/types/integration.ts` - IntegrationType union
+- `lib/step-registry.ts` - Step function mappings
 
 ```bash
-pnpm db:generate
-pnpm db:push
+pnpm discover-plugins
 ```
 
-#### Step 11: Test Your Integration
+#### Step 8: Test Your Integration
 
 ```bash
 pnpm type-check
@@ -715,21 +598,21 @@ See `plugins/firecrawl/` for a complete, production-ready example with:
 
 - Custom SVG icon
 - Multiple actions (Scrape, Search)
-- Separate step/config files for each action
-- Full TypeScript types
+- Declarative config fields
+- NPM dependencies for code export
+- Lazy-loaded test function
 
 ### Example 2: Using Lucide Icons
 
+You can use a Lucide icon directly instead of creating a custom SVG:
+
 ```typescript
-// In index.tsx
+// In index.ts
 import { Zap } from "lucide-react";
 
 const plugin: IntegrationPlugin = {
   // ...
-  icon: {
-    type: "lucide",
-    value: "Zap", // No icon.tsx file needed
-  },
+  icon: Zap, // Direct component reference
   // ...
 };
 ```
@@ -739,25 +622,29 @@ const plugin: IntegrationPlugin = {
 ```typescript
 actions: [
   {
-    id: "Send Message",
+    slug: "send-message",
     label: "Send Message",
     description: "Send a message",
     category: "My Integration",
-    icon: MessageSquare,
     stepFunction: "sendMessageStep",
     stepImportPath: "send-message",
-    configFields: SendMessageConfigFields,
+    configFields: [
+      { key: "message", label: "Message", type: "template-input" },
+      { key: "channel", label: "Channel", type: "text" },
+    ],
     codegenTemplate: sendMessageCodegenTemplate,
   },
   {
-    id: "Create Record",
+    slug: "create-record",
     label: "Create Record",
     description: "Create a new record",
     category: "My Integration",
-    icon: Plus,
     stepFunction: "createRecordStep",
     stepImportPath: "create-record",
-    configFields: CreateRecordConfigFields,
+    configFields: [
+      { key: "title", label: "Title", type: "template-input", required: true },
+      { key: "description", label: "Description", type: "template-textarea" },
+    ],
     codegenTemplate: createRecordCodegenTemplate,
   },
 ],
@@ -767,35 +654,35 @@ actions: [
 
 ## Common Patterns
 
-### Pattern 1: Template Badge Inputs
-
-Use `TemplateBadgeInput` to allow users to reference outputs from other workflow nodes:
-
-```tsx
-<TemplateBadgeInput
-  value={config?.message || ""}
-  onChange={(value) => onUpdateConfig("message", value)}
-  placeholder="Enter message or use {{NodeName.field}}"
-/>
-```
-
-### Pattern 2: Step Function Structure
+### Pattern 1: Step Function Structure
 
 Steps follow a consistent structure with logging:
 
 ```typescript
 import "server-only";
 
+import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
+import { getErrorMessage } from "@/lib/utils";
 
 type MyResult = { success: true; data: string } | { success: false; error: string };
 
 export type MyInput = StepInput & {
+  integrationId?: string;
   field1: string;
 };
 
 // 1. Logic function (no "use step" needed)
 async function myLogic(input: MyInput): Promise<MyResult> {
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  const apiKey = credentials.MY_INTEGRATION_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: "API key not configured" };
+  }
+
   try {
     const response = await fetch(/* ... */);
     if (!response.ok) {
@@ -818,19 +705,54 @@ export async function myStep(input: MyInput): Promise<MyResult> {
 }
 ```
 
-### Pattern 3: Credential Mapping
+### Pattern 2: Declarative Config Fields
+
+Action config fields are defined declaratively in the plugin index:
 
 ```typescript
-credentialMapping: (config) => {
-  const creds: Record<string, string> = {};
-  if (config.apiKey) {
-    creds.MY_INTEGRATION_API_KEY = String(config.apiKey);
-  }
-  if (config.workspaceId) {
-    creds.MY_INTEGRATION_WORKSPACE_ID = String(config.workspaceId);
-  }
-  return creds;
-},
+configFields: [
+  // Template input (supports {{NodeName.field}} syntax)
+  {
+    key: "message",
+    label: "Message",
+    type: "template-input",
+    placeholder: "Enter value or {{NodeName.field}}",
+    required: true,
+  },
+  // Multi-line textarea
+  {
+    key: "body",
+    label: "Body",
+    type: "template-textarea",
+    rows: 5,
+  },
+  // Select dropdown
+  {
+    key: "priority",
+    label: "Priority",
+    type: "select",
+    options: [
+      { value: "low", label: "Low" },
+      { value: "high", label: "High" },
+    ],
+    defaultValue: "low",
+  },
+  // Number input
+  {
+    key: "limit",
+    label: "Limit",
+    type: "number",
+    min: 1,
+    defaultValue: "10",
+  },
+  // Conditional field (only shown when another field matches)
+  {
+    key: "customOption",
+    label: "Custom Option",
+    type: "text",
+    showWhen: { field: "priority", equals: "high" },
+  },
+],
 ```
 
 ---
@@ -852,12 +774,16 @@ If you run into issues:
 
 **Adding an integration requires:**
 
-1. Create plugin directory with modular files (6-8 files)
-2. Update database schema (add your type)
-3. Run migration
-4. Test thoroughly
+1. Create plugin directory with 4-5 files:
+   - `index.ts` - Plugin definition
+   - `icon.tsx` - Icon component (or use Lucide)
+   - `test.ts` - Connection test function
+   - `steps/[action].ts` - Step function(s)
+   - `codegen/[action].ts` - Code generation template(s)
+2. Run `pnpm discover-plugins` to auto-generate types
+3. Test thoroughly
 
-Each integration is self-contained in one organized directory, making it easy to develop, test, and maintain. Happy building! 🚀
+Each integration is self-contained in one organized directory, making it easy to develop, test, and maintain. Happy building!
 
 ---
 
