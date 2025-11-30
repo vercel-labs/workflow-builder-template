@@ -56,6 +56,13 @@ export function DateInput({
 
 	const [month, setMonth] = React.useState<Date | undefined>(parsedDate);
 
+	// Sync month state when parsedDate changes (e.g., value prop updated programmatically)
+	React.useEffect(() => {
+		if (parsedDate) {
+			setMonth(parsedDate);
+		}
+	}, [parsedDate]);
+
 	const now = new Date();
 	const defaultHours = now.getHours();
 	const defaultMinutes = now.getMinutes();

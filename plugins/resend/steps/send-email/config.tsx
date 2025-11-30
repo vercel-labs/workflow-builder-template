@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ChevronDownIcon, InfoIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Send Email Config Fields Component
@@ -29,9 +29,24 @@ export function SendEmailConfigFields({
   disabled?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const optionalFieldsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen && optionalFieldsRef.current) {
+      setTimeout(() => {
+        optionalFieldsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+      }, 50);
+    }
+  }, [isOpen]);
 
   return (
     <>
+      <div className="text-muted-foreground border-border bg-muted/30 rounded-md border px-3 py-2 text-sm">
+        Email fields support <code className="bg-muted rounded px-1">Name &lt;email&gt;</code> format and template variables.
+      </div>
       <div className="space-y-2">
         <div className="ml-1 flex items-center gap-1">
           <Label htmlFor="emailFrom">From</Label>
@@ -58,7 +73,7 @@ export function SendEmailConfigFields({
           disabled={disabled}
           id="emailTo"
           onChange={(value) => onUpdateConfig("emailTo", value)}
-          placeholder="user@example.com or {{NodeName.email}}"
+          placeholder="recipient@example.com"
           value={(config?.emailTo as string) || ""}
         />
       </div>
@@ -76,7 +91,7 @@ export function SendEmailConfigFields({
       </div>
       <div className="space-y-2">
         <Label className="ml-1" htmlFor="emailBody">
-          Body (Plain Text)
+          Body
         </Label>
         <TemplateBadgeTextarea
           disabled={disabled}
@@ -89,13 +104,16 @@ export function SendEmailConfigFields({
       </div>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="border-border hover:bg-muted/50 data-[state=open]:bg-muted/50 flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-all">
-          <span className="text-muted-foreground">Optional fields</span>
+          <span className="text-muted-foreground">Optional Fields</span>
           <ChevronDownIcon
             className={`text-muted-foreground size-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="border-border bg-muted/30 mt-4 space-y-4 rounded-md border p-4">
+          <div
+            ref={optionalFieldsRef}
+            className="border-border bg-muted/30 mt-4 space-y-4 rounded-md border p-4"
+          >
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="ml-1" htmlFor="emailCc">

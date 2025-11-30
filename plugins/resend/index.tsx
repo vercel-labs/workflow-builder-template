@@ -34,11 +34,11 @@ const resendPlugin: IntegrationPlugin = {
     },
     {
       id: "fromEmail",
-      label: "From Email",
+      label: "Default Sender",
       type: "text",
-      placeholder: "noreply@yourdomain.com",
+      placeholder: "Your Name <noreply@yourdomain.com>",
       configKey: "fromEmail",
-      helpText: "The email address that will appear as the sender",
+      helpText: "The name and email that will appear as the sender",
     },
   ],
 

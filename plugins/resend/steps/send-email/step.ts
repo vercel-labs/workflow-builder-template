@@ -42,14 +42,13 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
     };
   }
 
-  // Use action-level from if provided, otherwise fall back to plugin settings
   const senderEmail = input.emailFrom || fromEmail;
 
   if (!senderEmail) {
     return {
       success: false,
       error:
-        "From email is not configured. Please add it in the action or in Project Integrations.",
+        "No sender is configured. Please add it in the action or in Project Integrations.",
     };
   }
 
