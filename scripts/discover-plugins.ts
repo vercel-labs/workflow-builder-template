@@ -215,12 +215,12 @@ async function generateStepRegistry(): Promise<void> {
   const { getAllIntegrations, computeActionId } = await import(
     "@/plugins/registry"
   );
+  const { LEGACY_ACTION_MAPPINGS } = await import("@/plugins/legacy-mappings");
   const integrations = getAllIntegrations();
 
   // Collect all action -> step mappings
   const stepEntries: Array<{
     actionId: string;
-    legacyId: string; // For backward compatibility with existing workflows
     integration: string;
     stepImportPath: string;
     stepFunction: string;
@@ -231,7 +231,6 @@ async function generateStepRegistry(): Promise<void> {
       const fullActionId = computeActionId(integration.type, action.slug);
       stepEntries.push({
         actionId: fullActionId,
-        legacyId: action.label, // Use label for backward compat (e.g., "Send Email")
         integration: integration.type,
         stepImportPath: action.stepImportPath,
         stepFunction: action.stepFunction,
@@ -239,29 +238,39 @@ async function generateStepRegistry(): Promise<void> {
     }
   }
 
+  // Build reverse mapping from action IDs to legacy labels
+  const legacyLabelsForAction: Record<string, string[]> = {};
+  for (const [legacyLabel, actionId] of Object.entries(
+    LEGACY_ACTION_MAPPINGS
+  )) {
+    if (!legacyLabelsForAction[actionId]) {
+      legacyLabelsForAction[actionId] = [];
+    }
+    legacyLabelsForAction[actionId].push(legacyLabel);
+  }
+
   // Generate the step importer map with static imports
   // Include both namespaced IDs and legacy label-based IDs for backward compatibility
   const importerEntries = stepEntries
-    .flatMap(
-      ({ actionId, legacyId, integration, stepImportPath, stepFunction }) => {
-        const entries = [
-          `  "${actionId}": {
+    .flatMap(({ actionId, integration, stepImportPath, stepFunction }) => {
+      const entries = [
+        `  "${actionId}": {
     importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
     stepFunction: "${stepFunction}",
   },`,
-        ];
-        // Add legacy ID if different from the action ID
-        if (legacyId !== actionId) {
-          entries.push(
-            `  "${legacyId}": {
+      ];
+      // Add entries for all legacy labels that map to this action
+      const legacyLabels = legacyLabelsForAction[actionId] || [];
+      for (const legacyLabel of legacyLabels) {
+        entries.push(
+          `  "${legacyLabel}": {
     importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
     stepFunction: "${stepFunction}",
   },`
-          );
-        }
-        return entries;
+        );
       }
-    )
+      return entries;
+    })
     .join("\n");
 
   const content = `/**

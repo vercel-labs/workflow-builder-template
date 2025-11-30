@@ -45,7 +45,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/scrape/step"),
     stepFunction: "firecrawlScrapeStep",
   },
-  "Scrape URL": {
+  Scrape: {
     importer: () => import("@/plugins/firecrawl/steps/scrape/step"),
     stepFunction: "firecrawlScrapeStep",
   },
@@ -53,7 +53,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/search/step"),
     stepFunction: "firecrawlSearchStep",
   },
-  "Search Web": {
+  Search: {
     importer: () => import("@/plugins/firecrawl/steps/search/step"),
     stepFunction: "firecrawlSearchStep",
   },
