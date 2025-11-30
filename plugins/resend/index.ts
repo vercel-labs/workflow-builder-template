@@ -1,23 +1,14 @@
-import { Mail } from "lucide-react";
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { sendEmailCodegenTemplate } from "./codegen/send-email";
 import { ResendIcon } from "./icon";
-import { ResendSettings } from "./settings";
-import { SendEmailConfigFields } from "./steps/send-email/config";
 
 const resendPlugin: IntegrationPlugin = {
   type: "resend",
   label: "Resend",
   description: "Send transactional emails",
 
-  icon: {
-    type: "svg",
-    value: "ResendIcon",
-    svgComponent: ResendIcon,
-  },
-
-  settingsComponent: ResendSettings,
+  icon: ResendIcon,
 
   formFields: [
     {
@@ -26,6 +17,7 @@ const resendPlugin: IntegrationPlugin = {
       type: "password",
       placeholder: "re_...",
       configKey: "apiKey",
+      envVar: "RESEND_API_KEY",
       helpText: "Get your API key from ",
       helpLink: {
         text: "resend.com/api-keys",
@@ -38,20 +30,10 @@ const resendPlugin: IntegrationPlugin = {
       type: "text",
       placeholder: "noreply@yourdomain.com",
       configKey: "fromEmail",
+      envVar: "RESEND_FROM_EMAIL",
       helpText: "The email address that will appear as the sender",
     },
   ],
-
-  credentialMapping: (config) => {
-    const creds: Record<string, string> = {};
-    if (config.apiKey) {
-      creds.RESEND_API_KEY = String(config.apiKey);
-    }
-    if (config.fromEmail) {
-      creds.RESEND_FROM_EMAIL = String(config.fromEmail);
-    }
-    return creds;
-  },
 
   testConfig: {
     getTestFunction: async () => {
@@ -60,16 +42,45 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    resend: "^6.4.0",
+  },
+
   actions: [
     {
-      id: "Send Email",
+      slug: "send-email",
       label: "Send Email",
       description: "Send an email via Resend",
       category: "Resend",
-      icon: Mail,
       stepFunction: "sendEmailStep",
       stepImportPath: "send-email",
-      configFields: SendEmailConfigFields,
+      configFields: [
+        {
+          key: "emailTo",
+          label: "To (Email Address)",
+          type: "template-input",
+          placeholder: "user@example.com or {{NodeName.email}}",
+          example: "user@example.com",
+          required: true,
+        },
+        {
+          key: "emailSubject",
+          label: "Subject",
+          type: "template-input",
+          placeholder: "Subject or {{NodeName.title}}",
+          example: "Hello from my workflow",
+          required: true,
+        },
+        {
+          key: "emailBody",
+          label: "Body",
+          type: "template-textarea",
+          placeholder: "Email content or {{NodeName.description}}",
+          rows: 5,
+          example: "This is the email body content.",
+          required: true,
+        },
+      ],
       codegenTemplate: sendEmailCodegenTemplate,
     },
   ],
@@ -79,4 +90,3 @@ const resendPlugin: IntegrationPlugin = {
 registerIntegration(resendPlugin);
 
 export default resendPlugin;
-

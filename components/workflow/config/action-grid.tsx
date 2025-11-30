@@ -13,7 +13,7 @@ type ActionType = {
   label: string;
   description: string;
   category: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   integration?: string;
 };
 
@@ -53,7 +53,6 @@ function useAllActions(): ActionType[] {
       label: action.label,
       description: action.description,
       category: action.category,
-      icon: action.icon,
       integration: action.integration,
     }));
 
@@ -65,6 +64,18 @@ type ActionGridProps = {
   onSelectAction: (actionType: string) => void;
   disabled?: boolean;
 };
+
+function ActionIcon({ action }: { action: ActionType }) {
+  if (action.integration) {
+    return (
+      <IntegrationIcon className="size-8" integration={action.integration} />
+    );
+  }
+  if (action.icon) {
+    return <action.icon className="size-8" />;
+  }
+  return <Zap className="size-8" />;
+}
 
 export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
   const [filter, setFilter] = useState("");
@@ -110,14 +121,7 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
             onClick={() => onSelectAction(action.id)}
             type="button"
           >
-            {action.integration ? (
-              <IntegrationIcon
-                className="size-8"
-                integration={action.integration}
-              />
-            ) : (
-              <action.icon className="size-8" />
-            )}
+            <ActionIcon action={action} />
             <p className="text-center font-medium text-sm">{action.label}</p>
           </button>
         ))}

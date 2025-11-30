@@ -18,6 +18,7 @@ import {
   getActionsByCategory,
   getAllIntegrations,
 } from "@/plugins";
+import { ActionConfigRenderer } from "./action-config-renderer";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
 type ActionConfigProps = {
@@ -199,37 +200,68 @@ function ConditionFields({
 }
 
 // System actions that don't have plugins
-const SYSTEM_ACTIONS = ["HTTP Request", "Database Query", "Condition"];
+const SYSTEM_ACTIONS: Array<{ id: string; label: string }> = [
+  { id: "HTTP Request", label: "HTTP Request" },
+  { id: "Database Query", label: "Database Query" },
+  { id: "Condition", label: "Condition" },
+];
+
+const SYSTEM_ACTION_IDS = SYSTEM_ACTIONS.map((a) => a.id);
 
 // Build category mapping dynamically from plugins + System
 function useCategoryData() {
   return useMemo(() => {
     const pluginCategories = getActionsByCategory();
 
-    // Build category map including System
-    const allCategories: Record<string, string[]> = {
+    // Build category map including System with both id and label
+    const allCategories: Record<
+      string,
+      Array<{ id: string; label: string }>
+    > = {
       System: SYSTEM_ACTIONS,
     };
 
     for (const [category, actions] of Object.entries(pluginCategories)) {
-      allCategories[category] = actions.map((a) => a.id);
+      allCategories[category] = actions.map((a) => ({
+        id: a.id,
+        label: a.label,
+      }));
     }
 
     return allCategories;
   }, []);
 }
 
-// Get category for an action type
-function getCategoryForAction(
-  actionType: string,
-  categories: Record<string, string[]>
-): string | null {
-  for (const [category, actions] of Object.entries(categories)) {
-    if (actions.includes(actionType)) {
-      return category;
-    }
+// Get category for an action type (supports both new IDs, labels, and legacy labels)
+function getCategoryForAction(actionType: string): string | null {
+  // Check system actions first
+  if (SYSTEM_ACTION_IDS.includes(actionType)) {
+    return "System";
   }
+
+  // Use findActionById which handles legacy labels from plugin registry
+  const action = findActionById(actionType);
+  if (action?.category) {
+    return action.category;
+  }
+
   return null;
+}
+
+// Normalize action type to new ID format (handles legacy labels via findActionById)
+function normalizeActionType(actionType: string): string {
+  // Check system actions first - they use their label as ID
+  if (SYSTEM_ACTION_IDS.includes(actionType)) {
+    return actionType;
+  }
+
+  // Use findActionById which handles legacy labels and returns the proper ID
+  const action = findActionById(actionType);
+  if (action) {
+    return action.id;
+  }
+
+  return actionType;
 }
 
 export function ActionConfig({
@@ -241,25 +273,21 @@ export function ActionConfig({
   const categories = useCategoryData();
   const integrations = useMemo(() => getAllIntegrations(), []);
 
-  const selectedCategory = actionType
-    ? getCategoryForAction(actionType, categories)
-    : null;
+  const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
   const [category, setCategory] = useState<string>(selectedCategory || "");
 
   // Sync category state when actionType changes (e.g., when switching nodes)
   useEffect(() => {
-    const newCategory = actionType
-      ? getCategoryForAction(actionType, categories)
-      : null;
+    const newCategory = actionType ? getCategoryForAction(actionType) : null;
     setCategory(newCategory || "");
-  }, [actionType, categories]);
+  }, [actionType]);
 
   const handleCategoryChange = (newCategory: string) => {
     setCategory(newCategory);
     // Auto-select the first action in the new category
     const firstAction = categories[newCategory]?.[0];
     if (firstAction) {
-      onUpdateConfig("actionType", firstAction);
+      onUpdateConfig("actionType", firstAction.id);
     }
   };
 
@@ -319,7 +347,7 @@ export function ActionConfig({
           <Select
             disabled={disabled || !category}
             onValueChange={handleActionTypeChange}
-            value={actionType || undefined}
+            value={normalizeActionType(actionType) || undefined}
           >
             <SelectTrigger className="w-full" id="actionType">
               <SelectValue placeholder="Select action" />
@@ -327,8 +355,8 @@ export function ActionConfig({
             <SelectContent>
               {category &&
                 categories[category]?.map((action) => (
-                  <SelectItem key={action} value={action}>
-                    {action}
+                  <SelectItem key={action.id} value={action.id}>
+                    {action.label}
                   </SelectItem>
                 ))}
             </SelectContent>
@@ -361,11 +389,12 @@ export function ActionConfig({
         />
       )}
 
-      {/* Plugin actions - dynamic config fields */}
-      {pluginAction && !SYSTEM_ACTIONS.includes(actionType) && (
-        <pluginAction.configFields
+      {/* Plugin actions - declarative config fields */}
+      {pluginAction && !SYSTEM_ACTION_IDS.includes(actionType) && (
+        <ActionConfigRenderer
           config={config}
           disabled={disabled}
+          fields={pluginAction.configFields}
           onUpdateConfig={handlePluginUpdateConfig}
         />
       )}

@@ -29,9 +29,6 @@ const README_FILE = join(process.cwd(), "README.md");
 const PLUGINS_MARKER_REGEX =
   /<!-- PLUGINS:START[^>]*-->[\s\S]*?<!-- PLUGINS:END -->/;
 
-// Regex to validate JavaScript identifiers
-const VALID_IDENTIFIER_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
-
 // System integrations that don't have plugins
 const SYSTEM_INTEGRATION_TYPES = ["database"] as const;
 
@@ -90,18 +87,26 @@ function generateIndexFile(plugins: string[]): void {
 
 ${imports || "// No plugins discovered"}
 
-export type { IntegrationPlugin } from "./registry";
+export type { IntegrationPlugin, PluginAction, ActionWithFullId } from "./registry";
 
 // Export the registry utilities
 export {
+  computeActionId,
   findActionById,
+  generateAIActionPrompts,
   getActionsByCategory,
   getAllActions,
+  getAllDependencies,
+  getAllEnvVars,
   getAllIntegrations,
+  getCredentialMapping,
+  getDependenciesForActions,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
+  getPluginEnvVars,
   getSortedIntegrationTypes,
+  parseActionId,
   registerIntegration,
 } from "./registry";
 `;
@@ -209,12 +214,16 @@ export type IntegrationConfig = Record<string, string | undefined>;
  * This enables dynamic imports that are statically analyzable by the bundler
  */
 async function generateStepRegistry(): Promise<void> {
-  const { getAllIntegrations } = await import("@/plugins/registry");
+  const { getAllIntegrations, computeActionId } = await import(
+    "@/plugins/registry"
+  );
+  const { LEGACY_ACTION_MAPPINGS } = await import("@/plugins/legacy-mappings");
   const integrations = getAllIntegrations();
 
   // Collect all action -> step mappings
   const stepEntries: Array<{
     actionId: string;
+    label: string;
     integration: string;
     stepImportPath: string;
     stepFunction: string;
@@ -222,8 +231,10 @@ async function generateStepRegistry(): Promise<void> {
 
   for (const integration of integrations) {
     for (const action of integration.actions) {
+      const fullActionId = computeActionId(integration.type, action.slug);
       stepEntries.push({
-        actionId: action.id,
+        actionId: fullActionId,
+        label: action.label,
         integration: integration.type,
         stepImportPath: action.stepImportPath,
         stepFunction: action.stepFunction,
@@ -231,17 +242,56 @@ async function generateStepRegistry(): Promise<void> {
     }
   }
 
-  // Generate the step importer map with static imports
-  // Use unquoted keys when valid identifiers, quoted otherwise
-  const isValidIdentifier = (str: string) => VALID_IDENTIFIER_REGEX.test(str);
+  // Build reverse mapping from action IDs to legacy labels
+  const legacyLabelsForAction: Record<string, string[]> = {};
+  for (const [legacyLabel, actionId] of Object.entries(
+    LEGACY_ACTION_MAPPINGS
+  )) {
+    if (!legacyLabelsForAction[actionId]) {
+      legacyLabelsForAction[actionId] = [];
+    }
+    legacyLabelsForAction[actionId].push(legacyLabel);
+  }
 
+  // Generate the step importer map with static imports
+  // Include both namespaced IDs and legacy label-based IDs for backward compatibility
   const importerEntries = stepEntries
-    .map(({ actionId, integration, stepImportPath, stepFunction }) => {
-      const key = isValidIdentifier(actionId) ? actionId : `"${actionId}"`;
-      return `  ${key}: {
-    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
+    .flatMap(({ actionId, integration, stepImportPath, stepFunction }) => {
+      const entries = [
+        `  "${actionId}": {
+    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}"),
     stepFunction: "${stepFunction}",
-  },`;
+  },`,
+      ];
+      // Add entries for all legacy labels that map to this action
+      const legacyLabels = legacyLabelsForAction[actionId] || [];
+      for (const legacyLabel of legacyLabels) {
+        entries.push(
+          `  "${legacyLabel}": {
+    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}"),
+    stepFunction: "${stepFunction}",
+  },`
+        );
+      }
+      return entries;
+    })
+    .join("\n");
+
+  // Generate the action labels map for displaying human-readable names
+  const labelEntries = stepEntries
+    .map(({ actionId, label }) => `  "${actionId}": "${label}",`)
+    .join("\n");
+
+  // Also add legacy label mappings to the labels map
+  const legacyLabelEntries = Object.entries(legacyLabelsForAction)
+    .flatMap(([actionId, legacyLabels]) => {
+      const entry = stepEntries.find((e) => e.actionId === actionId);
+      if (!entry) {
+        return [];
+      }
+      return legacyLabels.map(
+        (legacyLabel) => `  "${legacyLabel}": "${entry.label}",`
+      );
     })
     .join("\n");
 
@@ -276,10 +326,26 @@ ${importerEntries}
 };
 
 /**
+ * Action labels - maps action IDs to human-readable labels
+ * Used for displaying friendly names in the UI (e.g., Runs tab)
+ */
+export const ACTION_LABELS: Record<string, string> = {
+${labelEntries}
+${legacyLabelEntries}
+};
+
+/**
  * Get a step importer for an action type
  */
 export function getStepImporter(actionType: string): StepImporter | undefined {
   return PLUGIN_STEP_IMPORTERS[actionType];
+}
+
+/**
+ * Get the human-readable label for an action type
+ */
+export function getActionLabel(actionType: string): string | undefined {
+  return ACTION_LABELS[actionType];
 }
 `;
 

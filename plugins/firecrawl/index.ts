@@ -1,25 +1,15 @@
-import { Flame, Search } from "lucide-react";
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { scrapeCodegenTemplate } from "./codegen/scrape";
 import { searchCodegenTemplate } from "./codegen/search";
 import { FirecrawlIcon } from "./icon";
-import { FirecrawlSettings } from "./settings";
-import { ScrapeConfigFields } from "./steps/scrape/config";
-import { SearchConfigFields } from "./steps/search/config";
 
 const firecrawlPlugin: IntegrationPlugin = {
   type: "firecrawl",
   label: "Firecrawl",
   description: "Scrape, search, and crawl the web",
 
-  icon: {
-    type: "svg",
-    value: "FirecrawlIcon",
-    svgComponent: FirecrawlIcon,
-  },
-
-  settingsComponent: FirecrawlSettings,
+  icon: FirecrawlIcon,
 
   formFields: [
     {
@@ -28,6 +18,7 @@ const firecrawlPlugin: IntegrationPlugin = {
       type: "password",
       placeholder: "fc-...",
       configKey: "firecrawlApiKey",
+      envVar: "FIRECRAWL_API_KEY",
       helpText: "Get your API key from ",
       helpLink: {
         text: "firecrawl.dev",
@@ -36,14 +27,6 @@ const firecrawlPlugin: IntegrationPlugin = {
     },
   ],
 
-  credentialMapping: (config) => {
-    const creds: Record<string, string> = {};
-    if (config.firecrawlApiKey) {
-      creds.FIRECRAWL_API_KEY = String(config.firecrawlApiKey);
-    }
-    return creds;
-  },
-
   testConfig: {
     getTestFunction: async () => {
       const { testFirecrawl } = await import("./test");
@@ -51,27 +34,55 @@ const firecrawlPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    "@mendable/firecrawl-js": "^4.6.2",
+  },
+
   actions: [
     {
-      id: "Scrape",
+      slug: "scrape",
       label: "Scrape URL",
       description: "Scrape content from a URL",
       category: "Firecrawl",
-      icon: Flame,
       stepFunction: "firecrawlScrapeStep",
       stepImportPath: "scrape",
-      configFields: ScrapeConfigFields,
+      configFields: [
+        {
+          key: "url",
+          label: "URL",
+          type: "template-input",
+          placeholder: "https://example.com or {{NodeName.url}}",
+          example: "https://example.com",
+          required: true,
+        },
+      ],
       codegenTemplate: scrapeCodegenTemplate,
     },
     {
-      id: "Search",
+      slug: "search",
       label: "Search Web",
       description: "Search the web with Firecrawl",
       category: "Firecrawl",
-      icon: Search,
       stepFunction: "firecrawlSearchStep",
       stepImportPath: "search",
-      configFields: SearchConfigFields,
+      configFields: [
+        {
+          key: "query",
+          label: "Search Query",
+          type: "template-input",
+          placeholder: "Search query or {{NodeName.query}}",
+          example: "latest AI news",
+          required: true,
+        },
+        {
+          key: "limit",
+          label: "Result Limit",
+          type: "number",
+          placeholder: "10",
+          min: 1,
+          example: "10",
+        },
+      ],
       codegenTemplate: searchCodegenTemplate,
     },
   ],

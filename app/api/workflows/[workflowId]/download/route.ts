@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
 import { generateWorkflowModule } from "@/lib/workflow-codegen";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
+import { getAllEnvVars, getDependenciesForActions } from "@/plugins";
 
 // Path to the Next.js boilerplate directory
 const BOILERPLATE_PATH = join(process.cwd(), "lib", "next-boilerplate");
@@ -137,35 +138,58 @@ export async function POST(request: Request) {
 
 /**
  * Get npm dependencies based on workflow nodes
+ * Uses the plugin registry to dynamically determine required dependencies
  */
 function getIntegrationDependencies(
   nodes: WorkflowNode[]
 ): Record<string, string> {
-  const deps: Record<string, string> = {};
+  // Collect all action types used in the workflow
+  const actionTypes = nodes
+    .filter((node) => node.data.type === "action")
+    .map((node) => node.data.config?.actionType as string)
+    .filter(Boolean);
 
-  for (const node of nodes) {
-    const actionType = node.data.config?.actionType as string;
+  // Get dependencies from plugin registry
+  return getDependenciesForActions(actionTypes);
+}
 
-    if (actionType === "Send Email") {
-      deps.resend = "^6.4.0";
-    } else if (actionType === "Create Ticket" || actionType === "Find Issues") {
-      deps["@linear/sdk"] = "^63.2.0";
-    } else if (actionType === "Send Slack Message") {
-      deps["@slack/web-api"] = "^7.12.0";
-    } else if (
-      actionType === "Generate Text" ||
-      actionType === "Generate Image"
-    ) {
-      deps.ai = "^5.0.86";
-      deps.openai = "^6.8.0";
-      deps["@google/genai"] = "^1.28.0";
-      deps.zod = "^4.1.12";
-    } else if (actionType === "Scrape" || actionType === "Search") {
-      deps["@mendable/firecrawl-js"] = "^4.6.2";
+/**
+ * Generate .env.example content based on registered integrations
+ */
+function generateEnvExample(): string {
+  const lines = ["# Add your environment variables here"];
+
+  // Add system integration env vars
+  lines.push("");
+  lines.push("# For database integrations");
+  lines.push("DATABASE_URL=your_database_url");
+
+  // Add plugin env vars from registry
+  const envVars = getAllEnvVars();
+  const groupedByPrefix: Record<
+    string,
+    Array<{ name: string; description: string }>
+  > = {};
+
+  for (const envVar of envVars) {
+    const prefix = envVar.name.split("_")[0];
+    if (!groupedByPrefix[prefix]) {
+      groupedByPrefix[prefix] = [];
     }
+    groupedByPrefix[prefix].push(envVar);
   }
 
-  return deps;
+  for (const [prefix, vars] of Object.entries(groupedByPrefix)) {
+    lines.push(
+      `# For ${prefix.charAt(0) + prefix.slice(1).toLowerCase()} integration`
+    );
+    for (const v of vars) {
+      lines.push(`${v.name}=your_${v.name.toLowerCase()}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
 }
 
 /**
@@ -303,27 +327,8 @@ vercel deploy
 For more information, visit the [Workflow documentation](https://workflow.is).
 `;
 
-    // Add .env.example file
-    allFiles[".env.example"] = `# Add your environment variables here
-# For Resend email integration
-RESEND_API_KEY=your_resend_api_key
-
-# For Linear integration
-LINEAR_API_KEY=your_linear_api_key
-
-# For Slack integration
-SLACK_BOT_TOKEN=your_slack_bot_token
-
-# For AI integrations
-OPENAI_API_KEY=your_openai_api_key
-GOOGLE_AI_API_KEY=your_google_ai_api_key
-
-# For database integrations
-DATABASE_URL=your_database_url
-
-# For Firecrawl integration
-FIRECRAWL_API_KEY=your_firecrawl_api_key
-`;
+    // Add .env.example file (dynamically generated from plugin registry)
+    allFiles[".env.example"] = generateEnvExample();
 
     return NextResponse.json({
       success: true,

@@ -16,6 +16,15 @@ export interface TemplateBadgeTextareaProps {
   rows?: number;
 }
 
+// Helper to check if a template references an existing node
+function doesNodeExist(template: string, nodes: ReturnType<typeof useAtom<typeof nodesAtom>>[0]): boolean {
+  const match = template.match(/\{\{@([^:]+):([^}]+)\}\}/);
+  if (!match) return false;
+  
+  const nodeId = match[1];
+  return nodes.some((n) => n.id === nodeId);
+}
+
 // Helper to get display text from template by looking up current node label
 function getDisplayTextForTemplate(template: string, nodes: ReturnType<typeof useAtom<typeof nodesAtom>>[0]): string {
   // Extract nodeId and field from template: {{@nodeId:OldLabel.field}}
@@ -273,8 +282,10 @@ export function TemplateBadgeTextarea({
 
       // Create badge for template
       const badge = document.createElement("span");
-      badge.className =
-        "inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400 font-mono text-xs border border-blue-500/20 mx-0.5";
+      const nodeExists = doesNodeExist(fullMatch, nodes);
+      badge.className = nodeExists
+        ? "inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400 font-mono text-xs border border-blue-500/20 mx-0.5"
+        : "inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-red-600 dark:text-red-400 font-mono text-xs border border-red-500/20 mx-0.5";
       badge.contentEditable = "false";
       badge.setAttribute("data-template", fullMatch);
       // Use current node label for display

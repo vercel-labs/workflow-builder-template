@@ -15,7 +15,7 @@
  */
 import "server-only";
 
-import { getIntegration } from "@/plugins";
+import { getCredentialMapping, getIntegration } from "@/plugins";
 import { getIntegrationById } from "./db/integrations";
 import type { IntegrationConfig, IntegrationType } from "./types/integration";
 
@@ -50,10 +50,10 @@ function mapIntegrationConfig(
     return systemMapper(config);
   }
 
-  // Look up plugin from registry
+  // Look up plugin from registry and auto-generate credential mapping
   const plugin = getIntegration(integrationType);
-  if (plugin?.credentialMapping) {
-    return plugin.credentialMapping(config);
+  if (plugin) {
+    return getCredentialMapping(plugin, config);
   }
 
   // Fallback for unknown integrations

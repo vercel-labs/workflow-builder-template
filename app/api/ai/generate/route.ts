@@ -1,6 +1,7 @@
 import { streamText } from "ai";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { generateAIActionPrompts } from "@/plugins";
 
 // Simple type for operations
 type Operation = {
@@ -130,7 +131,9 @@ async function processOperationStream(
   );
 }
 
-const system = `You are a workflow automation expert. Generate a workflow based on the user's description.
+function getSystemPrompt(): string {
+  const pluginActionPrompts = generateAIActionPrompts();
+  return `You are a workflow automation expert. Generate a workflow based on the user's description.
 
 CRITICAL: Output your workflow as INDIVIDUAL OPERATIONS, one per line in JSONL format.
 Each line must be a complete, separate JSON object.
@@ -185,19 +188,13 @@ Trigger types:
 - Webhook: {"triggerType": "Webhook", "webhookPath": "/webhooks/name", ...}
 - Schedule: {"triggerType": "Schedule", "scheduleCron": "0 9 * * *", ...}
 
-Action types:
-- Send Email: {"actionType": "Send Email", "emailTo": "user@example.com", "emailSubject": "Subject", "emailBody": "Body"}
-- Send Slack Message: {"actionType": "Send Slack Message", "slackChannel": "#general", "slackMessage": "Message"}
-- Create Ticket: {"actionType": "Create Ticket", "ticketTitle": "Title", "ticketDescription": "Description", "ticketPriority": "2"}
+System action types (built-in):
 - Database Query: {"actionType": "Database Query", "dbQuery": "SELECT * FROM table", "dbTable": "table"}
 - HTTP Request: {"actionType": "HTTP Request", "httpMethod": "POST", "endpoint": "https://api.example.com", "httpHeaders": "{}", "httpBody": "{}"}
-- Generate Text: {"actionType": "Generate Text", "aiModel": "meta/llama-4-scout", "aiFormat": "text", "aiPrompt": "Your prompt here"}
-- Generate Image: {"actionType": "Generate Image", "imageModel": "google/imagen-4.0-generate", "imagePrompt": "Image description"}
-- Scrape: {"actionType": "Scrape", "url": "https://example.com"}
-- Search: {"actionType": "Search", "query": "search query", "limit": 10}
 - Condition: {"actionType": "Condition", "condition": "{{@nodeId:Label.field}} === 'value'"}
-- Create Chat (v0): {"actionType": "Create Chat", "message": "Create a line graph showing DAU over time", "system": "You are an expert coder"} - Use v0 for generating UI components, visualizations (charts, graphs, dashboards), landing pages, or any React/Next.js code. PREFER v0 over Generate Text/Image for any visual output like charts, graphs, or UI.
-- Send Message (v0): {"actionType": "Send Message", "chatId": "{{@nodeId:Label.chatId}}", "message": "Add dark mode"} - Use this to continue a v0 chat conversation
+
+Plugin action types (from integrations):
+${pluginActionPrompts}
 
 CRITICAL ABOUT CONDITION NODES:
 - Condition nodes evaluate a boolean expression
@@ -247,6 +244,7 @@ Example output (branching workflow with 250px vertical spacing):
 {"op": "addEdge", "edge": {"id": "e2", "source": "trigger-1", "target": "branch-b", "type": "default"}}
 
 REMEMBER: After adding all nodes, you MUST add edges to connect them! Every node should be reachable from the trigger.`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -328,7 +326,7 @@ Example: If user says "connect node A to node B", output:
 
     const result = streamText({
       model: "openai/gpt-5.1-instant",
-      system,
+      system: getSystemPrompt(),
       prompt: userPrompt,
     });
 

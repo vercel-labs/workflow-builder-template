@@ -7,7 +7,11 @@ import {
   preValidateConditionExpression,
   validateConditionExpression,
 } from "@/lib/condition-validator";
-import { getStepImporter, type StepImporter } from "./step-registry";
+import {
+  getActionLabel,
+  getStepImporter,
+  type StepImporter,
+} from "./step-registry";
 import type { StepContext } from "./steps/step-handler";
 import { triggerStep } from "./steps/trigger";
 import { getErrorMessageAsync } from "./utils";
@@ -233,14 +237,14 @@ async function executeActionStep(input: {
 
     return {
       success: false,
-      error: `Step function "${stepImporter.stepFunction}" not found in module`,
+      error: `Step function "${stepImporter.stepFunction}" not found in module for action "${actionType}". Check that the plugin exports the correct function name.`,
     };
   }
 
   // Fallback for unknown action types
   return {
     success: false,
-    error: `Unknown action type: ${actionType}`,
+    error: `Unknown action type: "${actionType}". This action is not registered in the plugin system. Available system actions: ${Object.keys(SYSTEM_ACTIONS).join(", ")}.`,
   };
 }
 
@@ -368,7 +372,15 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
       return node.data.label;
     }
     if (node.data.type === "action") {
-      return (node.data.config?.actionType as string) || "Action";
+      const actionType = node.data.config?.actionType as string;
+      if (actionType) {
+        // Look up the human-readable label from the step registry
+        const label = getActionLabel(actionType);
+        if (label) {
+          return label;
+        }
+      }
+      return "Action";
     }
     if (node.data.type === "trigger") {
       return (node.data.config?.triggerType as string) || "Trigger";
@@ -532,7 +544,9 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           const errorResult = stepResult as { success: false; error?: string };
           result = {
             success: false,
-            error: errorResult.error || "Step execution failed",
+            error:
+              errorResult.error ||
+              `Step "${actionType}" in node "${node.data.label || node.id}" failed without a specific error message.`,
           };
         } else {
           result = {
@@ -544,7 +558,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
         console.log("[Workflow Executor] Unknown node type:", node.data.type);
         result = {
           success: false,
-          error: `Unknown node type: ${node.data.type}`,
+          error: `Unknown node type "${node.data.type}" in node "${node.data.label || node.id}". Expected "trigger" or "action".`,
         };
       }
 

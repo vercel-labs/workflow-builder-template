@@ -1,25 +1,15 @@
-import { MessageSquarePlus, Send } from "lucide-react";
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { createChatCodegenTemplate } from "./codegen/create-chat";
 import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { V0Icon } from "./icon";
-import { V0Settings } from "./settings";
-import { CreateChatConfigFields } from "./steps/create-chat/config";
-import { SendMessageConfigFields } from "./steps/send-message/config";
 
 const v0Plugin: IntegrationPlugin = {
   type: "v0",
   label: "v0",
   description: "Generate UI components with AI",
 
-  icon: {
-    type: "svg",
-    value: "V0Icon",
-    svgComponent: V0Icon,
-  },
-
-  settingsComponent: V0Settings,
+  icon: V0Icon,
 
   formFields: [
     {
@@ -28,6 +18,7 @@ const v0Plugin: IntegrationPlugin = {
       type: "password",
       placeholder: "v0_...",
       configKey: "apiKey",
+      envVar: "V0_API_KEY",
       helpText: "Get your API key from ",
       helpLink: {
         text: "v0.dev/chat/settings/keys",
@@ -36,14 +27,6 @@ const v0Plugin: IntegrationPlugin = {
     },
   ],
 
-  credentialMapping: (config) => {
-    const creds: Record<string, string> = {};
-    if (config.apiKey) {
-      creds.V0_API_KEY = String(config.apiKey);
-    }
-    return creds;
-  },
-
   testConfig: {
     getTestFunction: async () => {
       const { testV0 } = await import("./test");
@@ -51,27 +34,62 @@ const v0Plugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {},
+
   actions: [
     {
-      id: "Create Chat",
+      slug: "create-chat",
       label: "Create Chat",
       description: "Create a new chat in v0",
       category: "v0",
-      icon: MessageSquarePlus,
       stepFunction: "createChatStep",
       stepImportPath: "create-chat",
-      configFields: CreateChatConfigFields,
+      configFields: [
+        {
+          key: "message",
+          label: "Message",
+          type: "template-textarea",
+          placeholder: "Create a landing page for a new product",
+          rows: 4,
+          example: "Create a dashboard with a line chart showing DAU over time",
+          required: true,
+        },
+        {
+          key: "system",
+          label: "System Prompt (Optional)",
+          type: "template-textarea",
+          placeholder: "You are an expert coder",
+          rows: 3,
+        },
+      ],
       codegenTemplate: createChatCodegenTemplate,
     },
     {
-      id: "Send Message",
+      slug: "send-message",
       label: "Send Message",
       description: "Send a message to an existing v0 chat",
       category: "v0",
-      icon: Send,
       stepFunction: "sendMessageStep",
       stepImportPath: "send-message",
-      configFields: SendMessageConfigFields,
+      configFields: [
+        {
+          key: "chatId",
+          label: "Chat ID",
+          type: "template-input",
+          placeholder: "chat_123 or {{CreateChat.chatId}}",
+          example: "{{CreateChat.chatId}}",
+          required: true,
+        },
+        {
+          key: "message",
+          label: "Message",
+          type: "template-textarea",
+          placeholder: "Add dark mode",
+          rows: 4,
+          example: "Add dark mode support",
+          required: true,
+        },
+      ],
       codegenTemplate: sendMessageCodegenTemplate,
     },
   ],
@@ -81,4 +99,3 @@ const v0Plugin: IntegrationPlugin = {
 registerIntegration(v0Plugin);
 
 export default v0Plugin;
-

@@ -128,6 +128,199 @@ const BUILTIN_INTEGRATION_LABELS: Record<string, string> = {
   database: "Database",
 };
 
+// Type for broken template reference info
+type BrokenTemplateReferenceInfo = {
+  nodeId: string;
+  nodeLabel: string;
+  brokenReferences: Array<{
+    fieldKey: string;
+    fieldLabel: string;
+    referencedNodeId: string;
+    displayText: string;
+  }>;
+};
+
+// Extract template variables from a string and check if they reference existing nodes
+function extractTemplateReferences(
+  value: unknown
+): Array<{ nodeId: string; displayText: string }> {
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const pattern = /\{\{@([^:]+):([^}]+)\}\}/g;
+  const matches = value.matchAll(pattern);
+
+  return Array.from(matches).map((match) => ({
+    nodeId: match[1],
+    displayText: match[2],
+  }));
+}
+
+// Recursively extract all template references from a config object
+function extractAllTemplateReferences(
+  config: Record<string, unknown>,
+  prefix = ""
+): Array<{ field: string; nodeId: string; displayText: string }> {
+  const results: Array<{ field: string; nodeId: string; displayText: string }> =
+    [];
+
+  for (const [key, value] of Object.entries(config)) {
+    const fieldPath = prefix ? `${prefix}.${key}` : key;
+
+    if (typeof value === "string") {
+      const refs = extractTemplateReferences(value);
+      for (const ref of refs) {
+        results.push({ field: fieldPath, ...ref });
+      }
+    } else if (
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      results.push(
+        ...extractAllTemplateReferences(
+          value as Record<string, unknown>,
+          fieldPath
+        )
+      );
+    }
+  }
+
+  return results;
+}
+
+// Get broken template references for workflow nodes
+function getBrokenTemplateReferences(
+  nodes: WorkflowNode[]
+): BrokenTemplateReferenceInfo[] {
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const brokenByNode: BrokenTemplateReferenceInfo[] = [];
+
+  for (const node of nodes) {
+    // Skip disabled nodes
+    if (node.data.enabled === false) {
+      continue;
+    }
+
+    const config = node.data.config as Record<string, unknown> | undefined;
+    if (!config || typeof config !== "object") {
+      continue;
+    }
+
+    const allRefs = extractAllTemplateReferences(config);
+    const brokenRefs = allRefs.filter((ref) => !nodeIds.has(ref.nodeId));
+
+    if (brokenRefs.length > 0) {
+      // Get action for label lookups
+      const actionType = config.actionType as string | undefined;
+      const action = actionType ? findActionById(actionType) : undefined;
+
+      brokenByNode.push({
+        nodeId: node.id,
+        nodeLabel: node.data.label || action?.label || "Unnamed Step",
+        brokenReferences: brokenRefs.map((ref) => {
+          // Look up human-readable field label
+          const configField = action?.configFields.find(
+            (f) => f.key === ref.field
+          );
+          return {
+            fieldKey: ref.field,
+            fieldLabel: configField?.label || ref.field,
+            referencedNodeId: ref.nodeId,
+            displayText: ref.displayText,
+          };
+        }),
+      });
+    }
+  }
+
+  return brokenByNode;
+}
+
+// Type for missing required fields info
+type MissingRequiredFieldInfo = {
+  nodeId: string;
+  nodeLabel: string;
+  missingFields: Array<{
+    fieldKey: string;
+    fieldLabel: string;
+  }>;
+};
+
+// Check if a field value is effectively empty
+function isFieldEmpty(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return true;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return true;
+  }
+  return false;
+}
+
+// Check if a conditional field should be shown based on current config
+function shouldShowField(
+  field: { showWhen?: { field: string; equals: string } },
+  config: Record<string, unknown>
+): boolean {
+  if (!field.showWhen) {
+    return true;
+  }
+  return config[field.showWhen.field] === field.showWhen.equals;
+}
+
+// Get missing required fields for a single node
+function getNodeMissingFields(
+  node: WorkflowNode
+): MissingRequiredFieldInfo | null {
+  if (node.data.enabled === false) {
+    return null;
+  }
+
+  const config = node.data.config as Record<string, unknown> | undefined;
+  const actionType = config?.actionType as string | undefined;
+  if (!actionType) {
+    return null;
+  }
+
+  const action = findActionById(actionType);
+  if (!action) {
+    return null;
+  }
+
+  const missingFields = action.configFields
+    .filter(
+      (field) =>
+        field.required &&
+        shouldShowField(field, config || {}) &&
+        isFieldEmpty(config?.[field.key])
+    )
+    .map((field) => ({
+      fieldKey: field.key,
+      fieldLabel: field.label,
+    }));
+
+  if (missingFields.length === 0) {
+    return null;
+  }
+
+  return {
+    nodeId: node.id,
+    nodeLabel: node.data.label || action.label || "Unnamed Step",
+    missingFields,
+  };
+}
+
+// Get missing required fields for workflow nodes
+function getMissingRequiredFields(
+  nodes: WorkflowNode[]
+): MissingRequiredFieldInfo[] {
+  return nodes
+    .map(getNodeMissingFields)
+    .filter((result): result is MissingRequiredFieldInfo => result !== null);
+}
+
 // Get missing integrations for workflow nodes
 // Uses the plugin registry to determine which integrations are required
 // Also handles built-in actions that aren't in the plugin registry
@@ -169,7 +362,9 @@ function getMissingIntegrations(
     // Check if user has any integration of this type
     if (!userIntegrationTypes.has(requiredIntegrationType)) {
       const existing = missingByType.get(requiredIntegrationType) || [];
-      existing.push(node.data.label || actionType);
+      // Use human-readable label from registry if no custom label
+      const actionInfo = findActionById(actionType);
+      existing.push(node.data.label || actionInfo?.label || actionType);
       missingByType.set(requiredIntegrationType, existing);
     }
   }
@@ -322,11 +517,17 @@ function useWorkflowHandlers({
   userIntegrations,
 }: WorkflowHandlerParams) {
   const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
-  const [showMissingIntegrationsDialog, setShowMissingIntegrationsDialog] =
+  const [showWorkflowIssuesDialog, setShowWorkflowIssuesDialog] =
     useState(false);
-  const [missingIntegrations, setMissingIntegrations] = useState<
-    MissingIntegrationInfo[]
-  >([]);
+  const [workflowIssues, setWorkflowIssues] = useState<{
+    brokenReferences: BrokenTemplateReferenceInfo[];
+    missingRequiredFields: MissingRequiredFieldInfo[];
+    missingIntegrations: MissingIntegrationInfo[];
+  }>({
+    brokenReferences: [],
+    missingRequiredFields: [],
+    missingIntegrations: [],
+  });
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling interval on unmount
@@ -388,13 +589,26 @@ function useWorkflowHandlers({
       return;
     }
 
-    // Check for missing integrations before executing
-    const missing = getMissingIntegrations(nodes, userIntegrations);
-    if (missing.length > 0) {
-      setMissingIntegrations(missing);
-      setShowMissingIntegrationsDialog(true);
+    // Collect all workflow issues at once
+    const brokenRefs = getBrokenTemplateReferences(nodes);
+    const missingFields = getMissingRequiredFields(nodes);
+    const missingIntegrations = getMissingIntegrations(nodes, userIntegrations);
+
+    // If there are any issues, show the combined dialog
+    if (
+      brokenRefs.length > 0 ||
+      missingFields.length > 0 ||
+      missingIntegrations.length > 0
+    ) {
+      setWorkflowIssues({
+        brokenReferences: brokenRefs,
+        missingRequiredFields: missingFields,
+        missingIntegrations,
+      });
+      setShowWorkflowIssuesDialog(true);
       return;
     }
+
     await executeWorkflow();
   };
 
@@ -404,16 +618,16 @@ function useWorkflowHandlers({
       return;
     }
 
-    setShowMissingIntegrationsDialog(false);
+    setShowWorkflowIssuesDialog(false);
     await executeWorkflow();
   };
 
   return {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showMissingIntegrationsDialog,
-    setShowMissingIntegrationsDialog,
-    missingIntegrations,
+    showWorkflowIssuesDialog,
+    setShowWorkflowIssuesDialog,
+    workflowIssues,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -567,9 +781,9 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   const {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showMissingIntegrationsDialog,
-    setShowMissingIntegrationsDialog,
-    missingIntegrations,
+    showWorkflowIssuesDialog,
+    setShowWorkflowIssuesDialog,
+    workflowIssues,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -719,9 +933,9 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   return {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showMissingIntegrationsDialog,
-    setShowMissingIntegrationsDialog,
-    missingIntegrations,
+    showWorkflowIssuesDialog,
+    setShowWorkflowIssuesDialog,
+    workflowIssues,
     handleSave,
     handleExecute,
     handleExecuteAnyway,
@@ -1141,45 +1355,159 @@ function WorkflowMenuComponent({
   );
 }
 
-// Missing Integrations Dialog Component
-function MissingIntegrationsDialog({
+// Combined Workflow Issues Dialog Component
+function WorkflowIssuesDialog({
+  state,
   actions,
 }: {
+  state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const { brokenReferences, missingRequiredFields, missingIntegrations } =
+    actions.workflowIssues;
+
+  const handleGoToStep = (nodeId: string) => {
+    actions.setShowWorkflowIssuesDialog(false);
+    state.setSelectedNodeId(nodeId);
+    state.setActiveTab("properties");
+  };
 
   const handleAddIntegrations = () => {
-    actions.setShowMissingIntegrationsDialog(false);
+    actions.setShowWorkflowIssuesDialog(false);
     setShowIntegrationsDialog(true);
   };
+
+  const totalIssues =
+    brokenReferences.length +
+    missingRequiredFields.length +
+    missingIntegrations.length;
 
   return (
     <>
       <AlertDialog
-        onOpenChange={actions.setShowMissingIntegrationsDialog}
-        open={actions.showMissingIntegrationsDialog}
+        onOpenChange={actions.setShowWorkflowIssuesDialog}
+        open={actions.showWorkflowIssuesDialog}
       >
-        <AlertDialogContent className="max-w-lg">
+        <AlertDialogContent className="flex max-h-[80vh] max-w-lg flex-col overflow-hidden">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="size-5 text-orange-500" />
-              Missing Integrations
+              Workflow Issues ({totalIssues})
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  This workflow has steps that require integrations which are
-                  not configured. The workflow will likely fail without them.
-                </p>
+              <div className="text-muted-foreground text-sm">
+                This workflow has issues that may cause it to fail.
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex-1 space-y-4 overflow-y-auto py-2">
+            {/* Broken References Section */}
+            {brokenReferences.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="flex items-center gap-1.5 font-medium text-red-600 text-sm dark:text-red-400">
+                  <AlertTriangle className="size-4" />
+                  Broken References ({brokenReferences.length})
+                </h4>
                 <div className="space-y-2">
-                  {actions.missingIntegrations.map((missing) => (
+                  {brokenReferences.map((broken) => (
                     <div
-                      className="flex items-start gap-3 rounded-lg border bg-muted/50 p-3"
+                      className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3"
+                      key={broken.nodeId}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground text-sm">
+                          {broken.nodeLabel}
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {broken.brokenReferences.map((ref, idx) => (
+                            <p
+                              className="text-muted-foreground text-xs"
+                              key={`${ref.fieldKey}-${idx}`}
+                            >
+                              <span className="font-mono text-red-600 dark:text-red-400">
+                                {ref.displayText}
+                              </span>{" "}
+                              in {ref.fieldLabel}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        className="shrink-0"
+                        onClick={() => handleGoToStep(broken.nodeId)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Fix
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Missing Required Fields Section */}
+            {missingRequiredFields.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="flex items-center gap-1.5 font-medium text-orange-600 text-sm dark:text-orange-400">
+                  <AlertTriangle className="size-4" />
+                  Missing Required Fields ({missingRequiredFields.length})
+                </h4>
+                <div className="space-y-2">
+                  {missingRequiredFields.map((node) => (
+                    <div
+                      className="flex items-center gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-3"
+                      key={node.nodeId}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-foreground text-sm">
+                          {node.nodeLabel}
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {node.missingFields.map((field) => (
+                            <p
+                              className="text-muted-foreground text-xs"
+                              key={field.fieldKey}
+                            >
+                              Missing:{" "}
+                              <span className="font-medium text-orange-600 dark:text-orange-400">
+                                {field.fieldLabel}
+                              </span>
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        className="shrink-0"
+                        onClick={() => handleGoToStep(node.nodeId)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Fix
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Missing Integrations Section */}
+            {missingIntegrations.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="flex items-center gap-1.5 font-medium text-orange-600 text-sm dark:text-orange-400">
+                  <AlertTriangle className="size-4" />
+                  Missing Integrations ({missingIntegrations.length})
+                </h4>
+                <div className="space-y-2">
+                  {missingIntegrations.map((missing) => (
+                    <div
+                      className="flex items-center gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 p-3"
                       key={missing.integrationType}
                     >
                       <IntegrationIcon
-                        className="mt-0.5 size-5 shrink-0"
+                        className="size-5 shrink-0"
                         integration={missing.integrationType}
                       />
                       <div className="min-w-0 flex-1">
@@ -1193,18 +1521,26 @@ function MissingIntegrationsDialog({
                             : missing.nodeNames.join(", ")}
                         </p>
                       </div>
+                      <Button
+                        className="shrink-0"
+                        onClick={handleAddIntegrations}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Add
+                      </Button>
                     </div>
                   ))}
                 </div>
               </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            )}
+          </div>
+
           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <Button onClick={actions.handleExecuteAnyway} variant="outline">
               Run Anyway
             </Button>
-            <Button onClick={handleAddIntegrations}>Add Integrations</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1449,7 +1785,7 @@ function WorkflowDialogsComponent({
         </DialogContent>
       </Dialog>
 
-      <MissingIntegrationsDialog actions={actions} />
+      <WorkflowIssuesDialog actions={actions} state={state} />
     </>
   );
 }

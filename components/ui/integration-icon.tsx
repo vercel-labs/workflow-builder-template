@@ -1,7 +1,6 @@
 "use client";
 
 import { Database, HelpCircle } from "lucide-react";
-import Image from "next/image";
 import type { IntegrationType } from "@/lib/types/integration";
 import { cn } from "@/lib/utils";
 import { getIntegration } from "@/plugins";
@@ -27,14 +26,13 @@ function VercelIcon({ className }: { className?: string }) {
   );
 }
 
-// Special icons for integrations without plugins (database, vercel, ai-gateway)
+// Special icons for integrations without plugins (database, vercel)
 const SPECIAL_ICONS: Record<
   string,
   React.ComponentType<{ className?: string }>
 > = {
   database: Database,
   vercel: VercelIcon,
-  "ai-gateway": VercelIcon,
 };
 
 export function IntegrationIcon({
@@ -50,31 +48,9 @@ export function IntegrationIcon({
   // Look up plugin from registry
   const plugin = getIntegration(integration as IntegrationType);
 
-  if (plugin) {
-    const { icon } = plugin;
-
-    // Handle image type icons
-    if (icon.type === "image") {
-      return (
-        <Image
-          alt={`${plugin.label} logo`}
-          className={className}
-          height={12}
-          src={icon.value}
-          width={12}
-        />
-      );
-    }
-
-    // Handle SVG component icons
-    if (icon.type === "svg" && icon.svgComponent) {
-      const SvgComponent = icon.svgComponent;
-      return <SvgComponent className={cn("text-foreground", className)} />;
-    }
-
-    // Handle lucide icons - these are already React components in plugin.actions
-    // For plugin-level icons, we would need to dynamically import lucide icons
-    // For now, fall through to default
+  if (plugin?.icon) {
+    const PluginIcon = plugin.icon;
+    return <PluginIcon className={cn("text-foreground", className)} />;
   }
 
   // Fallback for unknown integrations
