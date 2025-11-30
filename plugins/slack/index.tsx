@@ -47,9 +47,17 @@ const slackPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    "@slack/web-api": "^7.12.0",
+  },
+
+  envVars: [
+    { name: "SLACK_API_KEY", description: "Slack Bot Token (xoxb-...)" },
+  ],
+
   actions: [
     {
-      id: "Send Slack Message",
+      slug: "send-message",
       label: "Send Slack Message",
       description: "Send a message to a Slack channel",
       category: "Slack",
@@ -58,6 +66,7 @@ const slackPlugin: IntegrationPlugin = {
       stepImportPath: "send-slack-message",
       configFields: SendSlackMessageConfigFields,
       codegenTemplate: sendSlackMessageCodegenTemplate,
+      aiPrompt: `{"actionType": "slack/send-message", "slackChannel": "#general", "slackMessage": "Message"}`,
     },
   ],
 };

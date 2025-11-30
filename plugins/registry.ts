@@ -1,6 +1,46 @@
 import type { IntegrationType } from "@/lib/types/integration";
 
 /**
+ * Action Definition
+ * Describes a single action provided by a plugin
+ */
+export type PluginAction = {
+  // Unique slug for this action (e.g., "send-email")
+  // Full action ID will be computed as `{integration}/{slug}` (e.g., "resend/send-email")
+  slug: string;
+
+  // Human-readable label (e.g., "Send Email")
+  label: string;
+
+  // Description of what this action does
+  description: string;
+
+  // Category for grouping in UI
+  category: string;
+
+  // Icon component for this action
+  icon: React.ComponentType<{ className?: string }>;
+
+  // Step configuration
+  stepFunction: string; // Name of the exported function in the step file
+  stepImportPath: string; // Path to import from, relative to plugins/[plugin-name]/steps/
+
+  // Config fields for the action
+  configFields: React.ComponentType<{
+    config: Record<string, unknown>;
+    onUpdateConfig: (key: string, value: unknown) => void;
+    disabled?: boolean;
+  }>;
+
+  // Code generation template (the actual template string, not a path)
+  codegenTemplate: string;
+
+  // AI prompt template for this action (how to describe to the AI)
+  // Use {key} placeholders for config fields
+  aiPrompt: string;
+};
+
+/**
  * Integration Plugin Definition
  * All information needed to register a new integration in one place
  */
@@ -54,28 +94,26 @@ export type IntegrationPlugin = {
     >;
   };
 
-  // Actions provided by this integration
-  actions: Array<{
-    id: string;
-    label: string;
+  // NPM dependencies required by this plugin (package name -> version)
+  dependencies?: Record<string, string>;
+
+  // Environment variables used by this plugin (for .env.example generation)
+  envVars?: Array<{
+    name: string;
     description: string;
-    category: string;
-    icon: React.ComponentType<{ className?: string }>;
-
-    // Step configuration
-    stepFunction: string; // Name of the exported function in the step file
-    stepImportPath: string; // Path to import from, relative to plugins/[plugin-name]/steps/
-
-    // Config fields for the action
-    configFields: React.ComponentType<{
-      config: Record<string, unknown>;
-      onUpdateConfig: (key: string, value: unknown) => void;
-      disabled?: boolean;
-    }>;
-
-    // Code generation template (the actual template string, not a path)
-    codegenTemplate: string;
   }>;
+
+  // Actions provided by this integration
+  actions: PluginAction[];
+};
+
+/**
+ * Action with full ID
+ * Includes the computed full action ID (integration/slug)
+ */
+export type ActionWithFullId = PluginAction & {
+  id: string; // Full action ID: {integration}/{slug}
+  integration: IntegrationType;
 };
 
 /**
@@ -83,6 +121,30 @@ export type IntegrationPlugin = {
  * Auto-populated by plugin files
  */
 const integrationRegistry = new Map<IntegrationType, IntegrationPlugin>();
+
+/**
+ * Compute full action ID from integration type and action slug
+ */
+export function computeActionId(
+  integrationType: IntegrationType,
+  actionSlug: string
+): string {
+  return `${integrationType}/${actionSlug}`;
+}
+
+/**
+ * Parse a full action ID into integration type and action slug
+ */
+export function parseActionId(actionId: string): {
+  integration: string;
+  slug: string;
+} | null {
+  const parts = actionId.split("/");
+  if (parts.length !== 2) {
+    return null;
+  }
+  return { integration: parts[0], slug: parts[1] };
+}
 
 /**
  * Register an integration plugin
@@ -115,18 +177,17 @@ export function getIntegrationTypes(): IntegrationType[] {
 }
 
 /**
- * Get all actions across all integrations
+ * Get all actions across all integrations with full IDs
  */
-export function getAllActions() {
-  const actions: Array<
-    IntegrationPlugin["actions"][number] & { integration?: IntegrationType }
-  > = [];
+export function getAllActions(): ActionWithFullId[] {
+  const actions: ActionWithFullId[] = [];
 
   for (const plugin of integrationRegistry.values()) {
     for (const action of plugin.actions) {
       actions.push({
         ...action,
-        integration: plugin.type as IntegrationType,
+        id: computeActionId(plugin.type, action.slug),
+        integration: plugin.type,
       });
     }
   }
@@ -137,13 +198,8 @@ export function getAllActions() {
 /**
  * Get actions by category
  */
-export function getActionsByCategory() {
-  const categories: Record<
-    string,
-    Array<
-      IntegrationPlugin["actions"][number] & { integration?: IntegrationType }
-    >
-  > = {};
+export function getActionsByCategory(): Record<string, ActionWithFullId[]> {
+  const categories: Record<string, ActionWithFullId[]> = {};
 
   for (const plugin of integrationRegistry.values()) {
     for (const action of plugin.actions) {
@@ -152,7 +208,8 @@ export function getActionsByCategory() {
       }
       categories[action.category].push({
         ...action,
-        integration: plugin.type as IntegrationType,
+        id: computeActionId(plugin.type, action.slug),
+        integration: plugin.type,
       });
     }
   }
@@ -161,19 +218,39 @@ export function getActionsByCategory() {
 }
 
 /**
- * Find an action by ID
+ * Find an action by full ID (e.g., "resend/send-email")
+ * Also supports legacy IDs (e.g., "Send Email") for backward compatibility
  */
-export function findActionById(actionId: string) {
+export function findActionById(actionId: string): ActionWithFullId | undefined {
+  // First try parsing as a namespaced ID
+  const parsed = parseActionId(actionId);
+  if (parsed) {
+    const plugin = integrationRegistry.get(parsed.integration as IntegrationType);
+    if (plugin) {
+      const action = plugin.actions.find((a) => a.slug === parsed.slug);
+      if (action) {
+        return {
+          ...action,
+          id: actionId,
+          integration: plugin.type,
+        };
+      }
+    }
+  }
+
+  // Fall back to legacy label-based lookup for backward compatibility
   for (const plugin of integrationRegistry.values()) {
-    const action = plugin.actions.find((a) => a.id === actionId);
+    const action = plugin.actions.find((a) => a.label === actionId);
     if (action) {
       return {
         ...action,
-        integration: plugin.type as IntegrationType,
+        id: computeActionId(plugin.type, action.slug),
+        integration: plugin.type,
       };
     }
   }
-  return;
+
+  return undefined;
 }
 
 /**
@@ -192,4 +269,79 @@ export function getIntegrationLabels(): Record<IntegrationType, string> {
  */
 export function getSortedIntegrationTypes(): IntegrationType[] {
   return Array.from(integrationRegistry.keys()).sort();
+}
+
+/**
+ * Get all NPM dependencies across all integrations
+ */
+export function getAllDependencies(): Record<string, string> {
+  const deps: Record<string, string> = {};
+
+  for (const plugin of integrationRegistry.values()) {
+    if (plugin.dependencies) {
+      Object.assign(deps, plugin.dependencies);
+    }
+  }
+
+  return deps;
+}
+
+/**
+ * Get NPM dependencies for specific action IDs
+ */
+export function getDependenciesForActions(
+  actionIds: string[]
+): Record<string, string> {
+  const deps: Record<string, string> = {};
+  const integrations = new Set<IntegrationType>();
+
+  // Find which integrations are used
+  for (const actionId of actionIds) {
+    const action = findActionById(actionId);
+    if (action) {
+      integrations.add(action.integration);
+    }
+  }
+
+  // Get dependencies for those integrations
+  for (const integrationType of integrations) {
+    const plugin = integrationRegistry.get(integrationType);
+    if (plugin?.dependencies) {
+      Object.assign(deps, plugin.dependencies);
+    }
+  }
+
+  return deps;
+}
+
+/**
+ * Get all environment variables across all integrations
+ */
+export function getAllEnvVars(): Array<{ name: string; description: string }> {
+  const envVars: Array<{ name: string; description: string }> = [];
+
+  for (const plugin of integrationRegistry.values()) {
+    if (plugin.envVars) {
+      envVars.push(...plugin.envVars);
+    }
+  }
+
+  return envVars;
+}
+
+/**
+ * Generate AI prompt section for all available actions
+ * This dynamically builds the action types documentation for the AI
+ */
+export function generateAIActionPrompts(): string {
+  const lines: string[] = [];
+
+  for (const plugin of integrationRegistry.values()) {
+    for (const action of plugin.actions) {
+      const fullId = computeActionId(plugin.type, action.slug);
+      lines.push(`- ${action.label} (${fullId}): ${action.aiPrompt}`);
+    }
+  }
+
+  return lines.join("\n");
 }

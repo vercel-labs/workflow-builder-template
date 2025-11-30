@@ -60,9 +60,18 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    resend: "^6.4.0",
+  },
+
+  envVars: [
+    { name: "RESEND_API_KEY", description: "Resend API key for sending emails" },
+    { name: "RESEND_FROM_EMAIL", description: "Default sender email address" },
+  ],
+
   actions: [
     {
-      id: "Send Email",
+      slug: "send-email",
       label: "Send Email",
       description: "Send an email via Resend",
       category: "Resend",
@@ -71,6 +80,7 @@ const resendPlugin: IntegrationPlugin = {
       stepImportPath: "send-email",
       configFields: SendEmailConfigFields,
       codegenTemplate: sendEmailCodegenTemplate,
+      aiPrompt: `{"actionType": "resend/send-email", "emailTo": "user@example.com", "emailSubject": "Subject", "emailBody": "Body"}`,
     },
   ],
 };

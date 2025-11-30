@@ -53,9 +53,22 @@ const aiGatewayPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    ai: "^5.0.86",
+    openai: "^6.8.0",
+    "@google/genai": "^1.28.0",
+    zod: "^4.1.12",
+  },
+
+  envVars: [
+    { name: "AI_GATEWAY_API_KEY", description: "AI Gateway API key" },
+    { name: "OPENAI_API_KEY", description: "OpenAI API key (alternative)" },
+    { name: "GOOGLE_AI_API_KEY", description: "Google AI API key (for Gemini)" },
+  ],
+
   actions: [
     {
-      id: "Generate Text",
+      slug: "generate-text",
       label: "Generate Text",
       description: "Generate text using AI models",
       category: "AI Gateway",
@@ -64,9 +77,10 @@ const aiGatewayPlugin: IntegrationPlugin = {
       stepImportPath: "generate-text",
       configFields: GenerateTextConfigFields,
       codegenTemplate: generateTextCodegenTemplate,
+      aiPrompt: `{"actionType": "ai-gateway/generate-text", "aiModel": "meta/llama-4-scout", "aiFormat": "text", "aiPrompt": "Your prompt here"}`,
     },
     {
-      id: "Generate Image",
+      slug: "generate-image",
       label: "Generate Image",
       description: "Generate images using AI models",
       category: "AI Gateway",
@@ -75,6 +89,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
       stepImportPath: "generate-image",
       configFields: GenerateImageConfigFields,
       codegenTemplate: generateImageCodegenTemplate,
+      aiPrompt: `{"actionType": "ai-gateway/generate-image", "imageModel": "google/imagen-4.0-generate", "imagePrompt": "Image description"}`,
     },
   ],
 };

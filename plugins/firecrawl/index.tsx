@@ -51,9 +51,17 @@ const firecrawlPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    "@mendable/firecrawl-js": "^4.6.2",
+  },
+
+  envVars: [
+    { name: "FIRECRAWL_API_KEY", description: "Firecrawl API key" },
+  ],
+
   actions: [
     {
-      id: "Scrape",
+      slug: "scrape",
       label: "Scrape URL",
       description: "Scrape content from a URL",
       category: "Firecrawl",
@@ -62,9 +70,10 @@ const firecrawlPlugin: IntegrationPlugin = {
       stepImportPath: "scrape",
       configFields: ScrapeConfigFields,
       codegenTemplate: scrapeCodegenTemplate,
+      aiPrompt: `{"actionType": "firecrawl/scrape", "url": "https://example.com"}`,
     },
     {
-      id: "Search",
+      slug: "search",
       label: "Search Web",
       description: "Search the web with Firecrawl",
       category: "Firecrawl",
@@ -73,6 +82,7 @@ const firecrawlPlugin: IntegrationPlugin = {
       stepImportPath: "search",
       configFields: SearchConfigFields,
       codegenTemplate: searchCodegenTemplate,
+      aiPrompt: `{"actionType": "firecrawl/search", "query": "search query", "limit": 10}`,
     },
   ],
 };

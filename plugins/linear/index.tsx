@@ -60,9 +60,18 @@ const linearPlugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {
+    "@linear/sdk": "^63.2.0",
+  },
+
+  envVars: [
+    { name: "LINEAR_API_KEY", description: "Linear API key" },
+    { name: "LINEAR_TEAM_ID", description: "Linear team ID (optional)" },
+  ],
+
   actions: [
     {
-      id: "Create Ticket",
+      slug: "create-ticket",
       label: "Create Ticket",
       description: "Create an issue in Linear",
       category: "Linear",
@@ -71,9 +80,10 @@ const linearPlugin: IntegrationPlugin = {
       stepImportPath: "create-ticket",
       configFields: CreateTicketConfigFields,
       codegenTemplate: createTicketCodegenTemplate,
+      aiPrompt: `{"actionType": "linear/create-ticket", "ticketTitle": "Title", "ticketDescription": "Description", "ticketPriority": "2"}`,
     },
     {
-      id: "Find Issues",
+      slug: "find-issues",
       label: "Find Issues",
       description: "Search for issues in Linear",
       category: "Linear",
@@ -82,6 +92,7 @@ const linearPlugin: IntegrationPlugin = {
       stepImportPath: "find-issues",
       configFields: FindIssuesConfigFields,
       codegenTemplate: findIssuesCodegenTemplate,
+      aiPrompt: `{"actionType": "linear/find-issues", "linearStatus": "in_progress"}`,
     },
   ],
 };

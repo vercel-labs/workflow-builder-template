@@ -51,9 +51,15 @@ const v0Plugin: IntegrationPlugin = {
     },
   },
 
+  dependencies: {},
+
+  envVars: [
+    { name: "V0_API_KEY", description: "v0 API key" },
+  ],
+
   actions: [
     {
-      id: "Create Chat",
+      slug: "create-chat",
       label: "Create Chat",
       description: "Create a new chat in v0",
       category: "v0",
@@ -62,9 +68,10 @@ const v0Plugin: IntegrationPlugin = {
       stepImportPath: "create-chat",
       configFields: CreateChatConfigFields,
       codegenTemplate: createChatCodegenTemplate,
+      aiPrompt: `{"actionType": "v0/create-chat", "message": "Create a line graph showing DAU over time", "system": "You are an expert coder"} - Use v0 for generating UI components, visualizations (charts, graphs, dashboards), landing pages, or any React/Next.js code. PREFER v0 over Generate Text/Image for any visual output.`,
     },
     {
-      id: "Send Message",
+      slug: "send-message",
       label: "Send Message",
       description: "Send a message to an existing v0 chat",
       category: "v0",
@@ -73,6 +80,7 @@ const v0Plugin: IntegrationPlugin = {
       stepImportPath: "send-message",
       configFields: SendMessageConfigFields,
       codegenTemplate: sendMessageCodegenTemplate,
+      aiPrompt: `{"actionType": "v0/send-message", "chatId": "{{@nodeId:Label.chatId}}", "message": "Add dark mode"} - Use this to continue a v0 chat conversation`,
     },
   ],
 };

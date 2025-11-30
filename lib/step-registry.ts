@@ -25,41 +25,81 @@ export type StepImporter = {
  * These imports are statically analyzable by the bundler
  */
 export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
+  "ai-gateway/generate-text": {
+    importer: () => import("@/plugins/ai-gateway/steps/generate-text/step"),
+    stepFunction: "generateTextStep",
+  },
   "Generate Text": {
     importer: () => import("@/plugins/ai-gateway/steps/generate-text/step"),
     stepFunction: "generateTextStep",
+  },
+  "ai-gateway/generate-image": {
+    importer: () => import("@/plugins/ai-gateway/steps/generate-image/step"),
+    stepFunction: "generateImageStep",
   },
   "Generate Image": {
     importer: () => import("@/plugins/ai-gateway/steps/generate-image/step"),
     stepFunction: "generateImageStep",
   },
-  Scrape: {
+  "firecrawl/scrape": {
     importer: () => import("@/plugins/firecrawl/steps/scrape/step"),
     stepFunction: "firecrawlScrapeStep",
   },
-  Search: {
+  "Scrape URL": {
+    importer: () => import("@/plugins/firecrawl/steps/scrape/step"),
+    stepFunction: "firecrawlScrapeStep",
+  },
+  "firecrawl/search": {
     importer: () => import("@/plugins/firecrawl/steps/search/step"),
     stepFunction: "firecrawlSearchStep",
+  },
+  "Search Web": {
+    importer: () => import("@/plugins/firecrawl/steps/search/step"),
+    stepFunction: "firecrawlSearchStep",
+  },
+  "linear/create-ticket": {
+    importer: () => import("@/plugins/linear/steps/create-ticket/step"),
+    stepFunction: "createTicketStep",
   },
   "Create Ticket": {
     importer: () => import("@/plugins/linear/steps/create-ticket/step"),
     stepFunction: "createTicketStep",
   },
+  "linear/find-issues": {
+    importer: () => import("@/plugins/linear/steps/find-issues/step"),
+    stepFunction: "findIssuesStep",
+  },
   "Find Issues": {
     importer: () => import("@/plugins/linear/steps/find-issues/step"),
     stepFunction: "findIssuesStep",
+  },
+  "resend/send-email": {
+    importer: () => import("@/plugins/resend/steps/send-email/step"),
+    stepFunction: "sendEmailStep",
   },
   "Send Email": {
     importer: () => import("@/plugins/resend/steps/send-email/step"),
     stepFunction: "sendEmailStep",
   },
+  "slack/send-message": {
+    importer: () => import("@/plugins/slack/steps/send-slack-message/step"),
+    stepFunction: "sendSlackMessageStep",
+  },
   "Send Slack Message": {
     importer: () => import("@/plugins/slack/steps/send-slack-message/step"),
     stepFunction: "sendSlackMessageStep",
   },
+  "v0/create-chat": {
+    importer: () => import("@/plugins/v0/steps/create-chat/step"),
+    stepFunction: "createChatStep",
+  },
   "Create Chat": {
     importer: () => import("@/plugins/v0/steps/create-chat/step"),
     stepFunction: "createChatStep",
+  },
+  "v0/send-message": {
+    importer: () => import("@/plugins/v0/steps/send-message/step"),
+    stepFunction: "sendMessageStep",
   },
   "Send Message": {
     importer: () => import("@/plugins/v0/steps/send-message/step"),

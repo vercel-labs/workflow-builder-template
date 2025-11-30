@@ -29,9 +29,6 @@ const README_FILE = join(process.cwd(), "README.md");
 const PLUGINS_MARKER_REGEX =
   /<!-- PLUGINS:START[^>]*-->[\s\S]*?<!-- PLUGINS:END -->/;
 
-// Regex to validate JavaScript identifiers
-const VALID_IDENTIFIER_REGEX = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
-
 // System integrations that don't have plugins
 const SYSTEM_INTEGRATION_TYPES = ["database"] as const;
 
@@ -90,18 +87,24 @@ function generateIndexFile(plugins: string[]): void {
 
 ${imports || "// No plugins discovered"}
 
-export type { IntegrationPlugin } from "./registry";
+export type { IntegrationPlugin, PluginAction, ActionWithFullId } from "./registry";
 
 // Export the registry utilities
 export {
+  computeActionId,
   findActionById,
+  generateAIActionPrompts,
   getActionsByCategory,
   getAllActions,
+  getAllDependencies,
+  getAllEnvVars,
   getAllIntegrations,
+  getDependenciesForActions,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
   getSortedIntegrationTypes,
+  parseActionId,
   registerIntegration,
 } from "./registry";
 `;
@@ -209,12 +212,15 @@ export type IntegrationConfig = Record<string, string | undefined>;
  * This enables dynamic imports that are statically analyzable by the bundler
  */
 async function generateStepRegistry(): Promise<void> {
-  const { getAllIntegrations } = await import("@/plugins/registry");
+  const { getAllIntegrations, computeActionId } = await import(
+    "@/plugins/registry"
+  );
   const integrations = getAllIntegrations();
 
   // Collect all action -> step mappings
   const stepEntries: Array<{
     actionId: string;
+    legacyId: string; // For backward compatibility with existing workflows
     integration: string;
     stepImportPath: string;
     stepFunction: string;
@@ -222,8 +228,10 @@ async function generateStepRegistry(): Promise<void> {
 
   for (const integration of integrations) {
     for (const action of integration.actions) {
+      const fullActionId = computeActionId(integration.type, action.slug);
       stepEntries.push({
-        actionId: action.id,
+        actionId: fullActionId,
+        legacyId: action.label, // Use label for backward compat (e.g., "Send Email")
         integration: integration.type,
         stepImportPath: action.stepImportPath,
         stepFunction: action.stepFunction,
@@ -232,17 +240,28 @@ async function generateStepRegistry(): Promise<void> {
   }
 
   // Generate the step importer map with static imports
-  // Use unquoted keys when valid identifiers, quoted otherwise
-  const isValidIdentifier = (str: string) => VALID_IDENTIFIER_REGEX.test(str);
-
+  // Include both namespaced IDs and legacy label-based IDs for backward compatibility
   const importerEntries = stepEntries
-    .map(({ actionId, integration, stepImportPath, stepFunction }) => {
-      const key = isValidIdentifier(actionId) ? actionId : `"${actionId}"`;
-      return `  ${key}: {
+    .flatMap(
+      ({ actionId, legacyId, integration, stepImportPath, stepFunction }) => {
+        const entries = [
+          `  "${actionId}": {
     importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
     stepFunction: "${stepFunction}",
-  },`;
-    })
+  },`,
+        ];
+        // Add legacy ID if different from the action ID
+        if (legacyId !== actionId) {
+          entries.push(
+            `  "${legacyId}": {
+    importer: () => import("@/plugins/${integration}/steps/${stepImportPath}/step"),
+    stepFunction: "${stepFunction}",
+  },`
+          );
+        }
+        return entries;
+      }
+    )
     .join("\n");
 
   const content = `/**
