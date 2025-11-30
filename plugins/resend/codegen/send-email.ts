@@ -10,6 +10,7 @@ type SendEmailResult =
   | { success: false; error: string };
 
 export async function sendEmailStep(input: {
+  executionId?: string;
   emailFrom?: string;
   emailTo: string;
   emailSubject: string;
@@ -56,7 +57,7 @@ export async function sendEmailStep(input: {
         ...(input.emailTopicId && { topicId: input.emailTopicId }),
       },
       {
-        idempotencyKey: nanoid(),
+        idempotencyKey: input.executionId || nanoid(),
       }
     );
 

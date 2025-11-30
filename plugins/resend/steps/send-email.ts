@@ -68,7 +68,7 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
         ...(input.emailTopicId && { topicId: input.emailTopicId }),
       },
       {
-        idempotencyKey: nanoid(),
+        idempotencyKey: input._context?.executionId || nanoid(),
       }
     );
 
