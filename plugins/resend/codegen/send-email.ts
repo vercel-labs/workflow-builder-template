@@ -2,8 +2,7 @@
  * Code generation template for Send Email action
  * Used when exporting workflows to standalone Next.js projects
  */
-export const sendEmailCodegenTemplate = `import { nanoid } from 'nanoid';
-import { Resend } from 'resend';
+export const sendEmailCodegenTemplate = `import { Resend } from 'resend';
 
 type SendEmailResult =
   | { success: true; id: string }
@@ -56,9 +55,7 @@ export async function sendEmailStep(input: {
         ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
         ...(input.emailTopicId && { topicId: input.emailTopicId }),
       },
-      {
-        idempotencyKey: input.executionId || nanoid(),
-      }
+      input.executionId ? { idempotencyKey: input.executionId } : undefined
     );
 
     if (result.error) {

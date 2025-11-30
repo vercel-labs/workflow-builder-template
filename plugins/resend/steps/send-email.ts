@@ -1,6 +1,5 @@
 import "server-only";
 
-import { nanoid } from "nanoid";
 import { Resend } from "resend";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
@@ -67,9 +66,9 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
         ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
         ...(input.emailTopicId && { topicId: input.emailTopicId }),
       },
-      {
-        idempotencyKey: input._context?.executionId || nanoid(),
-      }
+      input._context?.executionId
+        ? { idempotencyKey: input._context.executionId }
+        : undefined
     );
 
     if (result.error) {
