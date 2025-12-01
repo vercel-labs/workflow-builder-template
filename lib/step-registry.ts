@@ -93,15 +93,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/superagent/steps/guard"),
     stepFunction: "superagentGuardStep",
   },
-  Guard: {
-    importer: () => import("@/plugins/superagent/steps/guard"),
-    stepFunction: "superagentGuardStep",
-  },
   "superagent/redact": {
-    importer: () => import("@/plugins/superagent/steps/redact"),
-    stepFunction: "superagentRedactStep",
-  },
-  Redact: {
     importer: () => import("@/plugins/superagent/steps/redact"),
     stepFunction: "superagentRedactStep",
   },
@@ -148,8 +140,6 @@ export const ACTION_LABELS: Record<string, string> = {
   "Create Ticket": "Create Ticket",
   "Find Issues": "Find Issues",
   "Send Slack Message": "Send Slack Message",
-  Guard: "Guard",
-  Redact: "Redact",
   "Create Chat": "Create Chat",
   "Send Message": "Send Message",
 };

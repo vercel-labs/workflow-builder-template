@@ -12,7 +12,7 @@ type RedactResult = {
 export type SuperagentRedactInput = StepInput & {
   integrationId?: string;
   text: string;
-  entities?: string[];
+  entities?: string[] | string;
 };
 
 /**
@@ -34,8 +34,25 @@ async function redact(input: SuperagentRedactInput): Promise<RedactResult> {
       text: input.text,
     };
 
-    if (input.entities && input.entities.length > 0) {
-      body.entities = input.entities;
+    // Parse entities from string or array, filter out empty strings
+    if (input.entities) {
+      let entitiesArray: string[];
+      
+      if (typeof input.entities === "string") {
+        // Parse comma-separated string
+        entitiesArray = input.entities.split(",").map((e) => e.trim());
+      } else if (Array.isArray(input.entities)) {
+        entitiesArray = input.entities.map((e) => String(e).trim());
+      } else {
+        entitiesArray = [];
+      }
+      
+      // Filter out empty strings and ensure we have valid entities
+      const validEntities = entitiesArray.filter((e) => e.length > 0);
+      
+      if (validEntities.length > 0) {
+        body.entities = validEntities;
+      }
     }
 
     const response = await fetch("https://app.superagent.sh/api/redact", {
