@@ -294,10 +294,6 @@ const SYSTEM_STEP_INFO: Record<
     functionName: "databaseQueryStep",
     importPath: "./steps/database-query-step",
   },
-  "HTTP Request": {
-    functionName: "httpRequestStep",
-    importPath: "./steps/http-request-step",
-  },
   Condition: {
     functionName: "conditionStep",
     importPath: "./steps/condition-step",

@@ -32,7 +32,7 @@ const getNodeDisplayName = (node: WorkflowNode): string => {
 
   if (node.data.type === "action") {
     const actionType = node.data.config?.actionType as string | undefined;
-    return actionType || "HTTP Request";
+    return actionType || "Action";
   }
 
   if (node.data.type === "trigger") {
@@ -122,7 +122,9 @@ const getCommonFields = (node: WorkflowNode) => {
       { field: "number", description: "Ticket number" },
     ];
   }
-  if (actionType === "HTTP Request") {
+  if (
+    isActionType(actionType, "HTTP Request", "native/http-request")
+  ) {
     return [
       { field: "data", description: "Response data" },
       { field: "status", description: "HTTP status code" },

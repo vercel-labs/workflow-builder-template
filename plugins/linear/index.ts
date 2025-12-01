@@ -48,6 +48,14 @@ const linearPlugin: IntegrationPlugin = {
     "@linear/sdk": "^63.2.0",
   },
 
+  // HTTP configuration for custom API requests
+  // Allows users to make direct GraphQL calls to Linear via HTTP Request step
+  httpConfig: {
+    baseUrl: "https://api.linear.app",
+    authHeader: "Authorization",
+    authCredentialKey: "LINEAR_API_KEY",
+  },
+
   actions: [
     {
       slug: "create-ticket",

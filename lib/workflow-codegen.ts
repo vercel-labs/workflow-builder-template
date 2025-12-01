@@ -382,15 +382,50 @@ export function generateWorkflowCode(
     );
 
     const config = node.data.config || {};
-    const endpoint =
-      (config.endpoint as string) || "https://api.example.com/endpoint";
-    const method = (config.httpMethod as string) || "POST";
+    const endpoint = (config.endpoint as string) || "";
+    const method = (config.httpMethod as string) || "GET";
+    const headers = config.httpHeaders;
+    const body = config.httpBody;
+
+    // Helper to format object properties (from ObjectProperty[] or Record)
+    function formatProperties(props: unknown): string {
+      if (!props) {
+        return "{}";
+      }
+
+      let entries: [string, string][] = [];
+
+      if (Array.isArray(props)) {
+        // Handle ObjectProperty[]
+        entries = props
+          .filter((p) => p.key?.trim())
+          .map((p) => [p.key, String(p.value || "")]);
+      } else if (typeof props === "object") {
+        // Handle plain object
+        entries = Object.entries(props as Record<string, unknown>).map(
+          ([k, v]) => [k, String(v)]
+        );
+      }
+
+      if (entries.length === 0) {
+        return "{}";
+      }
+
+      const propStrings = entries.map(([k, v]) => {
+        const key = JSON.stringify(k);
+        const val = formatTemplateValue(v);
+        return `${key}: ${val}`;
+      });
+
+      return `{ ${propStrings.join(", ")} }`;
+    }
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
-      `${indent}  url: '${endpoint}',`,
-      `${indent}  method: '${method}',`,
-      `${indent}  body: {},`,
+      `${indent}  endpoint: ${formatTemplateValue(endpoint)},`,
+      `${indent}  httpMethod: '${method}',`,
+      `${indent}  httpHeaders: ${formatProperties(headers)},`,
+      `${indent}  httpBody: ${formatProperties(body)},`,
       `${indent}});`,
     ];
   }
@@ -721,7 +756,10 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
       );
-    } else if (actionType === "HTTP Request") {
+    } else if (
+      actionType === "HTTP Request" ||
+      actionType === "native/http-request"
+    ) {
       lines.push(
         ...wrapActionCall(generateHTTPActionCode(node, indent, varName))
       );

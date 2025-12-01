@@ -84,7 +84,11 @@ import {
   type WorkflowEdge,
   type WorkflowNode,
 } from "@/lib/workflow-store";
-import { findActionById, getIntegrationLabels } from "@/plugins";
+import {
+  findActionById,
+  getIntegrationLabels,
+  requiresIntegration,
+} from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
@@ -324,6 +328,7 @@ function getMissingRequiredFields(
 // Get missing integrations for workflow nodes
 // Uses the plugin registry to determine which integrations are required
 // Also handles built-in actions that aren't in the plugin registry
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: validation logic with multiple checks
 function getMissingIntegrations(
   nodes: WorkflowNode[],
   userIntegrations: Array<{ type: IntegrationType }>
@@ -343,9 +348,14 @@ function getMissingIntegrations(
       continue;
     }
 
-    // Look up the integration type from the plugin registry first
+    // Check if this action requires integration (respects requiresIntegration flag)
+    const isBuiltinAction = actionType in BUILTIN_ACTION_INTEGRATIONS;
+    if (!(isBuiltinAction || requiresIntegration(actionType))) {
+      continue;
+    }
+
+    // Get the integration type
     const action = findActionById(actionType);
-    // Fall back to built-in action integrations for actions not in the registry
     const requiredIntegrationType =
       action?.integration || BUILTIN_ACTION_INTEGRATIONS[actionType];
 

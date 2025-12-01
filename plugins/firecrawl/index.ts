@@ -38,6 +38,15 @@ const firecrawlPlugin: IntegrationPlugin = {
     "@mendable/firecrawl-js": "^4.6.2",
   },
 
+  // HTTP configuration for custom API requests
+  // Allows users to make direct API calls to Firecrawl via HTTP Request step
+  httpConfig: {
+    baseUrl: "https://api.firecrawl.dev/v1",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    authCredentialKey: "FIRECRAWL_API_KEY",
+  },
+
   actions: [
     {
       slug: "scrape",

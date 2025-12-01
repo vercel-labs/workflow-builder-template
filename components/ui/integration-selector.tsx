@@ -1,7 +1,8 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -10,7 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api, type Integration } from "@/lib/api-client";
+import {
+  fetchIntegrationsAtom,
+  integrationsAtom,
+  integrationsFetchedAtom,
+  integrationsLoadingAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 
@@ -31,32 +37,31 @@ export function IntegrationSelector({
   label,
   disabled,
 }: IntegrationSelectorProps) {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
+  const allIntegrations = useAtomValue(integrationsAtom);
+  const loading = useAtomValue(integrationsLoadingAtom);
+  const fetched = useAtomValue(integrationsFetchedAtom);
+  const fetchIntegrations = useSetAtom(fetchIntegrationsAtom);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
-  const loadIntegrations = async () => {
-    try {
-      setLoading(true);
-      const all = await api.integration.getAll();
-      const filtered = all.filter((i) => i.type === integrationType);
-      setIntegrations(filtered);
-      
-      // Auto-select if only one option and nothing selected yet
-      if (filtered.length === 1 && !value) {
-        onChange(filtered[0].id);
-      }
-    } catch (error) {
-      console.error("Failed to load integrations:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Filter integrations by type
+  const integrations = useMemo(
+    () => allIntegrations.filter((i) => i.type === integrationType),
+    [allIntegrations, integrationType]
+  );
 
+  // Fetch integrations on mount if not already fetched
   useEffect(() => {
-    loadIntegrations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [integrationType]);
+    if (!fetched && !loading) {
+      fetchIntegrations();
+    }
+  }, [fetched, loading, fetchIntegrations]);
+
+  // Auto-select if only one option and nothing selected yet
+  useEffect(() => {
+    if (integrations.length === 1 && !value && fetched) {
+      onChange(integrations[0].id);
+    }
+  }, [integrations, value, fetched, onChange]);
 
   const handleValueChange = (newValue: string) => {
     if (newValue === "__new__") {
@@ -69,12 +74,12 @@ export function IntegrationSelector({
   };
 
   const handleNewIntegrationCreated = async (integrationId: string) => {
-    await loadIntegrations();
+    await fetchIntegrations();
     onChange(integrationId);
     setShowNewDialog(false);
   };
 
-  if (loading) {
+  if (loading || !fetched) {
     return (
       <Select disabled value="">
         <SelectTrigger className="flex-1">

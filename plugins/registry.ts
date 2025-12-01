@@ -28,7 +28,10 @@ export type ActionConfigField = {
     | "text" // Regular text input
     | "number" // Number input
     | "select" // Dropdown select
-    | "schema-builder"; // Schema builder for structured output
+    | "schema-builder" // Schema builder for structured output
+    | "object-builder" // Object builder for key-value pairs (headers, body)
+    | "integration-select" // Dynamic dropdown of user's integrations with httpConfig
+    | "json-editor"; // JSON code editor with validation
 
   // Placeholder text
   placeholder?: string;
@@ -56,6 +59,11 @@ export type ActionConfigField = {
     field: string;
     equals: string;
   };
+
+  // Validation for object-builder fields
+  // Returns error message string or undefined if valid
+  validateKey?: (key: string, value: string) => string | undefined;
+  validateValue?: (value: string, key: string) => string | undefined;
 };
 
 /**
@@ -88,6 +96,26 @@ export type PluginAction = {
 };
 
 /**
+ * HTTP Configuration for plugins
+ * Allows the HTTP Request step to use plugin credentials for custom API calls
+ */
+export type PluginHttpConfig = {
+  // Base URL for the API (e.g., "https://api.resend.com")
+  baseUrl: string;
+
+  // Header name for authentication (default: "Authorization")
+  authHeader?: string;
+
+  // Prefix for the auth value (default: "Bearer ")
+  // Use empty string for APIs that expect raw API keys
+  authPrefix?: string;
+
+  // Which credential key to use for auth (e.g., "RESEND_API_KEY")
+  // This should match an envVar from formFields
+  authCredentialKey: string;
+};
+
+/**
  * Integration Plugin Definition
  * All information needed to register a new integration in one place
  */
@@ -96,6 +124,10 @@ export type IntegrationPlugin = {
   type: IntegrationType;
   label: string;
   description: string;
+
+  // Whether this plugin requires an integration to be configured (default: true)
+  // Set to false for plugins like Native/HTTP Request that don't need credentials
+  requiresIntegration?: boolean;
 
   // Icon component (should be exported from plugins/[name]/icon.tsx)
   icon: React.ComponentType<{ className?: string }>;
@@ -125,6 +157,10 @@ export type IntegrationPlugin = {
 
   // NPM dependencies required by this plugin (package name -> version)
   dependencies?: Record<string, string>;
+
+  // HTTP configuration for custom API requests via HTTP Request step
+  // When defined, this plugin's integrations will appear in the HTTP Request integration dropdown
+  httpConfig?: PluginHttpConfig;
 
   // Actions provided by this integration
   actions: PluginAction[];
@@ -446,4 +482,37 @@ export function generateAIActionPrompts(): string {
   }
 
   return lines.join("\n");
+}
+
+/**
+ * Check if an action requires an integration to be configured
+ * Returns false for plugins with requiresIntegration: false (like Native)
+ */
+export function requiresIntegration(actionType: string): boolean {
+  const action = findActionById(actionType);
+  if (!action) {
+    return false;
+  }
+
+  const plugin = integrationRegistry.get(action.integration);
+  return plugin?.requiresIntegration !== false;
+}
+
+/**
+ * Get all plugins that have HTTP configuration
+ * These plugins support custom API requests via the HTTP Request step
+ */
+export function getHttpEnabledPlugins(): IntegrationPlugin[] {
+  return Array.from(integrationRegistry.values()).filter(
+    (plugin) => plugin.httpConfig !== undefined
+  );
+}
+
+/**
+ * Get HTTP config for a specific plugin type
+ */
+export function getPluginHttpConfig(
+  integrationType: IntegrationType
+): PluginHttpConfig | undefined {
+  return integrationRegistry.get(integrationType)?.httpConfig;
 }

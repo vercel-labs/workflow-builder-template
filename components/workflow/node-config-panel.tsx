@@ -46,7 +46,7 @@ import {
   showDeleteDialogAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
-import { findActionById } from "@/plugins";
+import { findActionById, requiresIntegration } from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -756,22 +756,25 @@ export const PanelInner = () => {
                 const actionType = selectedNode.data.config
                   ?.actionType as string;
 
+                if (!actionType) {
+                  return null;
+                }
+
                 // Database Query is special - has integration but no plugin
                 const SYSTEM_INTEGRATION_MAP: Record<string, string> = {
                   "Database Query": "database",
                 };
 
-                // Get integration type dynamically
-                let integrationType: string | undefined;
-                if (actionType) {
-                  if (SYSTEM_INTEGRATION_MAP[actionType]) {
-                    integrationType = SYSTEM_INTEGRATION_MAP[actionType];
-                  } else {
-                    // Look up from plugin registry
-                    const action = findActionById(actionType);
-                    integrationType = action?.integration;
-                  }
+                // Check if this action requires integration
+                const isSystemAction = actionType in SYSTEM_INTEGRATION_MAP;
+                if (!(isSystemAction || requiresIntegration(actionType))) {
+                  return null;
                 }
+
+                // Get integration type
+                const integrationType = isSystemAction
+                  ? SYSTEM_INTEGRATION_MAP[actionType]
+                  : findActionById(actionType)?.integration;
 
                 return integrationType ? (
                   <IntegrationSelector

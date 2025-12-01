@@ -4,13 +4,11 @@
 
 import conditionTemplate from "@/lib/codegen-templates/condition";
 import databaseQueryTemplate from "@/lib/codegen-templates/database-query";
-import httpRequestTemplate from "@/lib/codegen-templates/http-request";
 import { findActionById } from "@/plugins";
 
 // System action templates (non-plugin actions)
 const SYSTEM_ACTION_TEMPLATES: Record<string, string> = {
   "Database Query": databaseQueryTemplate,
-  "HTTP Request": httpRequestTemplate,
   Condition: conditionTemplate,
 };
 

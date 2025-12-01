@@ -51,9 +51,13 @@ const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
   database: "Database",
 };
 
-// Get all integration types (plugins + system)
+// Get all integration types (plugins that require integration + system)
+// Excludes plugins with requiresIntegration: false (like Native)
 const getIntegrationTypes = (): IntegrationType[] => [
-  ...getSortedIntegrationTypes(),
+  ...getSortedIntegrationTypes().filter((type) => {
+    const plugin = getIntegration(type);
+    return plugin?.requiresIntegration !== false;
+  }),
   ...SYSTEM_INTEGRATION_TYPES,
 ];
 

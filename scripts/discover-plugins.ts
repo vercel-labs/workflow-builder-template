@@ -87,7 +87,7 @@ function generateIndexFile(plugins: string[]): void {
 
 ${imports || "// No plugins discovered"}
 
-export type { IntegrationPlugin, PluginAction, ActionWithFullId } from "./registry";
+export type { IntegrationPlugin, PluginAction, ActionWithFullId, PluginHttpConfig } from "./registry";
 
 // Export the registry utilities
 export {
@@ -101,13 +101,16 @@ export {
   getAllIntegrations,
   getCredentialMapping,
   getDependenciesForActions,
+  getHttpEnabledPlugins,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
   getPluginEnvVars,
+  getPluginHttpConfig,
   getSortedIntegrationTypes,
   parseActionId,
   registerIntegration,
+  requiresIntegration,
 } from "./registry";
 `;
 

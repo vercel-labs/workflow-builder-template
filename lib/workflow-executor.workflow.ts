@@ -24,11 +24,6 @@ const SYSTEM_ACTIONS: Record<string, StepImporter> = {
     importer: () => import("./steps/database-query") as Promise<any>,
     stepFunction: "databaseQueryStep",
   },
-  "HTTP Request": {
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
-    importer: () => import("./steps/http-request") as Promise<any>,
-    stepFunction: "httpRequestStep",
-  },
   Condition: {
     // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
     importer: () => import("./steps/condition") as Promise<any>,
@@ -218,7 +213,7 @@ async function executeActionStep(input: {
     });
   }
 
-  // Check system actions first (Database Query, HTTP Request)
+  // Check system actions first (Database Query, Condition)
   const systemAction = SYSTEM_ACTIONS[actionType];
   if (systemAction) {
     const module = await systemAction.importer();

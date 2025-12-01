@@ -13,17 +13,18 @@
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
  *
- * Discovered plugins: ai-gateway, firecrawl, linear, resend, slack, v0
+ * Discovered plugins: ai-gateway, firecrawl, linear, native, resend, slack, v0
  */
 
 import "./ai-gateway";
 import "./firecrawl";
 import "./linear";
+import "./native";
 import "./resend";
 import "./slack";
 import "./v0";
 
-export type { IntegrationPlugin, PluginAction, ActionWithFullId } from "./registry";
+export type { IntegrationPlugin, PluginAction, ActionWithFullId, PluginHttpConfig } from "./registry";
 
 // Export the registry utilities
 export {
@@ -37,11 +38,14 @@ export {
   getAllIntegrations,
   getCredentialMapping,
   getDependenciesForActions,
+  getHttpEnabledPlugins,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
   getPluginEnvVars,
+  getPluginHttpConfig,
   getSortedIntegrationTypes,
   parseActionId,
   registerIntegration,
+  requiresIntegration,
 } from "./registry";

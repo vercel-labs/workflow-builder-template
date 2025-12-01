@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 10
+ * Generated entries: 11
  */
 
 import "server-only";
@@ -45,7 +45,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
-  Scrape: {
+  "Scrape": {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
@@ -53,7 +53,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
-  Search: {
+  "Search": {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
@@ -72,6 +72,14 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
   "Find Issues": {
     importer: () => import("@/plugins/linear/steps/find-issues"),
     stepFunction: "findIssuesStep",
+  },
+  "native/http-request": {
+    importer: () => import("@/plugins/native/steps/http-request"),
+    stepFunction: "httpRequestStep",
+  },
+  "HTTP Request": {
+    importer: () => import("@/plugins/native/steps/http-request"),
+    stepFunction: "httpRequestStep",
   },
   "resend/send-email": {
     importer: () => import("@/plugins/resend/steps/send-email"),
@@ -118,12 +126,14 @@ export const ACTION_LABELS: Record<string, string> = {
   "firecrawl/search": "Search Web",
   "linear/create-ticket": "Create Ticket",
   "linear/find-issues": "Find Issues",
+  "native/http-request": "HTTP Request",
   "resend/send-email": "Send Email",
   "slack/send-message": "Send Slack Message",
   "v0/create-chat": "Create Chat",
   "v0/send-message": "Send Message",
-  Scrape: "Scrape URL",
-  Search: "Search Web",
+  "HTTP Request": "HTTP Request",
+  "Scrape": "Scrape URL",
+  "Search": "Search Web",
   "Generate Text": "Generate Text",
   "Generate Image": "Generate Image",
   "Send Email": "Send Email",
