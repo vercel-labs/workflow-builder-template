@@ -1,7 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { createChatCodegenTemplate } from "./codegen/create-chat";
-import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { V0Icon } from "./icon";
 
 const v0Plugin: IntegrationPlugin = {
@@ -62,7 +60,6 @@ const v0Plugin: IntegrationPlugin = {
           rows: 3,
         },
       ],
-      codegenTemplate: createChatCodegenTemplate,
     },
     {
       slug: "send-message",
@@ -90,7 +87,6 @@ const v0Plugin: IntegrationPlugin = {
           required: true,
         },
       ],
-      codegenTemplate: sendMessageCodegenTemplate,
     },
   ],
 };

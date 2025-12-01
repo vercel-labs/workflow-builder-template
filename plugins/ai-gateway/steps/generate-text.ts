@@ -5,6 +5,7 @@ import { z } from "zod";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessageAsync } from "@/lib/utils";
+import type { AiGatewayCredentials } from "../credentials";
 
 type SchemaField = {
   name: string;
@@ -16,13 +17,17 @@ type GenerateTextResult =
   | { success: true; object: Record<string, unknown> }
   | { success: false; error: string };
 
-export type GenerateTextInput = StepInput & {
-  integrationId?: string;
+export type GenerateTextCoreInput = {
   aiModel?: string;
   aiPrompt?: string;
   aiFormat?: string;
   aiSchema?: string;
 };
+
+export type GenerateTextInput = StepInput &
+  GenerateTextCoreInput & {
+    integrationId?: string;
+  };
 
 /**
  * Gets the full model string in provider/model format.
@@ -63,15 +68,12 @@ function buildZodSchema(
 }
 
 /**
- * Generate text logic
+ * Core logic - portable between app and export
  */
-async function generateTextLogic(
-  input: GenerateTextInput
+async function stepHandler(
+  input: GenerateTextCoreInput,
+  credentials: AiGatewayCredentials
 ): Promise<GenerateTextResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
-
   const apiKey = credentials.AI_GATEWAY_API_KEY;
 
   if (!apiKey) {
@@ -128,12 +130,18 @@ async function generateTextLogic(
 }
 
 /**
- * Generate Text Step
- * Uses AI Gateway to generate text with various models
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function generateTextStep(
   input: GenerateTextInput
 ): Promise<GenerateTextResult> {
   "use step";
-  return withStepLogging(input, () => generateTextLogic(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+export const _integrationType = "ai-gateway";

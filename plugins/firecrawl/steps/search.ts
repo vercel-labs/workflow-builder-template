@@ -4,13 +4,13 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { FirecrawlCredentials } from "../credentials";
 
 type SearchResult = {
   web?: unknown[];
 };
 
-export type FirecrawlSearchInput = StepInput & {
-  integrationId?: string;
+export type FirecrawlSearchCoreInput = {
   query: string;
   limit?: number;
   scrapeOptions?: {
@@ -18,14 +18,18 @@ export type FirecrawlSearchInput = StepInput & {
   };
 };
 
-/**
- * Search logic
- */
-async function search(input: FirecrawlSearchInput): Promise<SearchResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type FirecrawlSearchInput = StepInput &
+  FirecrawlSearchCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic
+ */
+async function stepHandler(
+  input: FirecrawlSearchCoreInput,
+  credentials: FirecrawlCredentials
+): Promise<SearchResult> {
   const apiKey = credentials.FIRECRAWL_API_KEY;
 
   if (!apiKey) {
@@ -48,12 +52,18 @@ async function search(input: FirecrawlSearchInput): Promise<SearchResult> {
 }
 
 /**
- * Firecrawl Search Step
- * Searches the web using Firecrawl
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function firecrawlSearchStep(
   input: FirecrawlSearchInput
 ): Promise<SearchResult> {
   "use step";
-  return withStepLogging(input, () => search(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+export const _integrationType = "firecrawl";

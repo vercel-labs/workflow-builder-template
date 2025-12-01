@@ -108,7 +108,9 @@ export type PluginAction = {
   configFields: ActionConfigField[];
 
   // Code generation template (the actual template string, not a path)
-  codegenTemplate: string;
+  // Optional - if not provided, will fall back to auto-generated template
+  // from steps that export _exportCore
+  codegenTemplate?: string;
 };
 
 /**

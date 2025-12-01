@@ -12,8 +12,12 @@
 
 import "server-only";
 
-// biome-ignore lint/suspicious/noExplicitAny: Dynamic step module types
-type StepModule = Record<string, (input: any) => Promise<any>>;
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic step module types - step functions take any input
+export type StepFunction = (input: any) => Promise<any>;
+
+// Step modules may contain the step function plus other exports (types, constants, etc.)
+// biome-ignore lint/suspicious/noExplicitAny: Dynamic module with mixed exports
+export type StepModule = Record<string, any>;
 
 export type StepImporter = {
   importer: () => Promise<StepModule>;

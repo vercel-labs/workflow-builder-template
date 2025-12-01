@@ -1,6 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { sendSlackMessageCodegenTemplate } from "./codegen/send-slack-message";
 import { SlackIcon } from "./icon";
 
 const slackPlugin: IntegrationPlugin = {
@@ -65,7 +64,6 @@ const slackPlugin: IntegrationPlugin = {
           required: true,
         },
       ],
-      codegenTemplate: sendSlackMessageCodegenTemplate,
     },
   ],
 };

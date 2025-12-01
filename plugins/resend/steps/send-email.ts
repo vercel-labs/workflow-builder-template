@@ -3,14 +3,13 @@ import "server-only";
 import { Resend } from "resend";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
-import { getErrorMessage } from "@/lib/utils";
+import type { ResendCredentials } from "../credentials";
 
 type SendEmailResult =
   | { success: true; id: string }
   | { success: false; error: string };
 
-export type SendEmailInput = StepInput & {
-  integrationId?: string;
+export type SendEmailCoreInput = {
   emailFrom?: string;
   emailTo: string;
   emailSubject: string;
@@ -20,16 +19,21 @@ export type SendEmailInput = StepInput & {
   emailReplyTo?: string;
   emailScheduledAt?: string;
   emailTopicId?: string;
+  idempotencyKey?: string;
+};
+
+export type SendEmailInput = StepInput &
+  SendEmailCoreInput & {
+    integrationId?: string;
 };
 
 /**
- * Send email logic - separated for clarity and testability
+ * Core logic - portable between app and export
  */
-async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
-
+async function stepHandler(
+  input: SendEmailCoreInput,
+  credentials: ResendCredentials
+): Promise<SendEmailResult> {
   const apiKey = credentials.RESEND_API_KEY;
   const fromEmail = credentials.RESEND_FROM_EMAIL;
 
@@ -66,9 +70,7 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
         ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
         ...(input.emailTopicId && { topicId: input.emailTopicId }),
       },
-      input._context?.executionId
-        ? { idempotencyKey: input._context.executionId }
-        : undefined
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
     );
 
     if (result.error) {
@@ -80,20 +82,33 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
 
     return { success: true, id: result.data?.id || "" };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to send email: ${getErrorMessage(error)}`,
+      error: `Failed to send email: ${message}`,
     };
   }
 }
 
 /**
- * Send Email Step
- * Sends an email using Resend
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function sendEmailStep(
   input: SendEmailInput
 ): Promise<SendEmailResult> {
   "use step";
-  return withStepLogging(input, () => sendEmail(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  const coreInput: SendEmailCoreInput = {
+    ...input,
+    idempotencyKey: input._context?.executionId,
+  };
+
+  return withStepLogging(input, () => stepHandler(coreInput, credentials));
 }
+
+// Export marker for codegen auto-generation
+export const _integrationType = "resend";

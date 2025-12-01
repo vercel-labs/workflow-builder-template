@@ -196,13 +196,12 @@ The plugin system uses a **modular file structure** where each integration is se
 
 ```
 plugins/my-integration/
+├── credentials.ts        # Credential type definition
 ├── icon.tsx              # Icon component (SVG)
-├── test.ts               # Connection test function
+├── index.ts              # Plugin definition (ties everything together)
 ├── steps/                # Action implementations
-│   └── my-action.ts      # Server-side step function
-├── codegen/              # Export templates for standalone workflows
-│   └── my-action.ts      # Code generation template
-└── index.ts              # Plugin definition (ties everything together)
+│   └── my-action.ts      # Server-side step function with stepHandler
+└── test.ts               # Connection test function
 ```
 
 **Key Benefits:**
@@ -213,6 +212,7 @@ plugins/my-integration/
 - **Self-contained**: No scattered files across the codebase
 - **Auto-discovered**: Automatically detected by `pnpm discover-plugins`
 - **Declarative**: Action config fields defined as data, not React components
+- **Write once**: Step logic works for both the app and exported workflows
 
 ### Step-by-Step Plugin Creation
 
@@ -220,7 +220,6 @@ plugins/my-integration/
 
 ```bash
 mkdir -p plugins/my-integration/steps
-mkdir -p plugins/my-integration/codegen
 ```
 
 #### Step 2: Create Icon Component
@@ -246,7 +245,20 @@ export function MyIntegrationIcon({ className }: { className?: string }) {
 
 **OR** use a Lucide icon directly in your index.ts (skip this file if using Lucide).
 
-#### Step 3: Create Test Function
+#### Step 3: Create Credentials Type
+
+**File:** `plugins/my-integration/credentials.ts`
+
+This defines the credential type shared between app and export code:
+
+```typescript
+export type MyIntegrationCredentials = {
+  MY_INTEGRATION_API_KEY?: string;
+  // Add other credential fields as needed
+};
+```
+
+#### Step 4: Create Test Function
 
 **File:** `plugins/my-integration/test.ts`
 
@@ -285,11 +297,14 @@ export async function testMyIntegration(credentials: Record<string, string>) {
 }
 ```
 
-#### Step 4: Create Step Function (Server Logic)
+#### Step 5: Create Step Function (Server Logic)
 
 **File:** `plugins/my-integration/steps/send-message.ts`
 
-This runs on the server during workflow execution. Steps use the `withStepLogging` wrapper to automatically log execution for the workflow builder UI:
+This runs on the server during workflow execution. Steps have two parts:
+
+1. `stepHandler` - Core logic that receives credentials as a parameter
+2. `sendMessageStep` - Entry point that fetches credentials and wraps with logging
 
 ```typescript
 import "server-only";
@@ -297,26 +312,31 @@ import "server-only";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { MyIntegrationCredentials } from "../credentials";
 
 type SendMessageResult =
   | { success: true; id: string; url: string }
   | { success: false; error: string };
 
-// Extend StepInput to get automatic logging context
-export type SendMessageInput = StepInput & {
-  integrationId?: string;
+// Core input fields (without app-specific context)
+export type SendMessageCoreInput = {
   message: string;
   channel: string;
 };
 
-/**
- * Send message logic - separated for clarity and testability
- */
-async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+// App input includes integrationId and step context
+export type SendMessageInput = StepInput &
+  SendMessageCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic
+ */
+async function stepHandler(
+  input: SendMessageCoreInput,
+  credentials: MyIntegrationCredentials
+): Promise<SendMessageResult> {
   const apiKey = credentials.MY_INTEGRATION_API_KEY;
 
   if (!apiKey) {
@@ -360,73 +380,29 @@ async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> 
 }
 
 /**
- * Send Message Step
- * Sends a message using My Integration API
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function sendMessageStep(
   input: SendMessageInput
 ): Promise<SendMessageResult> {
   "use step";
-  return withStepLogging(input, () => sendMessage(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+export const _integrationType = "my-integration";
 ```
 
 **Key Points:**
 
-1. **Extend `StepInput`**: Your input type should extend `StepInput` to include the optional `_context` for logging
-2. **Separate logic function**: Keep the actual logic in a separate function for clarity and testability
-3. **Wrap with `withStepLogging`**: The step function just wraps the logic with `withStepLogging(input, () => logic(input))`
-4. **Return success/error objects**: Steps should return `{ success: true, ... }` or `{ success: false, error: "..." }`
-
-#### Step 5: Create Codegen Template
-
-**File:** `plugins/my-integration/codegen/send-message.ts`
-
-This template is used when users export/download their workflow as standalone code:
-
-```typescript
-/**
- * Code generation template for Send Message action
- * Used when exporting workflows to standalone Next.js projects
- */
-export const sendMessageCodegenTemplate = `
-export async function sendMessageStep(input: {
-  message: string;
-  channel: string;
-}) {
-  "use step";
-
-  const apiKey = process.env.MY_INTEGRATION_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('MY_INTEGRATION_API_KEY environment variable is required');
-  }
-
-  const response = await fetch('https://api.my-integration.com/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': \`Bearer \${apiKey}\`,
-    },
-    body: JSON.stringify({
-      message: input.message,
-      channel: input.channel,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(\`API request failed: \${response.statusText}\`);
-  }
-
-  const result = await response.json();
-
-  return {
-    id: result.id,
-    url: result.url,
-    success: true,
-  };
-}`;
-```
+1. **`stepHandler`**: Contains the core business logic, receives credentials as a parameter
+2. **`[action]Step`**: Entry point that fetches credentials and wraps with logging
+3. **`_integrationType`**: Integration identifier for this step
+4. **Credentials type**: Import from `../credentials` for type safety
 
 #### Step 6: Create Plugin Index
 
@@ -437,7 +413,6 @@ This ties everything together. The plugin uses a **declarative approach** where 
 ```typescript
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { MyIntegrationIcon } from "./icon";
 
 const myIntegrationPlugin: IntegrationPlugin = {
@@ -478,6 +453,7 @@ const myIntegrationPlugin: IntegrationPlugin = {
     "my-integration-sdk": "^1.0.0",
   },
 
+  // Actions provided by this integration
   actions: [
     {
       slug: "send-message", // Action ID: "my-integration/send-message"
@@ -502,7 +478,6 @@ const myIntegrationPlugin: IntegrationPlugin = {
           placeholder: "#general",
         },
       ],
-      codegenTemplate: sendMessageCodegenTemplate,
     },
     // Add more actions as needed
   ],
@@ -533,10 +508,7 @@ export default myIntegrationPlugin;
 
 #### Step 7: Run Plugin Discovery
 
-The `discover-plugins` script auto-generates:
-- `plugins/index.ts` - Import registry
-- `lib/types/integration.ts` - IntegrationType union
-- `lib/step-registry.ts` - Step function mappings
+The `discover-plugins` script auto-generates type definitions and registries:
 
 ```bash
 pnpm discover-plugins
@@ -632,7 +604,6 @@ actions: [
       { key: "message", label: "Message", type: "template-input" },
       { key: "channel", label: "Channel", type: "text" },
     ],
-    codegenTemplate: sendMessageCodegenTemplate,
   },
   {
     slug: "create-record",
@@ -645,7 +616,6 @@ actions: [
       { key: "title", label: "Title", type: "template-input", required: true },
       { key: "description", label: "Description", type: "template-textarea" },
     ],
-    codegenTemplate: createRecordCodegenTemplate,
   },
 ],
 ```
@@ -656,7 +626,7 @@ actions: [
 
 ### Pattern 1: Step Function Structure
 
-Steps follow a consistent structure with logging:
+Steps follow a consistent structure:
 
 ```typescript
 import "server-only";
@@ -664,20 +634,25 @@ import "server-only";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { MyIntegrationCredentials } from "../credentials";
 
 type MyResult = { success: true; data: string } | { success: false; error: string };
 
-export type MyInput = StepInput & {
-  integrationId?: string;
+// Core input (without app-specific fields)
+export type MyCoreInput = {
   field1: string;
 };
 
-// 1. Logic function (no "use step" needed)
-async function myLogic(input: MyInput): Promise<MyResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+// App input (extends core with integrationId and step context)
+export type MyInput = StepInput & MyCoreInput & {
+  integrationId?: string;
+};
 
+// 1. stepHandler - Core logic, receives credentials as parameter
+async function stepHandler(
+  input: MyCoreInput,
+  credentials: MyIntegrationCredentials
+): Promise<MyResult> {
   const apiKey = credentials.MY_INTEGRATION_API_KEY;
   if (!apiKey) {
     return { success: false, error: "API key not configured" };
@@ -698,11 +673,19 @@ async function myLogic(input: MyInput): Promise<MyResult> {
   }
 }
 
-// 2. Step wrapper (has "use step", wraps with logging)
+// 2. App entry point - fetches credentials and wraps with logging
 export async function myStep(input: MyInput): Promise<MyResult> {
   "use step";
-  return withStepLogging(input, () => myLogic(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+// 3. Integration identifier
+export const _integrationType = "my-integration";
 ```
 
 ### Pattern 2: Declarative Config Fields
@@ -775,12 +758,12 @@ If you run into issues:
 **Adding an integration requires:**
 
 1. Create plugin directory with 4-5 files:
-   - `index.ts` - Plugin definition
+   - `credentials.ts` - Credential type definition
    - `icon.tsx` - Icon component (or use Lucide)
+   - `index.ts` - Plugin definition
+   - `steps/[action].ts` - Step function(s) with `stepHandler`
    - `test.ts` - Connection test function
-   - `steps/[action].ts` - Step function(s)
-   - `codegen/[action].ts` - Code generation template(s)
-2. Run `pnpm discover-plugins` to auto-generate types
+2. Run `pnpm discover-plugins` to register the plugin
 3. Test thoroughly
 
 Each integration is self-contained in one organized directory, making it easy to develop, test, and maintain. Happy building!

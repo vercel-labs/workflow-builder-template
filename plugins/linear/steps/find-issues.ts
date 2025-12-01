@@ -4,6 +4,7 @@ import { LinearClient } from "@linear/sdk";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { LinearCredentials } from "../credentials";
 
 type LinearIssue = {
   id: string;
@@ -18,22 +19,25 @@ type FindIssuesResult =
   | { success: true; issues: LinearIssue[]; count: number }
   | { success: false; error: string };
 
-export type FindIssuesInput = StepInput & {
-  integrationId?: string;
+export type FindIssuesCoreInput = {
   linearAssigneeId?: string;
   linearTeamId?: string;
   linearStatus?: string;
   linearLabel?: string;
 };
 
-/**
- * Find issues logic
- */
-async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type FindIssuesInput = StepInput &
+  FindIssuesCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: FindIssuesCoreInput,
+  credentials: LinearCredentials
+): Promise<FindIssuesResult> {
   const apiKey = credentials.LINEAR_API_KEY;
 
   if (!apiKey) {
@@ -47,7 +51,6 @@ async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
   try {
     const linear = new LinearClient({ apiKey });
 
-    // Build filter object
     const filter: Record<string, unknown> = {};
 
     if (input.linearAssigneeId) {
@@ -96,12 +99,18 @@ async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
 }
 
 /**
- * Find Issues Step
- * Searches for issues in Linear based on filters
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function findIssuesStep(
   input: FindIssuesInput
 ): Promise<FindIssuesResult> {
   "use step";
-  return withStepLogging(input, () => findIssues(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+export const _integrationType = "linear";

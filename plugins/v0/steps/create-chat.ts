@@ -4,25 +4,29 @@ import { createClient, type ChatsCreateResponse } from "v0-sdk";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { V0Credentials } from "../credentials";
 
 type CreateChatResult =
   | { success: true; chatId: string; url: string; demoUrl?: string }
   | { success: false; error: string };
 
-export type CreateChatInput = StepInput & {
-  integrationId?: string;
+export type CreateChatCoreInput = {
   message: string;
   system?: string;
 };
 
-/**
- * Create chat logic
- */
-async function createChat(input: CreateChatInput): Promise<CreateChatResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type CreateChatInput = StepInput &
+  CreateChatCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: CreateChatCoreInput,
+  credentials: V0Credentials
+): Promise<CreateChatResult> {
   const apiKey = credentials.V0_API_KEY;
 
   if (!apiKey) {
@@ -56,12 +60,18 @@ async function createChat(input: CreateChatInput): Promise<CreateChatResult> {
 }
 
 /**
- * Create Chat Step
- * Creates a new chat in v0
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function createChatStep(
   input: CreateChatInput
 ): Promise<CreateChatResult> {
   "use step";
-  return withStepLogging(input, () => createChat(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+export const _integrationType = "v0";
