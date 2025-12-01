@@ -89,7 +89,6 @@ const getIntegrationFromActionType = (actionType: string): string => {
   }
 
   return "System";
-  >>>>>>> origin/main
 };
 
 // Helper to detect if output is a base64 image from generateImage step

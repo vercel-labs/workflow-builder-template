@@ -35,7 +35,6 @@ const SYSTEM_CREDENTIAL_MAPPERS: Record<
   },
 };
 
->>>>>>> origin/main
 /**
  * Map integration config to WorkflowCredentials format
  * Uses plugin registry for plugin integrations, hardcoded mappers for system integrations

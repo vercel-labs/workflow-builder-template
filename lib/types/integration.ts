@@ -9,12 +9,13 @@
  * 2. Add a system integration to SYSTEM_INTEGRATION_TYPES in discover-plugins.ts
  * 3. Run: pnpm discover-plugins
  *
- * Generated types: ai-gateway, database, firecrawl, linear, resend, slack, v0
+ * Generated types: ai-gateway, apify, database, firecrawl, linear, resend, slack, v0
  */
 
 // Integration type union - plugins + system integrations
 export type IntegrationType =
   | "ai-gateway"
+  | "apify"
   | "database"
   | "firecrawl"
   | "linear"

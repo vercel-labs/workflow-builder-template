@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils"
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  return (
+    <DropdownMenuPrimitive.Root
+      data-slot="dropdown-menu"
+      suppressHydrationWarning
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuPortal({

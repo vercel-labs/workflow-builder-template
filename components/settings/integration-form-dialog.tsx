@@ -187,9 +187,8 @@ export function IntegrationFormDialog({
       </div>
     ));
   };
-}
 
-return (
+  return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={open}>
       <DialogContent className="max-w-md">
         <DialogHeader>

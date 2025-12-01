@@ -8,7 +8,13 @@ import { cn } from "@/lib/utils"
 function Drawer({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+  return (
+    <DrawerPrimitive.Root
+      data-slot="drawer"
+      suppressHydrationWarning
+      {...props}
+    />
+  );
 }
 
 function DrawerTrigger({

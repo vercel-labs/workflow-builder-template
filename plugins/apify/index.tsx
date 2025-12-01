@@ -5,8 +5,6 @@ import { runActorCodegenTemplate } from "./codegen/run-actor";
 import { scrapeSingleUrlCodegenTemplate } from "./codegen/scrape-single-url";
 import { ApifyIcon } from "./icon";
 import { ApifySettings } from "./settings";
-import { RunActorConfigFields } from "./steps/run-actor/config";
-import { ScrapeSingleUrlConfigFields } from "./steps/scrape-single-url/config";
 import { testApify } from "./test";
 
 const apifyPlugin: IntegrationPlugin = {
@@ -14,10 +12,7 @@ const apifyPlugin: IntegrationPlugin = {
   label: "Apify",
   description: "Run web scraping and automation Actors",
 
-  icon: {
-    type: "image",
-    value: "/integrations/apify.svg",
-  },
+  icon: ApifyIcon,
 
   settingsComponent: ApifySettings,
 
@@ -50,25 +45,72 @@ const apifyPlugin: IntegrationPlugin = {
 
   actions: [
     {
-      id: "Run Apify Actor",
+      slug: "run-actor",
       label: "Run Apify Actor",
       description: "Run an Apify Actor and get results",
       category: "Apify",
       icon: ApifyIcon,
       stepFunction: "apifyRunActorStep",
-      stepImportPath: "run-actor",
-      configFields: RunActorConfigFields,
+      stepImportPath: "run-actor/step",
+      configFields: [
+        {
+          key: "actorId",
+          label: "Actor (ID or name)",
+          type: "template-input",
+          placeholder: "apify/web-scraper or {{NodeName.actorId}}",
+          example: "apify/web-scraper",
+          required: true,
+        },
+        {
+          key: "actorInput",
+          label: "Actor Input (JSON)",
+          type: "template-textarea",
+          placeholder: '{"startUrls": [{"url": "https://example.com"}]}',
+          rows: 6,
+          example: '{"startUrls": [{"url": "https://example.com"}]}',
+          required: true,
+        },
+      ],
       codegenTemplate: runActorCodegenTemplate,
     },
     {
-      id: "Scrape Single URL",
+      slug: "scrape-single-url",
       label: "Scrape Single URL",
       description: "Scrape a single URL and get markdown output",
       category: "Apify",
       icon: Globe,
       stepFunction: "scrapeSingleUrlStep",
-      stepImportPath: "scrape-single-url",
-      configFields: ScrapeSingleUrlConfigFields,
+      stepImportPath: "scrape-single-url/step",
+      configFields: [
+        {
+          key: "url",
+          label: "URL",
+          type: "template-input",
+          placeholder: "https://example.com or {{NodeName.url}}",
+          example: "https://example.com",
+          required: true,
+        },
+        {
+          key: "crawlerType",
+          label: "Crawler Type",
+          type: "select",
+          defaultValue: "playwright",
+          options: [
+            {
+              value: "playwright:adaptive",
+              label: "Adaptive switching between browser and raw HTTP",
+            },
+            {
+              value: "playwright:firefox",
+              label: "Headless browser (Firefox+Playwright)",
+            },
+            {
+              value: "cheerio",
+              label: "Raw HTTP client (Cheerio)",
+            },
+          ],
+        },
+      ],
       codegenTemplate: scrapeSingleUrlCodegenTemplate,
     },
   ],

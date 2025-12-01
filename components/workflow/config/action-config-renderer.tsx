@@ -224,6 +224,12 @@ export function ActionConfigRenderer({
   onUpdateConfig,
   disabled,
 }: ActionConfigRendererProps) {
+  // Safety check: ensure fields is an array
+  if (!Array.isArray(fields)) {
+    console.warn("ActionConfigRenderer: fields must be an array", fields);
+    return null;
+  }
+
   return (
     <>
       {fields.map((field) => {
