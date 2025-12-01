@@ -53,6 +53,8 @@ type WorkflowRunsProps = {
   isActive?: boolean;
   onRefreshRef?: React.MutableRefObject<(() => Promise<void>) | null>;
   onStartRun?: (executionId: string) => void;
+  // When provided, shows a badge on runs that executed all these nodes (for connection view)
+  connectionNodeIds?: string[];
 };
 
 // Helper to detect if output is a base64 image from generateImage step
@@ -278,6 +280,7 @@ export function WorkflowRuns({
   isActive = false,
   onRefreshRef,
   onStartRun,
+  connectionNodeIds,
 }: WorkflowRunsProps) {
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
   const [selectedExecutionId, setSelectedExecutionId] = useAtom(
@@ -387,6 +390,30 @@ export function WorkflowRuns({
     },
     [mapNodeLabels, selectedExecutionId, setExecutionLogs]
   );
+
+  // Load logs for recent executions when viewing a connection (to show "Used" badge)
+  useEffect(() => {
+    if (!connectionNodeIds || connectionNodeIds.length === 0) {
+      return;
+    }
+
+    // Limit to recent executions to avoid performance issues
+    const recentExecutions = executions.slice(0, 10);
+
+    const loadLogsForConnection = async () => {
+      await Promise.all(
+        recentExecutions.map(async (execution) => {
+          // Skip if we already have logs for this execution
+          if (logs[execution.id]) {
+            return;
+          }
+          await loadExecutionLogs(execution.id);
+        })
+      );
+    };
+
+    loadLogsForConnection();
+  }, [connectionNodeIds, executions, logs, loadExecutionLogs]);
 
   // Notify parent when a new execution starts and auto-expand it
   useEffect(() => {
@@ -571,6 +598,15 @@ export function WorkflowRuns({
           );
         });
 
+        // Check if this run used the connection (both nodes were executed)
+        const usedConnection =
+          connectionNodeIds &&
+          connectionNodeIds.length > 0 &&
+          executionLogs.length > 0 &&
+          connectionNodeIds.every((nodeId) =>
+            executionLogs.some((log) => log.nodeId === nodeId)
+          );
+
         return (
           <div
             className={cn(
@@ -605,6 +641,11 @@ export function WorkflowRuns({
                   <span className="font-semibold text-sm">
                     Run #{executions.length - index}
                   </span>
+                  {usedConnection && (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">
+                      Edge Active
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 font-mono text-muted-foreground text-xs">
                   <span>{getRelativeTime(execution.startedAt)}</span>

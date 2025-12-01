@@ -1303,17 +1303,10 @@ function WorkflowMenuComponent({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  useEffect(() => {
-    if (workflowId !== undefined) {
-      toast.dismiss("workflow-navigation");
-    }
-  }, [workflowId]);
-
   const handleWorkflowClick = (workflow: { id: string; name: string }) => {
     if (workflow.id === state.currentWorkflowId) {
       return;
     }
-    toast.loading(`Opening ${workflow.name}...`, { id: "workflow-navigation" });
     state.router.push(`/workflows/${workflow.id}`);
   };
 

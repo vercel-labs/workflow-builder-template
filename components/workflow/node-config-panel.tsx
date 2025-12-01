@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
+  Check,
   Copy,
   Eraser,
   Eye,
@@ -206,6 +207,8 @@ export const PanelInner = () => {
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copiedNode, setCopiedNode] = useState(false);
+  const [copiedWorkflow, setCopiedWorkflow] = useState(false);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
   const autoSelectAbortControllersRef = useRef<Record<string, AbortController>>(
@@ -242,13 +245,15 @@ export const PanelInner = () => {
   const handleCopyCode = () => {
     if (selectedNode) {
       navigator.clipboard.writeText(generateNodeCode(selectedNode));
-      toast.success("Code copied to clipboard");
+      setCopiedNode(true);
+      setTimeout(() => setCopiedNode(false), 2000);
     }
   };
 
   const handleCopyWorkflowCode = () => {
     navigator.clipboard.writeText(workflowCode);
-    toast.success("Code copied to clipboard");
+    setCopiedWorkflow(true);
+    setTimeout(() => setCopiedWorkflow(false), 2000);
   };
 
   const handleDelete = () => {
@@ -452,35 +457,84 @@ export const PanelInner = () => {
 
     return (
       <>
-        <div className="flex size-full flex-col">
-          <div className="flex h-14 w-full shrink-0 items-center border-b bg-transparent px-4">
-            <h2 className="font-semibold text-foreground">Connection</h2>
-          </div>
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            <div className="space-y-2">
-              <Label className="ml-1" htmlFor="edge-source">
-                From
-              </Label>
-              <Input disabled id="edge-source" value={sourceLabel} />
-            </div>
-            <div className="space-y-2">
-              <Label className="ml-1" htmlFor="edge-target">
-                To
-              </Label>
-              <Input disabled id="edge-target" value={targetLabel} />
-            </div>
-          </div>
-          <div className="shrink-0 border-t p-4">
-            <Button
-              onClick={() => setShowDeleteEdgeAlert(true)}
-              size="icon"
-              title="Delete connection"
-              variant="ghost"
+        <Tabs
+          className="size-full"
+          defaultValue="properties"
+          onValueChange={setActiveTab}
+          value={activeTab}
+        >
+          <TabsList className="h-14 w-full shrink-0 rounded-none border-b bg-transparent px-4 py-2.5">
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="properties"
             >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </div>
+              Properties
+            </TabsTrigger>
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="runs"
+            >
+              Runs
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent
+            className="flex flex-col overflow-hidden"
+            value="properties"
+          >
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-source">
+                  From
+                </Label>
+                <Input disabled id="edge-source" value={sourceLabel} />
+              </div>
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-target">
+                  To
+                </Label>
+                <Input disabled id="edge-target" value={targetLabel} />
+              </div>
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-id">
+                  Edge ID
+                </Label>
+                <Input disabled id="edge-id" value={selectedEdge.id} />
+              </div>
+            </div>
+            <div className="shrink-0 border-t p-4">
+              <Button
+                onClick={() => setShowDeleteEdgeAlert(true)}
+                size="icon"
+                title="Delete connection"
+                variant="ghost"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          </TabsContent>
+          <TabsContent className="flex flex-col overflow-hidden" value="runs">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <WorkflowRuns
+                connectionNodeIds={[selectedEdge.source, selectedEdge.target]}
+                isActive={activeTab === "runs"}
+                onRefreshRef={refreshRunsRef}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border-t p-4">
+              <Button
+                disabled={isRefreshing}
+                onClick={handleRefreshRuns}
+                size="icon"
+                title="Refresh runs"
+                variant="ghost"
+              >
+                <RefreshCw
+                  className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <AlertDialog
           onOpenChange={setShowDeleteEdgeAlert}
@@ -640,7 +694,11 @@ export const PanelInner = () => {
                 title="Copy code"
                 variant="ghost"
               >
-                <Copy className="size-4" />
+                {copiedWorkflow ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
               </Button>
             </div>
           </TabsContent>
@@ -741,42 +799,32 @@ export const PanelInner = () => {
 
             {selectedNode.data.type !== "action" ||
             selectedNode.data.config?.actionType ? (
-              <div className="mt-6 space-y-4">
-                <div className="space-y-0.5">
-                  <h4 className="font-medium text-muted-foreground text-sm">
-                    Node Details
-                  </h4>
-                  <p className="text-muted-foreground/70 text-xs">
-                    Customize how this step appears in your workflow
-                  </p>
+              <>
+                <div className="space-y-2">
+                  <Label className="ml-1" htmlFor="label">
+                    Label
+                  </Label>
+                  <Input
+                    disabled={isGenerating}
+                    id="label"
+                    onChange={(e) => handleUpdateLabel(e.target.value)}
+                    placeholder="e.g. Send welcome email"
+                    value={selectedNode.data.label}
+                  />
                 </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="ml-1" htmlFor="label">
-                      Label
-                    </Label>
-                    <Input
-                      disabled={isGenerating}
-                      id="label"
-                      onChange={(e) => handleUpdateLabel(e.target.value)}
-                      placeholder="e.g. Send welcome email"
-                      value={selectedNode.data.label}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="ml-1" htmlFor="description">
-                      Description
-                    </Label>
-                    <Input
-                      disabled={isGenerating}
-                      id="description"
-                      onChange={(e) => handleUpdateDescription(e.target.value)}
-                      placeholder="e.g. Sends a welcome email to new users"
-                      value={selectedNode.data.description || ""}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="ml-1" htmlFor="description">
+                    Description
+                  </Label>
+                  <Input
+                    disabled={isGenerating}
+                    id="description"
+                    onChange={(e) => handleUpdateDescription(e.target.value)}
+                    placeholder="e.g. Sends a welcome email to new users"
+                    value={selectedNode.data.description || ""}
+                  />
                 </div>
-              </div>
+              </>
             ) : null}
           </div>
           {selectedNode.data.type === "action" && (
@@ -916,7 +964,11 @@ export const PanelInner = () => {
                     title="Copy code"
                     variant="ghost"
                   >
-                    <Copy className="size-4" />
+                    {copiedNode ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
                   </Button>
                 </div>
               </>
