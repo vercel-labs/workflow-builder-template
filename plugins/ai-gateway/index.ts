@@ -1,7 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { generateImageCodegenTemplate } from "./codegen/generate-image";
-import { generateTextCodegenTemplate } from "./codegen/generate-text";
 import { AiGatewayIcon } from "./icon";
 
 const aiGatewayPlugin: IntegrationPlugin = {
@@ -106,7 +104,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
           showWhen: { field: "aiFormat", equals: "object" },
         },
       ],
-      codegenTemplate: generateTextCodegenTemplate,
     },
     {
       slug: "generate-image",
@@ -141,7 +138,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
           required: true,
         },
       ],
-      codegenTemplate: generateImageCodegenTemplate,
     },
   ],
 };

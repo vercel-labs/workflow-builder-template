@@ -7,7 +7,7 @@
  * Contains auto-generated codegen templates for steps that export stepHandler.
  * These templates are used when exporting workflows to standalone projects.
  *
- * Generated templates: 5
+ * Generated templates: 7
  */
 
 /**
@@ -15,6 +15,144 @@
  * Maps action IDs to their generated export code templates
  */
 export const AUTO_GENERATED_TEMPLATES: Record<string, string> = {
+  "ai-gateway/generate-text": `import { createGateway, generateObject, generateText } from "ai";
+import { z } from "zod";
+import { fetchCredentials } from "./lib/credential-helper";
+
+type GenerateTextResult =
+  | { success: true; text: string }
+  | { success: true; object: Record<string, unknown> }
+  | { success: false; error: string };
+
+export type GenerateTextCoreInput = {
+  aiModel?: string;
+  aiPrompt?: string;
+  aiFormat?: string;
+  aiSchema?: string;
+};
+
+export async function generateTextStep(
+  input: GenerateTextCoreInput,
+): Promise<GenerateTextResult> {
+  "use step";
+  const credentials = await fetchCredentials("ai-gateway");
+  const apiKey = credentials.AI_GATEWAY_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "AI_GATEWAY_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  const modelId = input.aiModel || "meta/llama-4-scout";
+  const promptText = input.aiPrompt || "";
+
+  if (!promptText || promptText.trim() === "") {
+    return {
+      success: false,
+      error: "Prompt is required for text generation",
+    };
+  }
+
+  const modelString = getModelString(modelId);
+
+  try {
+    const gateway = createGateway({
+      apiKey,
+    });
+
+    if (input.aiFormat === "object" && input.aiSchema) {
+      const schema = JSON.parse(input.aiSchema) as SchemaField[];
+      const zodSchema = buildZodSchema(schema);
+
+      const { object } = await generateObject({
+        model: gateway(modelString),
+        prompt: promptText,
+        schema: zodSchema,
+      });
+
+      return { success: true, object };
+    }
+
+    const { text } = await generateText({
+      model: gateway(modelString),
+      prompt: promptText,
+    });
+
+    return { success: true, text };
+  } catch (error) {
+    const message = await getErrorMessageAsync(error);
+    return {
+      success: false,
+      error: \`Text generation failed: \${message}\`,
+    };
+  }
+}
+`,
+
+  "ai-gateway/generate-image": `import type { ImageModelV2 } from "@ai-sdk/provider";
+import { createGateway, experimental_generateImage as generateImage } from "ai";
+import { fetchCredentials } from "./lib/credential-helper";
+
+type GenerateImageResult =
+  | { success: true; base64: string }
+  | { success: false; error: string };
+
+export type GenerateImageCoreInput = {
+  imageModel: ImageModelV2;
+  imagePrompt: string;
+};
+
+export async function generateImageStep(
+  input: GenerateImageCoreInput,
+): Promise<GenerateImageResult> {
+  "use step";
+  const credentials = await fetchCredentials("ai-gateway");
+  const apiKey = credentials.AI_GATEWAY_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "AI_GATEWAY_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    const gateway = createGateway({
+      apiKey,
+    });
+
+    // biome-ignore lint/suspicious/noExplicitAny: AI gateway model ID is dynamic
+    const modelId = (input.imageModel ?? "google/imagen-4.0-generate") as any;
+    const result = await generateImage({
+      model: gateway.imageModel(modelId),
+      prompt: input.imagePrompt,
+      size: "1024x1024",
+    });
+
+    if (!result.image) {
+      return {
+        success: false,
+        error: "Failed to generate image: No image returned",
+      };
+    }
+
+    const base64 = result.image.base64;
+
+    return { success: true, base64 };
+  } catch (error) {
+    const message = await getErrorMessageAsync(error);
+    return {
+      success: false,
+      error: \`Image generation failed: \${message}\`,
+    };
+  }
+}
+`,
+
   "firecrawl/scrape": `import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "./lib/credential-helper";
 
