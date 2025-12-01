@@ -4,10 +4,18 @@
 import "server-only";
 
 import { getErrorMessage } from "../utils";
+import { type StepInput, withStepLogging } from "./step-handler";
 
 type HttpRequestResult =
   | { success: true; data: unknown; status: number }
   | { success: false; error: string; status?: number };
+
+export type HttpRequestInput = StepInput & {
+  endpoint: string;
+  httpMethod: string;
+  httpHeaders?: string;
+  httpBody?: string;
+};
 
 function parseHeaders(httpHeaders?: string): Record<string, string> {
   if (!httpHeaders) {
@@ -43,14 +51,12 @@ function parseResponse(response: Response): Promise<unknown> {
   return response.text();
 }
 
-export async function httpRequestStep(input: {
-  endpoint: string;
-  httpMethod: string;
-  httpHeaders?: string;
-  httpBody?: string;
-}): Promise<HttpRequestResult> {
-  "use step";
-
+/**
+ * HTTP request logic
+ */
+async function httpRequest(
+  input: HttpRequestInput
+): Promise<HttpRequestResult> {
   if (!input.endpoint) {
     return {
       success: false,
@@ -82,4 +88,16 @@ export async function httpRequestStep(input: {
       error: `HTTP request failed: ${getErrorMessage(error)}`,
     };
   }
+}
+
+/**
+ * HTTP Request Step
+ * Makes an HTTP request to an endpoint
+ */
+// biome-ignore lint/suspicious/useAwait: workflow "use step" requires async
+export async function httpRequestStep(
+  input: HttpRequestInput
+): Promise<HttpRequestResult> {
+  "use step";
+  return withStepLogging(input, () => httpRequest(input));
 }

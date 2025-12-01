@@ -285,12 +285,36 @@ export function generateWorkflowCode(
     ];
   }
 
-  function generateTicketActionCode(indent: string, varName: string): string[] {
-    imports.add("import { createTicket } from './integrations/linear';");
+  function generateTicketActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Create Ticket");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const ticketTitle = (config.ticketTitle as string) || "New Ticket";
+    const ticketDescription = (config.ticketDescription as string) || "";
+
+    const convertedTitle = convertTemplateToJS(ticketTitle);
+    const convertedDescription = convertTemplateToJS(ticketDescription);
+    const hasTemplateRefs = (str: string) => str.includes("${");
+    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
+
+    const titleValue = hasTemplateRefs(convertedTitle)
+      ? `\`${escapeForOuterTemplate(convertedTitle).replace(/`/g, "\\`")}\``
+      : `'${ticketTitle.replace(/'/g, "\\'")}'`;
+    const descValue = hasTemplateRefs(convertedDescription)
+      ? `\`${escapeForOuterTemplate(convertedDescription).replace(/`/g, "\\`")}\``
+      : `'${ticketDescription.replace(/'/g, "\\'")}'`;
+
     return [
-      `${indent}const ${varName} = await createTicket({`,
-      `${indent}  title: 'New Ticket',`,
-      `${indent}  description: '',`,
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  ticketTitle: ${titleValue},`,
+      `${indent}  ticketDescription: ${descValue},`,
       `${indent}});`,
     ];
   }
@@ -348,15 +372,24 @@ export function generateWorkflowCode(
   }
 
   function generateHTTPActionCode(
+    node: WorkflowNode,
     indent: string,
-    varName: string,
-    endpoint?: string
+    varName: string
   ): string[] {
-    imports.add("import { callApi } from './integrations/api';");
+    const stepInfo = getStepInfo("HTTP Request");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const endpoint =
+      (config.endpoint as string) || "https://api.example.com/endpoint";
+    const method = (config.httpMethod as string) || "POST";
+
     return [
-      `${indent}const ${varName} = await callApi({`,
-      `${indent}  url: '${endpoint || "https://api.example.com/endpoint"}',`,
-      `${indent}  method: 'POST',`,
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  url: '${endpoint}',`,
+      `${indent}  method: '${method}',`,
       `${indent}  body: {},`,
       `${indent}});`,
     ];
@@ -461,39 +494,31 @@ export function generateWorkflowCode(
     indent: string,
     varName: string
   ): string[] {
-    imports.add("import { sendSlackMessage } from './integrations/slack';");
-    const slackChannel =
-      (node.data.config?.slackChannel as string) || "#general";
-    const slackMessage =
-      (node.data.config?.slackMessage as string) || "Message content";
+    const stepInfo = getStepInfo("Send Slack Message");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const slackChannel = (config.slackChannel as string) || "#general";
+    const slackMessage = (config.slackMessage as string) || "Message content";
+
+    const convertedChannel = convertTemplateToJS(slackChannel);
+    const convertedMessage = convertTemplateToJS(slackMessage);
+    const hasTemplateRefs = (str: string) => str.includes("${");
+    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
+
+    const channelValue = hasTemplateRefs(convertedChannel)
+      ? `\`${escapeForOuterTemplate(convertedChannel).replace(/`/g, "\\`")}\``
+      : `"${slackChannel}"`;
+    const messageValue = hasTemplateRefs(convertedMessage)
+      ? `\`${escapeForOuterTemplate(convertedMessage).replace(/`/g, "\\`")}\``
+      : `"${slackMessage}"`;
 
     return [
-      `${indent}const ${varName} = await sendSlackMessage({`,
-      `${indent}  channel: "${slackChannel}",`,
-      `${indent}  text: "${slackMessage}",`,
-      `${indent}});`,
-    ];
-  }
-
-  function generateLinearActionCode(indent: string, varName: string): string[] {
-    imports.add("import { createLinearIssue } from './integrations/linear';");
-    return [
-      `${indent}const ${varName} = await createLinearIssue({`,
-      `${indent}  title: "Issue title",`,
-      `${indent}  description: "Issue description",`,
-      `${indent}});`,
-    ];
-  }
-
-  function generateFindIssuesActionCode(
-    indent: string,
-    varName: string
-  ): string[] {
-    imports.add("import { findIssues } from './integrations/linear';");
-    return [
-      `${indent}const ${varName} = await findIssues({`,
-      `${indent}  assigneeId: "user-id",`,
-      `${indent}  status: "in_progress",`,
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  slackChannel: ${channelValue},`,
+      `${indent}  slackMessage: ${messageValue},`,
       `${indent}});`,
     ];
   }
@@ -541,6 +566,57 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  function generateV0CreateChatActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Create Chat");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const message = (config.message as string) || "";
+    const system = (config.system as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  message: ${formatTemplateValue(message)},`,
+    ];
+
+    if (system) {
+      lines.push(`${indent}  system: ${formatTemplateValue(system)},`);
+    }
+
+    lines.push(`${indent}});`);
+    return lines;
+  }
+
+  function generateV0SendMessageActionCode(
+    node: WorkflowNode,
+    indent: string,
+    varName: string
+  ): string[] {
+    const stepInfo = getStepInfo("Send Message");
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const chatId = (config.chatId as string) || "";
+    const message = (config.message as string) || "";
+
+    const lines = [
+      `${indent}const ${varName} = await ${stepInfo.functionName}({`,
+      `${indent}  chatId: ${formatTemplateValue(chatId)},`,
+      `${indent}  message: ${formatTemplateValue(message)},`,
+      `${indent}});`,
+    ];
+
+    return lines;
+  }
+
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
@@ -549,8 +625,6 @@ export function generateWorkflowCode(
     varName: string
   ): string[] {
     const actionType = node.data.config?.actionType as string;
-    const endpoint = node.data.config?.endpoint as string;
-    const label = node.data.label.toLowerCase();
 
     // Use label if available, otherwise fall back to action type
     const actionLabel = node.data.label || actionType || "Unknown Action";
@@ -608,8 +682,7 @@ export function generateWorkflowCode(
       return removeVariableAssignment(actionLines);
     };
 
-    // Check explicit actionType first, then fall back to label matching
-    // Order matters: more specific types first
+    // Check explicit actionType first
     if (actionType === "Generate Text") {
       lines.push(
         ...wrapActionCall(generateAiTextActionCode(node, indent, varName))
@@ -627,57 +700,30 @@ export function generateWorkflowCode(
         ...wrapActionCall(generateSlackActionCode(node, indent, varName))
       );
     } else if (actionType === "Create Ticket") {
-      lines.push(...wrapActionCall(generateTicketActionCode(indent, varName)));
-    } else if (actionType === "Create Linear Issue") {
-      lines.push(...wrapActionCall(generateLinearActionCode(indent, varName)));
-    } else if (actionType === "Find Issues") {
       lines.push(
-        ...wrapActionCall(generateFindIssuesActionCode(indent, varName))
+        ...wrapActionCall(generateTicketActionCode(node, indent, varName))
       );
     } else if (actionType === "Scrape" || actionType === "Search") {
       lines.push(
         ...wrapActionCall(generateFirecrawlActionCode(node, indent, varName))
       );
+    } else if (actionType === "Create Chat") {
+      lines.push(
+        ...wrapActionCall(generateV0CreateChatActionCode(node, indent, varName))
+      );
+    } else if (actionType === "Send Message") {
+      lines.push(
+        ...wrapActionCall(
+          generateV0SendMessageActionCode(node, indent, varName)
+        )
+      );
     } else if (actionType === "Database Query") {
       lines.push(
         ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
       );
-    } else if (actionType === "HTTP Request" || endpoint) {
+    } else if (actionType === "HTTP Request") {
       lines.push(
-        ...wrapActionCall(generateHTTPActionCode(indent, varName, endpoint))
-      );
-    } else if (label.includes("generate text") && !label.includes("email")) {
-      // Fallback: check label but avoid matching "email" in labels
-      lines.push(
-        ...wrapActionCall(generateAiTextActionCode(node, indent, varName))
-      );
-    } else if (label.includes("generate image")) {
-      lines.push(
-        ...wrapActionCall(generateAiImageActionCode(node, indent, varName))
-      );
-    } else if (
-      label.includes("send email") ||
-      (label.includes("email") && !label.includes("generate"))
-    ) {
-      // Only match email if it doesn't contain "generate"
-      lines.push(
-        ...wrapActionCall(generateEmailActionCode(node, indent, varName))
-      );
-    } else if (label.includes("slack")) {
-      lines.push(
-        ...wrapActionCall(generateSlackActionCode(node, indent, varName))
-      );
-    } else if (label.includes("linear") || actionType === "linear") {
-      lines.push(...wrapActionCall(generateLinearActionCode(indent, varName)));
-    } else if (label.includes("database")) {
-      lines.push(
-        ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
-      );
-    } else if (label.includes("ticket")) {
-      lines.push(...wrapActionCall(generateTicketActionCode(indent, varName)));
-    } else if (label.includes("find issues")) {
-      lines.push(
-        ...wrapActionCall(generateFindIssuesActionCode(indent, varName))
+        ...wrapActionCall(generateHTTPActionCode(node, indent, varName))
       );
     } else if (outputIsUsed) {
       lines.push(`${indent}const ${varName} = { status: 'success' };`);
@@ -748,26 +794,6 @@ export function generateWorkflowCode(
     }
 
     lines.push(`${indent}const ${varName} = { triggered: true };`);
-    return lines;
-  }
-
-  // Helper to generate transform node code (no longer used but kept for backward compatibility)
-  function _generateTransformCode(
-    node: WorkflowNode,
-    varName: string,
-    indent: string
-  ): string[] {
-    const lines: string[] = [];
-    lines.push(`${indent}// Transform: ${node.data.label}`);
-    if (node.data.description) {
-      lines.push(`${indent}// ${node.data.description}`);
-    }
-    const transformType = node.data.config?.transformType as string;
-    lines.push(`${indent}// Transform type: ${transformType || "Map Data"}`);
-    lines.push(`${indent}const ${varName} = {`);
-    lines.push(`${indent}  transformed: true,`);
-    lines.push(`${indent}  timestamp: Date.now(),`);
-    lines.push(`${indent}};`);
     return lines;
   }
 

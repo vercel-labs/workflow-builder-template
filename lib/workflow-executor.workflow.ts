@@ -3,8 +3,38 @@
  * This executor captures step executions through the workflow SDK for better observability
  */
 
+import {
+  preValidateConditionExpression,
+  validateConditionExpression,
+} from "@/lib/condition-validator";
+import {
+  getActionLabel,
+  getStepImporter,
+  type StepImporter,
+} from "./step-registry";
+import type { StepContext } from "./steps/step-handler";
+import { triggerStep } from "./steps/trigger";
 import { getErrorMessageAsync } from "./utils";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
+
+// System actions that don't have plugins - maps to module import functions
+const SYSTEM_ACTIONS: Record<string, StepImporter> = {
+  "Database Query": {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/database-query") as Promise<any>,
+    stepFunction: "databaseQueryStep",
+  },
+  "HTTP Request": {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/http-request") as Promise<any>,
+    stepFunction: "httpRequestStep",
+  },
+  Condition: {
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic module import
+    importer: () => import("./steps/condition") as Promise<any>,
+    stepFunction: "conditionStep",
+  },
+};
 
 type ExecutionResult = {
   success: boolean;
@@ -23,193 +53,192 @@ export type WorkflowExecutionInput = {
 };
 
 /**
- * Execute a single action step
+ * Helper to replace template variables in conditions
+ */
+// biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
+function replaceTemplateVariable(
+  match: string,
+  nodeId: string,
+  rest: string,
+  outputs: NodeOutputs,
+  evalContext: Record<string, unknown>,
+  varCounter: { value: number }
+): string {
+  const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
+  const output = outputs[sanitizedNodeId];
+
+  if (!output) {
+    console.log("[Condition] Output not found for node:", sanitizedNodeId);
+    return match;
+  }
+
+  const dotIndex = rest.indexOf(".");
+  let value: unknown;
+
+  if (dotIndex === -1) {
+    value = output.data;
+  } else if (output.data === null || output.data === undefined) {
+    value = undefined;
+  } else {
+    const fieldPath = rest.substring(dotIndex + 1);
+    const fields = fieldPath.split(".");
+    // biome-ignore lint/suspicious/noExplicitAny: Dynamic data traversal
+    let current: any = output.data;
+
+    for (const field of fields) {
+      if (current && typeof current === "object") {
+        current = current[field];
+      } else {
+        console.log("[Condition] Field access failed:", fieldPath);
+        value = undefined;
+        break;
+      }
+    }
+    if (value === undefined && current !== undefined) {
+      value = current;
+    }
+  }
+
+  const varName = `__v${varCounter.value}`;
+  varCounter.value += 1;
+  evalContext[varName] = value;
+  return varName;
+}
+
+/**
+ * Evaluate condition expression with template variable replacement
+ * Uses Function constructor to evaluate user-defined conditions dynamically
+ *
+ * Security: Expressions are validated before evaluation to prevent code injection.
+ * Only comparison operators, logical operators, and whitelisted methods are allowed.
+ */
+function evaluateConditionExpression(
+  conditionExpression: unknown,
+  outputs: NodeOutputs
+): boolean {
+  console.log("[Condition] Original expression:", conditionExpression);
+
+  if (typeof conditionExpression === "boolean") {
+    return conditionExpression;
+  }
+
+  if (typeof conditionExpression === "string") {
+    // Pre-validate the expression before any processing
+    const preValidation = preValidateConditionExpression(conditionExpression);
+    if (!preValidation.valid) {
+      console.error("[Condition] Pre-validation failed:", preValidation.error);
+      console.error("[Condition] Expression was:", conditionExpression);
+      return false;
+    }
+
+    try {
+      const evalContext: Record<string, unknown> = {};
+      let transformedExpression = conditionExpression;
+      const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
+      const varCounter = { value: 0 };
+
+      transformedExpression = transformedExpression.replace(
+        templatePattern,
+        (match, nodeId, rest) =>
+          replaceTemplateVariable(
+            match,
+            nodeId,
+            rest,
+            outputs,
+            evalContext,
+            varCounter
+          )
+      );
+
+      // Validate the transformed expression before evaluation
+      const validation = validateConditionExpression(transformedExpression);
+      if (!validation.valid) {
+        console.error("[Condition] Validation failed:", validation.error);
+        console.error("[Condition] Original expression:", conditionExpression);
+        console.error(
+          "[Condition] Transformed expression:",
+          transformedExpression
+        );
+        return false;
+      }
+
+      const varNames = Object.keys(evalContext);
+      const varValues = Object.values(evalContext);
+
+      // Safe to evaluate - expression has been validated
+      // Only contains: variables (__v0, __v1), operators, literals, and whitelisted methods
+      const evalFunc = new Function(
+        ...varNames,
+        `return (${transformedExpression});`
+      );
+      const result = evalFunc(...varValues);
+      return Boolean(result);
+    } catch (error) {
+      console.error("[Condition] Failed to evaluate condition:", error);
+      console.error("[Condition] Expression was:", conditionExpression);
+      return false;
+    }
+  }
+
+  return Boolean(conditionExpression);
+}
+
+/**
+ * Execute a single action step with logging via stepHandler
  * IMPORTANT: Steps receive only the integration ID as a reference to fetch credentials.
  * This prevents credentials from being logged in Vercel's workflow observability.
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type dispatch requires branching logic
 async function executeActionStep(input: {
   actionType: string;
   config: Record<string, unknown>;
   outputs: NodeOutputs;
+  context: StepContext;
 }) {
-  const { actionType, config } = input;
+  const { actionType, config, outputs, context } = input;
 
-  // Helper to replace template variables in conditions
-  // biome-ignore lint/nursery/useMaxParams: Helper function needs all parameters for template replacement
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Template variable replacement requires nested logic for field access
-  function replaceTemplateVariable(
-    match: string,
-    nodeId: string,
-    rest: string,
-    evalContext: Record<string, unknown>,
-    varCounter: { value: number }
-  ): string {
-    const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
-    const output = input.outputs[sanitizedNodeId];
-
-    if (!output) {
-      console.log("[Condition] Output not found for node:", sanitizedNodeId);
-      return match;
-    }
-
-    const dotIndex = rest.indexOf(".");
-    let value: unknown;
-
-    if (dotIndex === -1) {
-      value = output.data;
-    } else if (output.data === null || output.data === undefined) {
-      // If data is null/undefined (e.g., from disabled node), assign undefined
-      value = undefined;
-    } else {
-      const fieldPath = rest.substring(dotIndex + 1);
-      const fields = fieldPath.split(".");
-      // biome-ignore lint/suspicious/noExplicitAny: Dynamic data traversal
-      let current: any = output.data;
-
-      for (const field of fields) {
-        if (current && typeof current === "object") {
-          current = current[field];
-        } else {
-          console.log("[Condition] Field access failed:", fieldPath);
-          value = undefined;
-          break;
-        }
-      }
-      if (value === undefined && current !== undefined) {
-        value = current;
-      }
-    }
-
-    const varName = `__v${varCounter.value}`;
-    varCounter.value += 1;
-    evalContext[varName] = value;
-    return varName;
-  }
-
-  // Build step input WITHOUT credentials, but WITH integrationId reference
-  // Steps will fetch credentials internally using this reference
+  // Build step input WITHOUT credentials, but WITH integrationId reference and logging context
   const stepInput: Record<string, unknown> = {
     ...config,
-    // integrationId is already in config from the node configuration
+    _context: context,
   };
 
-  // Import and execute the appropriate step function
-  // Step functions load credentials from process.env themselves
-  if (actionType === "Send Email") {
-    const { sendEmailStep } = await import(
-      "../plugins/resend/steps/send-email/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await sendEmailStep(stepInput as any);
-  }
-  if (actionType === "Send Slack Message") {
-    const { sendSlackMessageStep } = await import(
-      "../plugins/slack/steps/send-slack-message/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await sendSlackMessageStep(stepInput as any);
-  }
-  if (actionType === "Create Ticket") {
-    const { createTicketStep } = await import(
-      "../plugins/linear/steps/create-ticket/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await createTicketStep(stepInput as any);
-  }
-  if (actionType === "Generate Text") {
-    const { generateTextStep } = await import(
-      "../plugins/ai-gateway/steps/generate-text/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await generateTextStep(stepInput as any);
-  }
-  if (actionType === "Generate Image") {
-    const { generateImageStep } = await import(
-      "../plugins/ai-gateway/steps/generate-image/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await generateImageStep(stepInput as any);
-  }
-  if (actionType === "Database Query") {
-    const { databaseQueryStep } = await import("./steps/database-query");
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await databaseQueryStep(stepInput as any);
-  }
-  if (actionType === "HTTP Request") {
-    const { httpRequestStep } = await import("./steps/http-request");
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await httpRequestStep(stepInput as any);
-  }
+  // Special handling for Condition action - needs template evaluation
   if (actionType === "Condition") {
-    const { conditionStep } = await import("./steps/condition");
-    // Special handling for condition: process templates and evaluate as JavaScript
-    // The condition field is kept as original template string for proper evaluation
-    const conditionExpression = stepInput.condition;
-    let evaluatedCondition: boolean;
-
-    console.log("[Condition] Original expression:", conditionExpression);
-
-    if (typeof conditionExpression === "boolean") {
-      evaluatedCondition = conditionExpression;
-    } else if (typeof conditionExpression === "string") {
-      try {
-        const evalContext: Record<string, unknown> = {};
-        let transformedExpression = conditionExpression;
-        const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
-        const varCounter = { value: 0 };
-
-        transformedExpression = transformedExpression.replace(
-          templatePattern,
-          (match, nodeId, rest) =>
-            replaceTemplateVariable(
-              match,
-              nodeId,
-              rest,
-              evalContext,
-              varCounter
-            )
-        );
-
-        const varNames = Object.keys(evalContext);
-        const varValues = Object.values(evalContext);
-
-        const evalFunc = new Function(
-          ...varNames,
-          `return (${transformedExpression});`
-        );
-        const result = evalFunc(...varValues);
-        evaluatedCondition = Boolean(result);
-      } catch (error) {
-        console.error("[Condition] Failed to evaluate condition:", error);
-        console.error("[Condition] Expression was:", conditionExpression);
-        // If evaluation fails, treat as false to be safe
-        evaluatedCondition = false;
-      }
-    } else {
-      // Coerce to boolean for other types
-      evaluatedCondition = Boolean(conditionExpression);
-    }
-
+    const systemAction = SYSTEM_ACTIONS.Condition;
+    const module = await systemAction.importer();
+    const evaluatedCondition = evaluateConditionExpression(
+      stepInput.condition,
+      outputs
+    );
     console.log("[Condition] Final result:", evaluatedCondition);
 
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await conditionStep({ condition: evaluatedCondition } as any);
+    return await module[systemAction.stepFunction]({
+      condition: evaluatedCondition,
+      _context: context,
+    });
   }
 
-  if (actionType === "Scrape") {
-    const { firecrawlScrapeStep } = await import(
-      "../plugins/firecrawl/steps/scrape/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await firecrawlScrapeStep(stepInput as any);
+  // Check system actions first (Database Query, HTTP Request)
+  const systemAction = SYSTEM_ACTIONS[actionType];
+  if (systemAction) {
+    const module = await systemAction.importer();
+    const stepFunction = module[systemAction.stepFunction];
+    return await stepFunction(stepInput);
   }
-  if (actionType === "Search") {
-    const { firecrawlSearchStep } = await import(
-      "../plugins/firecrawl/steps/search/step"
-    );
-    // biome-ignore lint/suspicious/noExplicitAny: Dynamic step input type
-    return await firecrawlSearchStep(stepInput as any);
+
+  // Look up plugin action from the generated step registry
+  const stepImporter = getStepImporter(actionType);
+  if (stepImporter) {
+    const module = await stepImporter.importer();
+    const stepFunction = module[stepImporter.stepFunction];
+    if (stepFunction) {
+      return await stepFunction(stepInput);
+    }
+
+    return {
+      success: false,
+      error: `Step function "${stepImporter.stepFunction}" not found in module for action "${actionType}". Check that the plugin exports the correct function name.`,
+    };
   }
 
   if (actionType === "Run Apify Actor") {
@@ -248,7 +277,7 @@ async function executeActionStep(input: {
   // Fallback for unknown action types
   return {
     success: false,
-    error: `Unknown action type: ${actionType}`,
+    error: `Unknown action type: "${actionType}". This action is not registered in the plugin system. Available system actions: ${Object.keys(SYSTEM_ACTIONS).join(", ")}.`,
   };
 }
 
@@ -370,77 +399,26 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
     "trigger nodes"
   );
 
-  // Helper to log node start
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Node name derivation requires type checking
-  async function logNodeStart(
-    node: WorkflowNode,
-    nodeInput?: unknown
-  ): Promise<{ logId: string; startTime: number }> {
-    if (!executionId) {
-      return { logId: "", startTime: Date.now() };
+  // Helper to get a meaningful node name
+  function getNodeName(node: WorkflowNode): string {
+    if (node.data.label) {
+      return node.data.label;
     }
-
-    try {
-      // Get a meaningful node name
-      let nodeName = node.data.label;
-      if (!nodeName) {
-        if (node.data.type === "action") {
-          nodeName = (node.data.config?.actionType as string) || "Action";
-        } else if (node.data.type === "trigger") {
-          nodeName = (node.data.config?.triggerType as string) || "Trigger";
-        } else {
-          nodeName = node.data.type;
+    if (node.data.type === "action") {
+      const actionType = node.data.config?.actionType as string;
+      if (actionType) {
+        // Look up the human-readable label from the step registry
+        const label = getActionLabel(actionType);
+        if (label) {
+          return label;
         }
       }
-
-      const { logStep } = await import("./steps/log-step");
-      const result = await logStep({
-        action: "start",
-        executionId,
-        nodeId: node.id,
-        nodeName,
-        nodeType: node.data.type,
-        nodeInput,
-      });
-
-      return {
-        logId: result.logId || "",
-        startTime: result.startTime || Date.now(),
-      };
-    } catch (error) {
-      console.error("[Workflow Executor] Failed to log node start:", error);
-      return { logId: "", startTime: Date.now() };
+      return "Action";
     }
-  }
-
-  // Helper to log node completion
-  async function logNodeComplete(options: {
-    logId: string;
-    startTime: number;
-    status: "success" | "error";
-    output?: unknown;
-    error?: string;
-  }): Promise<void> {
-    if (!(executionId && options.logId)) {
-      return;
+    if (node.data.type === "trigger") {
+      return (node.data.config?.triggerType as string) || "Trigger";
     }
-
-    try {
-      const { logStep } = await import("./steps/log-step");
-      await logStep({
-        action: "complete",
-        logId: options.logId,
-        startTime: options.startTime,
-        status: options.status,
-        output: options.output,
-        error: options.error,
-      });
-    } catch (logError) {
-      console.error(
-        "[Workflow Executor] Failed to log node completion:",
-        logError
-      );
-    }
+    return node.data.type;
   }
 
   // Helper to execute a single node
@@ -477,8 +455,6 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
       );
       return;
     }
-
-    let logInfo = { logId: "", startTime: Date.now() };
 
     try {
       let result: ExecutionResult;
@@ -517,19 +493,24 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           triggerData = { ...triggerData, ...triggerInput };
         }
 
-        logInfo = await logNodeStart(node, triggerData);
-
-        result = {
-          success: true,
-          data: triggerData,
+        // Build context for logging
+        const triggerContext: StepContext = {
+          executionId,
+          nodeId: node.id,
+          nodeName: getNodeName(node),
+          nodeType: node.data.type,
         };
 
-        await logNodeComplete({
-          logId: logInfo.logId,
-          startTime: logInfo.startTime,
-          status: "success",
-          output: result.data,
+        // Execute trigger step (handles logging internally)
+        const triggerResult = await triggerStep({
+          triggerData,
+          _context: triggerContext,
         });
+
+        result = {
+          success: triggerResult.success,
+          data: triggerResult.data,
+        };
       } else if (node.data.type === "action") {
         const config = node.data.config || {};
         const actionType = config.actionType as string | undefined;
@@ -542,14 +523,6 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
             success: false,
             error: `Action node "${node.data.label || node.id}" has no action type configured`,
           };
-
-          await logNodeComplete({
-            logId: logInfo.logId,
-            startTime: logInfo.startTime,
-            status: "error",
-            error: result.error,
-          });
-
           results[nodeId] = result;
           return;
         }
@@ -569,11 +542,15 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           processedConfig.condition = originalCondition;
         }
 
-        // Log the input BEFORE enriching with credentials
-        // This ensures API keys are never stored in logs
-        logInfo = await logNodeStart(node, processedConfig);
+        // Build step context for logging (stepHandler will handle the logging)
+        const stepContext: StepContext = {
+          executionId,
+          nodeId: node.id,
+          nodeName: getNodeName(node),
+          nodeType: node.data.type,
+        };
 
-        // Execute the action step
+        // Execute the action step with stepHandler (logging is handled inside)
         // IMPORTANT: We pass integrationId via config, not actual credentials
         // Steps fetch credentials internally using fetchCredentials(integrationId)
         console.log("[Workflow Executor] Calling executeActionStep");
@@ -581,6 +558,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           actionType,
           config: processedConfig,
           outputs,
+          context: stepContext,
         });
 
         console.log("[Workflow Executor] Step result received:", {
@@ -599,42 +577,22 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           const errorResult = stepResult as { success: false; error?: string };
           result = {
             success: false,
-            error: errorResult.error || "Step execution failed",
+            error:
+              errorResult.error ||
+              `Step "${actionType}" in node "${node.data.label || node.id}" failed without a specific error message.`,
           };
-
-          await logNodeComplete({
-            logId: logInfo.logId,
-            startTime: logInfo.startTime,
-            status: "error",
-            output: stepResult,
-            error: result.error,
-          });
         } else {
           result = {
             success: true,
             data: stepResult,
           };
-
-          await logNodeComplete({
-            logId: logInfo.logId,
-            startTime: logInfo.startTime,
-            status: "success",
-            output: result.data,
-          });
         }
       } else {
         console.log("[Workflow Executor] Unknown node type:", node.data.type);
         result = {
           success: false,
-          error: `Unknown node type: ${node.data.type}`,
+          error: `Unknown node type "${node.data.type}" in node "${node.data.label || node.id}". Expected "trigger" or "action".`,
         };
-
-        await logNodeComplete({
-          logId: logInfo.logId,
-          startTime: logInfo.startTime,
-          status: "error",
-          error: result.error,
-        });
       }
 
       // Store results
@@ -706,13 +664,8 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
         error: errorMessage,
       };
       results[nodeId] = errorResult;
-
-      await logNodeComplete({
-        logId: logInfo.logId,
-        startTime: logInfo.startTime,
-        status: "error",
-        error: errorResult.error,
-      });
+      // Note: stepHandler already logged the error for action steps
+      // Trigger steps don't throw, so this catch is mainly for unexpected errors
     }
   }
 
@@ -735,14 +688,15 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
     // Update execution record if we have an executionId
     if (executionId) {
       try {
-        const { logStep } = await import("./steps/log-step");
-        await logStep({
-          action: "complete",
-          executionId,
-          status: finalSuccess ? "success" : "error",
-          output: Object.values(results).at(-1)?.data,
-          error: Object.values(results).find((r) => !r.success)?.error,
-          startTime: workflowStartTime,
+        await triggerStep({
+          triggerData: {},
+          _workflowComplete: {
+            executionId,
+            status: finalSuccess ? "success" : "error",
+            output: Object.values(results).at(-1)?.data,
+            error: Object.values(results).find((r) => !r.success)?.error,
+            startTime: workflowStartTime,
+          },
         });
         console.log("[Workflow Executor] Updated execution record");
       } catch (error) {
@@ -769,13 +723,14 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
     // Update execution record with error if we have an executionId
     if (executionId) {
       try {
-        const { logStep } = await import("./steps/log-step");
-        await logStep({
-          action: "complete",
-          executionId,
-          status: "error",
-          error: errorMessage,
-          startTime: Date.now(),
+        await triggerStep({
+          triggerData: {},
+          _workflowComplete: {
+            executionId,
+            status: "error",
+            error: errorMessage,
+            startTime: Date.now(),
+          },
         });
       } catch (logError) {
         console.error("[Workflow Executor] Failed to log error:", logError);

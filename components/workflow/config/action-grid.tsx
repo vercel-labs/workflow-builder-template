@@ -1,39 +1,24 @@
 "use client";
 
-import {
-  Database,
-  Flame,
-  Mail,
-  MessageSquare,
-  Search,
-  Settings,
-  Sparkles,
-  Ticket,
-  Zap,
-} from "lucide-react";
-import { useState } from "react";
+import { Database, Search, Settings, Zap } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { ApifyIcon } from "../../../plugins/apify/icon";
+import { getAllActions } from "@/plugins";
 
 type ActionType = {
   id: string;
   label: string;
   description: string;
   category: string;
-  icon: React.ComponentType<{ className?: string }>;
-  integration?:
-    | "linear"
-    | "resend"
-    | "slack"
-    | "vercel"
-    | "firecrawl"
-    | "apify";
+  icon?: React.ComponentType<{ className?: string }>;
+  integration?: string;
 };
 
-const actions: ActionType[] = [
+// System actions that don't have plugins
+const SYSTEM_ACTIONS: ActionType[] = [
   {
     id: "HTTP Request",
     label: "HTTP Request",
@@ -55,95 +40,46 @@ const actions: ActionType[] = [
     category: "System",
     icon: Settings,
   },
-  {
-    id: "Send Email",
-    label: "Send Email",
-    description: "Send an email via Resend",
-    category: "Resend",
-    icon: Mail,
-    integration: "resend",
-  },
-  {
-    id: "Send Slack Message",
-    label: "Send Slack Message",
-    description: "Post a message to Slack",
-    category: "Slack",
-    icon: MessageSquare,
-    integration: "slack",
-  },
-  {
-    id: "Create Ticket",
-    label: "Create Ticket",
-    description: "Create a Linear ticket",
-    category: "Linear",
-    icon: Ticket,
-    integration: "linear",
-  },
-  {
-    id: "Find Issues",
-    label: "Find Issues",
-    description: "Search Linear issues",
-    category: "Linear",
-    icon: Ticket,
-    integration: "linear",
-  },
-  {
-    id: "Generate Text",
-    label: "Generate Text",
-    description: "Generate text with AI",
-    category: "AI Gateway",
-    icon: Sparkles,
-    integration: "vercel",
-  },
-  {
-    id: "Generate Image",
-    label: "Generate Image",
-    description: "Generate images with AI",
-    category: "AI Gateway",
-    icon: Sparkles,
-    integration: "vercel",
-  },
-  {
-    id: "Scrape",
-    label: "Scrape URL",
-    description: "Scrape content from a URL",
-    category: "Firecrawl",
-    icon: Flame,
-    integration: "firecrawl",
-  },
-  {
-    id: "Search",
-    label: "Search Web",
-    description: "Search the web with Firecrawl",
-    category: "Firecrawl",
-    icon: Search,
-    integration: "firecrawl",
-  },
-  {
-    id: "Run Apify Actor",
-    label: "Run Apify Actor",
-    description: "Run an Apify Actor",
-    category: "Apify",
-    icon: ApifyIcon,
-    integration: "apify",
-  },
-  {
-    id: "Scrape Single URL",
-    label: "Scrape Single URL",
-    description: "Scrape a single URL and get markdown",
-    category: "Apify",
-    icon: ApifyIcon,
-    integration: "apify",
-  },
 ];
+
+// Combine System actions with plugin actions
+function useAllActions(): ActionType[] {
+  return useMemo(() => {
+    const pluginActions = getAllActions();
+
+    // Map plugin actions to ActionType format
+    const mappedPluginActions: ActionType[] = pluginActions.map((action) => ({
+      id: action.id,
+      label: action.label,
+      description: action.description,
+      category: action.category,
+      integration: action.integration,
+    }));
+
+    return [...SYSTEM_ACTIONS, ...mappedPluginActions];
+  }, []);
+}
 
 type ActionGridProps = {
   onSelectAction: (actionType: string) => void;
   disabled?: boolean;
 };
 
+function ActionIcon({ action }: { action: ActionType }) {
+  if (action.integration) {
+    return (
+      <IntegrationIcon className="size-8" integration={action.integration} />
+    );
+  }
+  if (action.icon) {
+    return <action.icon className="size-8" />;
+  }
+  return <Zap className="size-8" />;
+}
+
 export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
   const [filter, setFilter] = useState("");
+  const actions = useAllActions();
 
   const filteredActions = actions.filter((action) => {
     const searchTerm = filter.toLowerCase();
@@ -156,7 +92,7 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <Label className="ml-1" htmlFor="action-filter">
           Search Actions
         </Label>
@@ -185,14 +121,7 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
             onClick={() => onSelectAction(action.id)}
             type="button"
           >
-            {action.integration ? (
-              <IntegrationIcon
-                className="size-8"
-                integration={action.integration}
-              />
-            ) : (
-              <action.icon className="size-8" />
-            )}
+            <ActionIcon action={action} />
             <p className="text-center font-medium text-sm">{action.label}</p>
           </button>
         ))}

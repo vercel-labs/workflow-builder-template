@@ -446,8 +446,6 @@ export function WorkflowCanvas() {
     [setSelectedNode]
   );
 
-  console.log("[Viewport] Render", { currentWorkflowId, isCanvasReady });
-
   return (
     <div
       className="relative h-full bg-background"

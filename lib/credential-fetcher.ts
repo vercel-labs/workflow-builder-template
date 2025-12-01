@@ -15,110 +15,48 @@
  */
 import "server-only";
 
-import { getIntegrationById, type IntegrationConfig } from "./db/integrations";
+import { getCredentialMapping, getIntegration } from "@/plugins";
+import { getIntegrationById } from "./db/integrations";
+import type { IntegrationConfig, IntegrationType } from "./types/integration";
+// WorkflowCredentials is now a generic record since plugins define their own keys
+export type WorkflowCredentials = Record<string, string | undefined>;
 
-export type WorkflowCredentials = {
-  RESEND_API_KEY?: string;
-  RESEND_FROM_EMAIL?: string;
-  LINEAR_API_KEY?: string;
-  LINEAR_TEAM_ID?: string;
-  SLACK_API_KEY?: string;
-  AI_GATEWAY_API_KEY?: string;
-  DATABASE_URL?: string;
-  FIRECRAWL_API_KEY?: string;
-  APIFY_API_KEY?: string;
+// System integrations that don't have plugins need hardcoded mapping
+const SYSTEM_CREDENTIAL_MAPPERS: Record<
+  string,
+  (config: IntegrationConfig) => WorkflowCredentials
+> = {
+  database: (config) => {
+    const creds: WorkflowCredentials = {};
+    if (config.url) {
+      creds.DATABASE_URL = config.url;
+    }
+    return creds;
+  },
 };
 
-function mapResendConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.apiKey) {
-    creds.RESEND_API_KEY = config.apiKey;
-  }
-  if (config.fromEmail) {
-    creds.RESEND_FROM_EMAIL = config.fromEmail;
-  }
-  return creds;
-}
-
-function mapLinearConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.apiKey) {
-    creds.LINEAR_API_KEY = config.apiKey;
-  }
-  if (config.teamId) {
-    creds.LINEAR_TEAM_ID = config.teamId;
-  }
-  return creds;
-}
-
-function mapSlackConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.apiKey) {
-    creds.SLACK_API_KEY = config.apiKey;
-  }
-  return creds;
-}
-
-function mapDatabaseConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.url) {
-    creds.DATABASE_URL = config.url;
-  }
-  return creds;
-}
-
-function mapAiGatewayConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.apiKey) {
-    creds.AI_GATEWAY_API_KEY = config.apiKey;
-  }
-  return creds;
-}
-
-function mapFirecrawlConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.firecrawlApiKey) {
-    creds.FIRECRAWL_API_KEY = config.firecrawlApiKey;
-  }
-  return creds;
-}
-
-function mapApifyConfig(config: IntegrationConfig): WorkflowCredentials {
-  const creds: WorkflowCredentials = {};
-  if (config.apifyApiKey) {
-    creds.APIFY_API_KEY = config.apifyApiKey;
-  }
-  return creds;
-}
-
+>>>>>>> origin/main
 /**
  * Map integration config to WorkflowCredentials format
+ * Uses plugin registry for plugin integrations, hardcoded mappers for system integrations
  */
 function mapIntegrationConfig(
-  integrationType: string,
+  integrationType: IntegrationType,
   config: IntegrationConfig
 ): WorkflowCredentials {
-  if (integrationType === "resend") {
-    return mapResendConfig(config);
+  // Check for system integrations first
+  const systemMapper = SYSTEM_CREDENTIAL_MAPPERS[integrationType];
+  if (systemMapper) {
+    return systemMapper(config);
   }
-  if (integrationType === "linear") {
-    return mapLinearConfig(config);
+
+  // Look up plugin from registry and auto-generate credential mapping
+  const plugin = getIntegration(integrationType);
+  if (plugin) {
+    return getCredentialMapping(plugin, config);
   }
-  if (integrationType === "slack") {
-    return mapSlackConfig(config);
-  }
-  if (integrationType === "database") {
-    return mapDatabaseConfig(config);
-  }
-  if (integrationType === "ai-gateway") {
-    return mapAiGatewayConfig(config);
-  }
-  if (integrationType === "firecrawl") {
-    return mapFirecrawlConfig(config);
-  }
-  if (integrationType === "apify") {
-    return mapApifyConfig(config);
-  }
+
+  // Fallback for unknown integrations
   return {};
 }
 

@@ -16,16 +16,15 @@ import {
   edgesAtom,
   hasSidebarBeenShownAtom,
   hasUnsavedChangesAtom,
-  isExecutingAtom,
   isGeneratingAtom,
   isPanelAnimatingAtom,
   isSavingAtom,
   isSidebarCollapsedAtom,
   nodesAtom,
-  propertiesPanelActiveTabAtom,
   rightPanelWidthAtom,
   selectedExecutionIdAtom,
   selectedNodeAtom,
+  triggerExecuteAtom,
   updateNodeDataAtom,
   type WorkflowNode,
   workflowNotFoundAtom,
@@ -40,14 +39,11 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const [isGenerating, setIsGenerating] = useAtom(isGeneratingAtom);
-  const [isExecuting, setIsExecuting] = useAtom(isExecutingAtom);
   const [_isSaving, setIsSaving] = useAtom(isSavingAtom);
   const [nodes] = useAtom(nodesAtom);
   const [edges] = useAtom(edgesAtom);
   const [currentWorkflowId] = useAtom(currentWorkflowIdAtom);
-  const [selectedExecutionId, setSelectedExecutionId] = useAtom(
-    selectedExecutionIdAtom
-  );
+  const [selectedExecutionId] = useAtom(selectedExecutionIdAtom);
   const setNodes = useSetAtom(nodesAtom);
   const setEdges = useSetAtom(edgesAtom);
   const setCurrentWorkflowId = useSetAtom(currentWorkflowIdAtom);
@@ -56,7 +52,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setSelectedNodeId = useSetAtom(selectedNodeAtom);
   const setHasUnsavedChanges = useSetAtom(hasUnsavedChangesAtom);
   const [workflowNotFound, setWorkflowNotFound] = useAtom(workflowNotFoundAtom);
-  const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
+  const setTriggerExecute = useSetAtom(triggerExecuteAtom);
   const setRightPanelWidth = useSetAtom(rightPanelWidthAtom);
   const setIsPanelAnimating = useSetAtom(isPanelAnimatingAtom);
   const [hasSidebarBeenShown, setHasSidebarBeenShown] = useAtom(
@@ -372,144 +368,6 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setHasUnsavedChanges,
   ]);
 
-  // Helper to update node statuses
-  const updateAllNodeStatuses = useCallback(
-    (status: "idle" | "error" | "success") => {
-      for (const node of nodes) {
-        updateNodeData({ id: node.id, data: { status } });
-      }
-    },
-    [nodes, updateNodeData]
-  );
-
-  // Helper to poll execution status
-  const pollExecutionStatus = useCallback(
-    async (executionId: string) => {
-      try {
-        const statusData = await api.workflow.getExecutionStatus(executionId);
-
-        // Update node statuses based on the execution logs
-        for (const nodeStatus of statusData.nodeStatuses) {
-          updateNodeData({
-            id: nodeStatus.nodeId,
-            data: {
-              status: nodeStatus.status as
-                | "idle"
-                | "running"
-                | "success"
-                | "error",
-            },
-          });
-        }
-
-        // Return status and whether execution is complete
-        return {
-          isComplete: statusData.status !== "running",
-          status: statusData.status,
-        };
-      } catch (error) {
-        console.error("Failed to poll execution status:", error);
-        return { isComplete: false, status: "running" };
-      }
-    },
-    [updateNodeData]
-  );
-
-  const handleRun = useCallback(async () => {
-    if (
-      isExecuting ||
-      nodes.length === 0 ||
-      isGenerating ||
-      !currentWorkflowId
-    ) {
-      return;
-    }
-
-    // Switch to Runs tab when starting a test run
-    setActiveTab("runs");
-
-    // Deselect all nodes and edges
-    setNodes(nodes.map((node) => ({ ...node, selected: false })));
-    setEdges(edges.map((edge) => ({ ...edge, selected: false })));
-    setSelectedNodeId(null);
-
-    setIsExecuting(true);
-
-    // Set all nodes to idle first
-    updateAllNodeStatuses("idle");
-
-    // Immediately set trigger nodes to running for instant visual feedback
-    for (const node of nodes) {
-      if (node.data.type === "trigger") {
-        updateNodeData({ id: node.id, data: { status: "running" } });
-      }
-    }
-
-    try {
-      // Start the execution via API
-      const response = await fetch(
-        `/api/workflow/${currentWorkflowId}/execute`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ input: {} }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to execute workflow");
-      }
-
-      const result = await response.json();
-
-      // Select the new execution
-      setSelectedExecutionId(result.executionId);
-
-      // Poll for execution status updates
-      const pollInterval = setInterval(async () => {
-        const { isComplete } = await pollExecutionStatus(result.executionId);
-
-        if (isComplete) {
-          if (executionPollingIntervalRef.current) {
-            clearInterval(executionPollingIntervalRef.current);
-            executionPollingIntervalRef.current = null;
-          }
-
-          setIsExecuting(false);
-
-          // Don't reset node statuses - let them show the final state
-          // The user can click another run or deselect to reset
-        }
-      }, 500); // Poll every 500ms
-
-      executionPollingIntervalRef.current = pollInterval;
-    } catch (error) {
-      console.error("Failed to execute workflow:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to execute workflow"
-      );
-      updateAllNodeStatuses("error");
-      setIsExecuting(false);
-    }
-  }, [
-    isExecuting,
-    nodes,
-    edges,
-    isGenerating,
-    currentWorkflowId,
-    setIsExecuting,
-    updateAllNodeStatuses,
-    pollExecutionStatus,
-    updateNodeData,
-    setActiveTab,
-    setNodes,
-    setEdges,
-    setSelectedNodeId,
-    setSelectedExecutionId,
-  ]);
-
   // Helper to check if target is an input element
   const isInputElement = useCallback(
     (target: HTMLElement) =>
@@ -538,19 +396,22 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   );
 
   // Helper to handle run shortcut
+  // Uses triggerExecuteAtom to share the same execute flow as the Run button
+  // This ensures keyboard shortcut goes through the same checks (e.g., missing integrations)
   const handleRunShortcut = useCallback(
     (e: KeyboardEvent, target: HTMLElement) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         if (!(isInputElement(target) || isInMonacoEditor(target))) {
           e.preventDefault();
           e.stopPropagation();
-          handleRun();
+          // Trigger execute via atom - the toolbar will handle it
+          setTriggerExecute(true);
         }
         return true;
       }
       return false;
     },
-    [handleRun, isInputElement, isInMonacoEditor]
+    [setTriggerExecute, isInputElement, isInMonacoEditor]
   );
 
   useEffect(() => {
@@ -711,7 +572,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
             {/* Hover indicator */}
             <div className="absolute inset-y-0 left-0 w-1 bg-transparent transition-colors group-hover:bg-blue-500 group-active:bg-blue-600" />
             {/* Collapse button - hidden while resizing */}
-            {!isDraggingResize && (
+            {!(isDraggingResize || panelCollapsed) && (
               <button
                 className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-0 flex size-6 items-center justify-center rounded-full border bg-background opacity-0 shadow-sm transition-opacity hover:bg-muted group-hover:opacity-100"
                 onClick={(e) => {

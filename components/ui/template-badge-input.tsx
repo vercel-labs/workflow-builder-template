@@ -15,6 +15,15 @@ export interface TemplateBadgeInputProps {
   id?: string;
 }
 
+// Helper to check if a template references an existing node
+function doesNodeExist(template: string, nodes: ReturnType<typeof useAtom<typeof nodesAtom>>[0]): boolean {
+  const match = template.match(/\{\{@([^:]+):([^}]+)\}\}/);
+  if (!match) return false;
+  
+  const nodeId = match[1];
+  return nodes.some((n) => n.id === nodeId);
+}
+
 // Helper to get display text from template by looking up current node label
 function getDisplayTextForTemplate(template: string, nodes: ReturnType<typeof useAtom<typeof nodesAtom>>[0]): string {
   // Extract nodeId and field from template: {{@nodeId:OldLabel.field}}
@@ -98,7 +107,6 @@ export function TemplateBadgeInput({
     
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) {
-      console.log("[Input] saveCursorPosition: No selection");
       return null;
     }
     
@@ -106,8 +114,6 @@ export function TemplateBadgeInput({
     const preCaretRange = range.cloneRange();
     preCaretRange.selectNodeContents(contentRef.current);
     preCaretRange.setEnd(range.endContainer, range.endOffset);
-    
-    console.log("[Input] saveCursorPosition: range.endContainer", range.endContainer, "endOffset", range.endOffset);
     
     // Calculate offset considering badges as single characters
     let offset = 0;
@@ -124,11 +130,9 @@ export function TemplateBadgeInput({
         if (node === range.endContainer) {
           offset += range.endOffset;
           found = true;
-          console.log("[Input] saveCursorPosition: Found cursor in text node, offset:", offset);
         } else {
           const textLength = (node.textContent || "").length;
           offset += textLength;
-          console.log("[Input] saveCursorPosition: Text node before cursor, length:", textLength);
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as HTMLElement;
@@ -137,27 +141,21 @@ export function TemplateBadgeInput({
           if (element.contains(range.endContainer) || element === range.endContainer) {
             offset += template.length;
             found = true;
-            console.log("[Input] saveCursorPosition: Found cursor in badge, offset:", offset);
           } else {
             offset += template.length;
-            console.log("[Input] saveCursorPosition: Badge before cursor, length:", template.length);
           }
         }
       }
     }
     
-    console.log("[Input] saveCursorPosition: Final offset:", offset);
     return { offset };
   };
   
   // Restore cursor position
   const restoreCursorPosition = (cursorPos: { offset: number } | null) => {
     if (!contentRef.current || !cursorPos) {
-      console.log("[Input] restoreCursorPosition: No cursorPos or contentRef");
       return;
     }
-    
-    console.log("[Input] restoreCursorPosition: Restoring to offset:", cursorPos.offset);
     
     let offset = 0;
     const walker = document.createTreeWalker(
@@ -173,11 +171,9 @@ export function TemplateBadgeInput({
     while ((node = walker.nextNode())) {
       if (node.nodeType === Node.TEXT_NODE) {
         const textLength = (node.textContent || "").length;
-        console.log("[Input] restoreCursorPosition: Text node, length:", textLength, "current offset:", offset);
         if (offset + textLength >= cursorPos.offset) {
           targetNode = node;
           targetOffset = cursorPos.offset - offset;
-          console.log("[Input] restoreCursorPosition: Found target text node, targetOffset:", targetOffset);
           break;
         }
         offset += textLength;
@@ -185,17 +181,14 @@ export function TemplateBadgeInput({
         const element = node as HTMLElement;
         const template = element.getAttribute("data-template");
         if (template) {
-          console.log("[Input] restoreCursorPosition: Badge, length:", template.length, "current offset:", offset);
           if (offset + template.length >= cursorPos.offset) {
             // Position cursor after the badge
             targetNode = element.nextSibling;
             targetOffset = 0;
-            console.log("[Input] restoreCursorPosition: Target after badge, nextSibling:", targetNode);
             if (!targetNode && element.parentNode) {
               // If no next sibling, create a text node
               targetNode = document.createTextNode("");
               element.parentNode.appendChild(targetNode);
-              console.log("[Input] restoreCursorPosition: Created text node after badge");
             }
             break;
           }
@@ -209,20 +202,15 @@ export function TemplateBadgeInput({
       const selection = window.getSelection();
       try {
         const finalOffset = Math.min(targetOffset, targetNode.textContent?.length || 0);
-        console.log("[Input] restoreCursorPosition: Setting cursor at node, offset:", finalOffset);
         range.setStart(targetNode, finalOffset);
         range.collapse(true);
         selection?.removeAllRanges();
         selection?.addRange(range);
         contentRef.current.focus();
-        console.log("[Input] restoreCursorPosition: Cursor restored successfully");
-      } catch (e) {
-        console.log("[Input] restoreCursorPosition: Error setting range:", e);
+      } catch {
         // If positioning fails, just focus the element
         contentRef.current.focus();
       }
-    } else {
-      console.log("[Input] restoreCursorPosition: No target node found");
     }
   };
 
@@ -232,8 +220,6 @@ export function TemplateBadgeInput({
 
     const container = contentRef.current;
     const text = internalValue || "";
-    
-    console.log("[Input] updateDisplay: isFocused:", isFocused, "text:", text);
     
     // Save cursor position before updating
     let cursorPos = isFocused ? saveCursorPosition() : null;
@@ -245,7 +231,6 @@ export function TemplateBadgeInput({
     }
 
     // Clear current content
-    console.log("[Input] updateDisplay: Clearing innerHTML");
     container.innerHTML = "";
 
     if (!text && !isFocused) {
@@ -258,33 +243,29 @@ export function TemplateBadgeInput({
     const pattern = /\{\{@([^:]+):([^}]+)\}\}/g;
     let lastIndex = 0;
     let match;
-    let badgeCount = 0;
 
     while ((match = pattern.exec(text)) !== null) {
-      const [fullMatch, , displayPart] = match;
+      const [fullMatch] = match;
       const matchStart = match.index;
-      badgeCount++;
-
-      console.log("[Input] updateDisplay: Found badge", badgeCount, "at", matchStart, "template:", fullMatch);
 
       // Add text before the template
       if (matchStart > lastIndex) {
         const textBefore = text.slice(lastIndex, matchStart);
         const textNode = document.createTextNode(textBefore);
         container.appendChild(textNode);
-        console.log("[Input] updateDisplay: Added text before badge:", textBefore);
       }
 
       // Create badge for template
       const badge = document.createElement("span");
-      badge.className =
-        "inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400 font-mono text-xs border border-blue-500/20 mx-0.5";
+      const nodeExists = doesNodeExist(fullMatch, nodes);
+      badge.className = nodeExists
+        ? "inline-flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-600 dark:text-blue-400 font-mono text-xs border border-blue-500/20 mx-0.5"
+        : "inline-flex items-center gap-1 rounded bg-red-500/10 px-1.5 py-0.5 text-red-600 dark:text-red-400 font-mono text-xs border border-red-500/20 mx-0.5";
       badge.contentEditable = "false";
       badge.setAttribute("data-template", fullMatch);
       // Use current node label for display
       badge.textContent = getDisplayTextForTemplate(fullMatch, nodes);
       container.appendChild(badge);
-      console.log("[Input] updateDisplay: Added badge with display:", badge.textContent);
 
       lastIndex = pattern.lastIndex;
     }
@@ -294,18 +275,14 @@ export function TemplateBadgeInput({
       const textAfter = text.slice(lastIndex);
       const textNode = document.createTextNode(textAfter);
       container.appendChild(textNode);
-      console.log("[Input] updateDisplay: Added text after badges:", textAfter);
     }
 
     // If empty and focused, ensure we can type
     if (container.innerHTML === "" && isFocused) {
       container.innerHTML = "<br>";
-      console.log("[Input] updateDisplay: Added <br> for empty focused field");
     }
 
     shouldUpdateDisplay.current = false;
-    
-    console.log("[Input] updateDisplay: Final DOM:", container.innerHTML);
     
     // Restore cursor position after updating
     if (cursorPos) {
@@ -342,21 +319,16 @@ export function TemplateBadgeInput({
         // Only add text if it's NOT inside a badge
         if (!isInsideBadge) {
           result += node.textContent;
-          console.log("[Input] extractValue: Adding text node:", node.textContent);
-        } else {
-          console.log("[Input] extractValue: Skipping text inside badge:", node.textContent);
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as HTMLElement;
         const template = element.getAttribute("data-template");
         if (template) {
           result += template;
-          console.log("[Input] extractValue: Adding template:", template);
         }
       }
     }
 
-    console.log("[Input] extractValue: Final result:", result);
     return result;
   };
 
@@ -364,14 +336,9 @@ export function TemplateBadgeInput({
     // Extract the value from DOM
     const newValue = extractValue();
     
-    console.log("[Input] handleInput: newValue:", newValue);
-    console.log("[Input] handleInput: internalValue:", internalValue);
-    console.log("[Input] handleInput: DOM innerHTML:", contentRef.current?.innerHTML);
-    
     // Check if the value has changed
     if (newValue === internalValue) {
       // No change, ignore (this can happen with badge clicks, etc)
-      console.log("[Input] handleInput: No change detected, ignoring");
       return;
     }
     
@@ -379,11 +346,8 @@ export function TemplateBadgeInput({
     const oldTemplates = (internalValue.match(/\{\{@([^:]+):([^}]+)\}\}/g) || []).length;
     const newTemplates = (newValue.match(/\{\{@([^:]+):([^}]+)\}\}/g) || []).length;
     
-    console.log("[Input] handleInput: oldTemplates:", oldTemplates, "newTemplates:", newTemplates);
-    
     if (newTemplates > oldTemplates) {
       // A new template was added, update display to show badge
-      console.log("[Input] handleInput: New template added, rendering badge");
       setInternalValue(newValue);
       onChange?.(newValue);
       shouldUpdateDisplay.current = true;
@@ -397,7 +361,6 @@ export function TemplateBadgeInput({
     if (newTemplates === oldTemplates && newTemplates > 0) {
       // Same number of templates, just typing around existing badges
       // DON'T update display, just update the value
-      console.log("[Input] handleInput: Typing around existing badges, NOT updating display");
       setInternalValue(newValue);
       onChange?.(newValue);
       // Don't trigger display update - this prevents cursor reset!
@@ -433,7 +396,6 @@ export function TemplateBadgeInput({
     
     if (newTemplates < oldTemplates) {
       // A template was removed (e.g., user deleted a badge or part of template text)
-      console.log("[Input] handleInput: Template removed, updating display");
       setInternalValue(newValue);
       onChange?.(newValue);
       shouldUpdateDisplay.current = true;
@@ -442,7 +404,6 @@ export function TemplateBadgeInput({
     }
     
     // Normal typing (no badges present)
-    console.log("[Input] handleInput: Normal typing, no badges");
     setInternalValue(newValue);
     onChange?.(newValue);
     
@@ -486,17 +447,6 @@ export function TemplateBadgeInput({
     
     // Calculate where cursor should be after the template (right after the badge)
     const targetCursorPosition = beforeAt.length + template.length;
-    
-    console.log("[Input] Autocomplete select:", {
-      currentText,
-      atSignPosition,
-      filter: autocompleteFilter,
-      template,
-      beforeAt,
-      afterFilter,
-      newText,
-      targetCursorPosition
-    });
     
     setInternalValue(newText);
     onChange?.(newText);
