@@ -11,10 +11,10 @@ export type SelectOption = {
 };
 
 /**
- * Action Config Field
+ * Base Action Config Field
  * Declarative definition of a config field for an action
  */
-export type ActionConfigField = {
+export type ActionConfigFieldBase = {
   // Unique key for this field in the config object
   key: string;
 
@@ -57,6 +57,30 @@ export type ActionConfigField = {
     equals: string;
   };
 };
+
+/**
+ * Config Field Group
+ * Groups related fields together in a collapsible section
+ */
+export type ActionConfigFieldGroup = {
+  // Human-readable label for the group
+  label: string;
+
+  // Field type (always "group" for groups)
+  type: "group";
+
+  // Nested fields within this group
+  fields: ActionConfigFieldBase[];
+
+  // Whether the group is expanded by default (defaults to false)
+  defaultExpanded?: boolean;
+};
+
+/**
+ * Action Config Field
+ * Can be either a regular field or a group of fields
+ */
+export type ActionConfigField = ActionConfigFieldBase | ActionConfigFieldGroup;
 
 /**
  * Action Definition
@@ -406,6 +430,35 @@ export function getCredentialMapping(
 }
 
 /**
+ * Type guard to check if a field is a group
+ */
+export function isFieldGroup(
+  field: ActionConfigField
+): field is ActionConfigFieldGroup {
+  return field.type === "group";
+}
+
+/**
+ * Flatten config fields, extracting fields from groups
+ * Useful for validation and AI prompt generation
+ */
+export function flattenConfigFields(
+  fields: ActionConfigField[]
+): ActionConfigFieldBase[] {
+  const result: ActionConfigFieldBase[] = [];
+
+  for (const field of fields) {
+    if (isFieldGroup(field)) {
+      result.push(...field.fields);
+    } else {
+      result.push(field);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Generate AI prompt section for all available actions
  * This dynamically builds the action types documentation for the AI
  */
@@ -416,12 +469,14 @@ export function generateAIActionPrompts(): string {
     for (const action of plugin.actions) {
       const fullId = computeActionId(plugin.type, action.slug);
 
-      // Build example config from configFields
+      // Build example config from configFields (flatten groups)
       const exampleConfig: Record<string, string | number> = {
         actionType: fullId,
       };
 
-      for (const field of action.configFields) {
+      const flatFields = flattenConfigFields(action.configFields);
+
+      for (const field of flatFields) {
         // Skip conditional fields in the example
         if (field.showWhen) continue;
 

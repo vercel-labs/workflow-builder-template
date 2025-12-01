@@ -87,12 +87,20 @@ function generateIndexFile(plugins: string[]): void {
 
 ${imports || "// No plugins discovered"}
 
-export type { IntegrationPlugin, PluginAction, ActionWithFullId } from "./registry";
+export type {
+  ActionConfigField,
+  ActionConfigFieldBase,
+  ActionConfigFieldGroup,
+  ActionWithFullId,
+  IntegrationPlugin,
+  PluginAction,
+} from "./registry";
 
 // Export the registry utilities
 export {
   computeActionId,
   findActionById,
+  flattenConfigFields,
   generateAIActionPrompts,
   getActionsByCategory,
   getAllActions,
@@ -106,6 +114,7 @@ export {
   getIntegrationTypes,
   getPluginEnvVars,
   getSortedIntegrationTypes,
+  isFieldGroup,
   parseActionId,
   registerIntegration,
 } from "./registry";
