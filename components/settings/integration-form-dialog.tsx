@@ -22,7 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { api, type Integration, type IntegrationType } from "@/lib/api-client";
+import { api, type Integration } from "@/lib/api-client";
+import type { IntegrationType } from "@/lib/types/integration";
+import {
+  getIntegration,
+  getIntegrationLabels,
+  getSortedIntegrationTypes,
+} from "@/plugins";
 
 type IntegrationFormDialogProps = {
   open: boolean;
@@ -39,27 +45,21 @@ type IntegrationFormData = {
   config: Record<string, string>;
 };
 
-const INTEGRATION_TYPES: IntegrationType[] = [
-  "ai-gateway",
-  "clerk",
-  "database",
-  "firecrawl",
-  "linear",
-  "resend",
-  "slack",
-  "v0",
+// System integrations that don't have plugins
+const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = ["database"];
+const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
+  database: "Database",
+};
+
+// Get all integration types (plugins + system)
+const getIntegrationTypes = (): IntegrationType[] => [
+  ...getSortedIntegrationTypes(),
+  ...SYSTEM_INTEGRATION_TYPES,
 ];
 
-const INTEGRATION_LABELS: Record<IntegrationType, string> = {
-  resend: "Resend",
-  linear: "Linear",
-  slack: "Slack",
-  database: "Database",
-  "ai-gateway": "AI Gateway",
-  firecrawl: "Firecrawl",
-  v0: "v0",
-  clerk: "Clerk",
-};
+// Get label for any integration type
+const getLabel = (type: IntegrationType): string =>
+  getIntegrationLabels()[type] || SYSTEM_INTEGRATION_LABELS[type] || type;
 
 export function IntegrationFormDialog({
   open,
@@ -98,8 +98,7 @@ export function IntegrationFormDialog({
 
       // Generate a default name if none provided
       const integrationName =
-        formData.name.trim() ||
-        `${INTEGRATION_LABELS[formData.type]} Integration`;
+        formData.name.trim() || `${getLabel(formData.type)} Integration`;
 
       if (mode === "edit" && integration) {
         await api.integration.update(integration.id, {
@@ -134,218 +133,59 @@ export function IntegrationFormDialog({
   };
 
   const renderConfigFields = () => {
-    switch (formData.type) {
-      case "resend":
-        return (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                onChange={(e) => updateConfig("apiKey", e.target.value)}
-                placeholder="re_..."
-                type="password"
-                value={formData.config.apiKey || ""}
-              />
-              <p className="text-muted-foreground text-xs">
-                Get your API key from{" "}
-                <a
-                  className="underline hover:text-foreground"
-                  href="https://resend.com/api-keys"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  resend.com/api-keys
-                </a>
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fromEmail">From Email</Label>
-              <Input
-                id="fromEmail"
-                onChange={(e) => updateConfig("fromEmail", e.target.value)}
-                placeholder="noreply@example.com"
-                value={formData.config.fromEmail || ""}
-              />
-            </div>
-          </>
-        );
-      case "linear":
-        return (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                onChange={(e) => updateConfig("apiKey", e.target.value)}
-                placeholder="lin_api_..."
-                type="password"
-                value={formData.config.apiKey || ""}
-              />
-              <p className="text-muted-foreground text-xs">
-                Get your API key from{" "}
-                <a
-                  className="underline hover:text-foreground"
-                  href="https://linear.app/settings/account/security"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  linear.app/settings/account/security
-                </a>
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="teamId">Team ID</Label>
-              <Input
-                id="teamId"
-                onChange={(e) => updateConfig("teamId", e.target.value)}
-                placeholder="team_..."
-                value={formData.config.teamId || ""}
-              />
-            </div>
-          </>
-        );
-      case "slack":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">Bot Token</Label>
-            <Input
-              id="apiKey"
-              onChange={(e) => updateConfig("apiKey", e.target.value)}
-              placeholder="xoxb-..."
-              type="password"
-              value={formData.config.apiKey || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Create a Slack app and get your bot token from{" "}
-              <a
-                className="underline hover:text-foreground"
-                href="https://api.slack.com/apps"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                api.slack.com/apps
-              </a>
-            </p>
-          </div>
-        );
-      case "database":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="url">Database URL</Label>
-            <Input
-              id="url"
-              onChange={(e) => updateConfig("url", e.target.value)}
-              placeholder="postgresql://..."
-              type="password"
-              value={formData.config.url || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Connection string in the format:
-              postgresql://user:password@host:port/database
-            </p>
-          </div>
-        );
-      case "ai-gateway":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">AI Gateway API Key</Label>
-            <Input
-              id="apiKey"
-              onChange={(e) => updateConfig("apiKey", e.target.value)}
-              placeholder="API Key"
-              type="password"
-              value={formData.config.apiKey || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Get your API key from{" "}
-              <a
-                className="underline hover:text-foreground"
-                href="https://vercel.com/ai-gateway"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                vercel.com/ai-gateway
-              </a>
-            </p>
-          </div>
-        );
-      case "firecrawl":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="firecrawlApiKey">API Key</Label>
-            <Input
-              id="firecrawlApiKey"
-              onChange={(e) => updateConfig("firecrawlApiKey", e.target.value)}
-              placeholder="fc-..."
-              type="password"
-              value={formData.config.firecrawlApiKey || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Get your API key from{" "}
-              <a
-                className="underline hover:text-foreground"
-                href="https://firecrawl.dev/app/api-keys"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                firecrawl.dev
-              </a>
-            </p>
-          </div>
-        );
-      case "v0":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
-            <Input
-              id="apiKey"
-              onChange={(e) => updateConfig("apiKey", e.target.value)}
-              placeholder="v0_..."
-              type="password"
-              value={formData.config.apiKey || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Get your API key from{" "}
-              <a
-                className="underline hover:text-foreground"
-                href="https://v0.dev/chat/settings/keys"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                v0.dev/chat/settings/keys
-              </a>
-            </p>
-          </div>
-        );
-      case "clerk":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="clerkSecretKey">Secret Key</Label>
-            <Input
-              id="clerkSecretKey"
-              onChange={(e) => updateConfig("clerkSecretKey", e.target.value)}
-              placeholder="sk_live_... or sk_test_..."
-              type="password"
-              value={formData.config.clerkSecretKey || ""}
-            />
-            <p className="text-muted-foreground text-xs">
-              Get your secret key from{" "}
-              <a
-                className="underline hover:text-foreground"
-                href="https://dashboard.clerk.com"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                dashboard.clerk.com
-              </a>{" "}
-              under API Keys.
-            </p>
-          </div>
-        );
-      default:
-        return null;
+    // Handle system integrations with hardcoded fields
+    if (formData.type === "database") {
+      return (
+        <div className="space-y-2">
+          <Label htmlFor="url">Database URL</Label>
+          <Input
+            id="url"
+            onChange={(e) => updateConfig("url", e.target.value)}
+            placeholder="postgresql://..."
+            type="password"
+            value={formData.config.url || ""}
+          />
+          <p className="text-muted-foreground text-xs">
+            Connection string in the format:
+            postgresql://user:password@host:port/database
+          </p>
+        </div>
+      );
     }
+
+    // Get plugin form fields from registry
+    const plugin = getIntegration(formData.type);
+    if (!plugin?.formFields) {
+      return null;
+    }
+
+    return plugin.formFields.map((field) => (
+      <div className="space-y-2" key={field.id}>
+        <Label htmlFor={field.id}>{field.label}</Label>
+        <Input
+          id={field.id}
+          onChange={(e) => updateConfig(field.configKey, e.target.value)}
+          placeholder={field.placeholder}
+          type={field.type}
+          value={formData.config[field.configKey] || ""}
+        />
+        {(field.helpText || field.helpLink) && (
+          <p className="text-muted-foreground text-xs">
+            {field.helpText}
+            {field.helpLink && (
+              <a
+                className="underline hover:text-foreground"
+                href={field.helpLink.url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {field.helpLink.text}
+              </a>
+            )}
+          </p>
+        )}
+      </div>
+    ));
   };
 
   return (
@@ -381,14 +221,14 @@ export function IntegrationFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {INTEGRATION_TYPES.map((type) => (
+                  {getIntegrationTypes().map((type) => (
                     <SelectItem key={type} value={type}>
                       <div className="flex items-center gap-2">
                         <IntegrationIcon
                           className="size-4"
                           integration={type === "ai-gateway" ? "vercel" : type}
                         />
-                        {INTEGRATION_LABELS[type]}
+                        {getLabel(type)}
                       </div>
                     </SelectItem>
                   ))}
@@ -406,7 +246,7 @@ export function IntegrationFormDialog({
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              placeholder={`${INTEGRATION_LABELS[formData.type]} Integration`}
+              placeholder={`${getLabel(formData.type)} Integration`}
               value={formData.name}
             />
           </div>

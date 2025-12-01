@@ -1,0 +1,105 @@
+/**
+ * STEP FUNCTION TEMPLATE
+ *
+ * This file contains the server-side execution logic for your action.
+ *
+ * Structure:
+ * 1. `stepHandler` - Core logic that receives credentials as a parameter
+ * 2. `[actionName]Step` - Entry point that fetches credentials and wraps with logging
+ *
+ * TODO:
+ * 1. Update the input/result types to match your action's fields
+ * 2. Implement your API call logic in stepHandler
+ * 3. The step function must be exported and match the name in index.ts
+ */
+
+import "server-only";
+
+import { fetchCredentials } from "@/lib/credential-fetcher";
+import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
+import { getErrorMessage } from "@/lib/utils";
+import type { [IntegrationName]Credentials } from "../credentials";
+
+// TODO: Customize result fields for your action
+type [ActionName]Result =
+  | { success: true; resultId: string }
+  | { success: false; error: string };
+
+// Core input fields
+export type [ActionName]CoreInput = {
+  fieldA: string;
+  fieldB?: string;
+};
+
+// Full input includes integrationId and step context
+export type [ActionName]Input = StepInput &
+  [ActionName]CoreInput & {
+    integrationId?: string;
+  };
+
+/**
+ * Core logic
+ */
+async function stepHandler(
+  input: [ActionName]CoreInput,
+  credentials: [IntegrationName]Credentials
+): Promise<[ActionName]Result> {
+  const apiKey = credentials.[INTEGRATION_NAME]_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "[INTEGRATION_NAME]_API_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    // Your API call or business logic here
+    // Example:
+    // const client = new MyClient(apiKey);
+    // const result = await client.doSomething(input.fieldA);
+
+    const response = await fetch("https://api.[integration-name].com/endpoint", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        fieldA: input.fieldA,
+        fieldB: input.fieldB,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    return { success: true, resultId: result.id };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to execute action: ${getErrorMessage(error)}`,
+    };
+  }
+}
+
+/**
+ * Step entry point
+ */
+export async function [actionName]Step(
+  input: [ActionName]Input
+): Promise<[ActionName]Result> {
+  "use step";
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
+}
+
+export const _integrationType = "[integration-type]";

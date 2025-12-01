@@ -16,18 +16,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Spinner } from "@/components/ui/spinner";
-import { api, type Integration, type IntegrationType } from "@/lib/api-client";
+import { api, type Integration } from "@/lib/api-client";
+import { getIntegrationLabels } from "@/plugins";
 import { IntegrationFormDialog } from "./integration-form-dialog";
 
-const INTEGRATION_TYPE_LABELS: Record<IntegrationType, string> = {
-  resend: "Resend",
-  linear: "Linear",
-  slack: "Slack",
+// System integrations that don't have plugins
+const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
   database: "Database",
-  "ai-gateway": "AI Gateway",
-  firecrawl: "Firecrawl",
-  v0: "v0",
-  clerk: "Clerk",
 };
 
 type IntegrationsManagerProps = {
@@ -144,7 +139,9 @@ export function IntegrationsManager({
                 <div>
                   <p className="font-medium text-sm">{integration.name}</p>
                   <p className="text-muted-foreground text-xs">
-                    {INTEGRATION_TYPE_LABELS[integration.type]}
+                    {getIntegrationLabels()[integration.type] ||
+                      SYSTEM_INTEGRATION_LABELS[integration.type] ||
+                      integration.type}
                   </p>
                 </div>
               </div>

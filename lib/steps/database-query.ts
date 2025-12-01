@@ -10,16 +10,17 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { fetchCredentials } from "../credential-fetcher";
-
-type DatabaseQueryInput = {
-  integrationId?: string;
-  dbQuery?: string;
-  query?: string;
-};
+import { type StepInput, withStepLogging } from "./step-handler";
 
 type DatabaseQueryResult =
   | { success: true; rows: unknown; count: number }
   | { success: false; error: string };
+
+export type DatabaseQueryInput = StepInput & {
+  integrationId?: string;
+  dbQuery?: string;
+  query?: string;
+};
 
 function validateInput(input: DatabaseQueryInput): string | null {
   const queryString = input.dbQuery || input.query;
@@ -80,11 +81,12 @@ async function cleanupClient(client: postgres.Sql | null): Promise<void> {
   }
 }
 
-export async function databaseQueryStep(
+/**
+ * Database query logic
+ */
+async function databaseQuery(
   input: DatabaseQueryInput
 ): Promise<DatabaseQueryResult> {
-  "use step";
-
   const validationError = validateInput(input);
   if (validationError) {
     return { success: false, error: validationError };
@@ -124,4 +126,16 @@ export async function databaseQueryStep(
       error: `Database query failed: ${getDatabaseErrorMessage(error)}`,
     };
   }
+}
+
+/**
+ * Database Query Step
+ * Executes a SQL query against a PostgreSQL database
+ */
+// biome-ignore lint/suspicious/useAwait: workflow "use step" requires async
+export async function databaseQueryStep(
+  input: DatabaseQueryInput
+): Promise<DatabaseQueryResult> {
+  "use step";
+  return withStepLogging(input, () => databaseQuery(input));
 }

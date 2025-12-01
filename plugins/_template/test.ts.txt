@@ -1,27 +1,53 @@
 /**
  * TEST FUNCTION TEMPLATE
- * 
- * This function is called when users click "Test Connection" in the settings dialog.
- * It should verify that the credentials are valid.
+ *
+ * This function validates credentials when users click "Test Connection".
+ * It should verify credentials are valid without performing destructive actions.
+ *
+ * The function is lazy-loaded via getTestFunction() in index.ts to avoid
+ * bundling server-side code in the client.
+ *
+ * Approaches for testing:
+ * 1. Format validation (e.g., check API key prefix)
+ * 2. Lightweight API call (e.g., fetch user info, list resources)
+ * 3. Dedicated test endpoint if the API provides one
  */
 
 export async function test[IntegrationName](credentials: Record<string, string>) {
   try {
-    // Test your API connection here
-    const response = await fetch("[TEST_ENDPOINT_URL]", {
+    const apiKey = credentials.[INTEGRATION_NAME]_API_KEY;
+
+    // Validate API key is provided
+    if (!apiKey) {
+      return {
+        success: false,
+        error: "[INTEGRATION_NAME]_API_KEY is required",
+      };
+    }
+
+    // Option 1: Format validation (if API keys have a known format)
+    // if (!apiKey.startsWith("sk_")) {
+    //   return {
+    //     success: false,
+    //     error: "Invalid API key format. API keys should start with 'sk_'",
+    //   };
+    // }
+
+    // Option 2: Make a lightweight API call to verify the key works
+    const response = await fetch("https://api.[integration-name].com/v1/test", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${credentials.[ENV_VAR_NAME]}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     });
 
     if (response.ok) {
       return { success: true };
     }
-    
+
     const error = await response.text();
-    return { success: false, error };
+    return { success: false, error: error || "Invalid API key" };
   } catch (error) {
     return {
       success: false,
@@ -29,4 +55,3 @@ export async function test[IntegrationName](credentials: Record<string, string>)
     };
   }
 }
-

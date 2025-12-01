@@ -86,23 +86,36 @@ const schemaToFields = (
   return fields;
 };
 
+// Helper to check if action type matches (supports both namespaced IDs and legacy labels)
+const isActionType = (
+  actionType: string | undefined,
+  ...matches: string[]
+): boolean => {
+  if (!actionType) return false;
+  return matches.some(
+    (match) =>
+      actionType === match ||
+      actionType.endsWith(`/${match.toLowerCase().replace(/\s+/g, "-")}`)
+  );
+};
+
 // Get common fields based on node action type
 const getCommonFields = (node: WorkflowNode) => {
-  const actionType = node.data.config?.actionType;
+  const actionType = node.data.config?.actionType as string | undefined;
 
-  if (actionType === "Find Issues") {
+  if (isActionType(actionType, "Find Issues", "linear/find-issues")) {
     return [
       { field: "issues", description: "Array of issues found" },
       { field: "count", description: "Number of issues" },
     ];
   }
-  if (actionType === "Send Email") {
+  if (isActionType(actionType, "Send Email", "resend/send-email")) {
     return [
       { field: "id", description: "Email ID" },
       { field: "status", description: "Send status" },
     ];
   }
-  if (actionType === "Create Ticket") {
+  if (isActionType(actionType, "Create Ticket", "linear/create-ticket")) {
     return [
       { field: "id", description: "Ticket ID" },
       { field: "url", description: "Ticket URL" },
@@ -136,7 +149,7 @@ const getCommonFields = (node: WorkflowNode) => {
       { field: "count", description: "Number of rows" },
     ];
   }
-  if (actionType === "Generate Text") {
+  if (isActionType(actionType, "Generate Text", "ai-gateway/generate-text")) {
     const aiFormat = node.data.config?.aiFormat as string | undefined;
     const aiSchema = node.data.config?.aiSchema as string | undefined;
 
@@ -158,13 +171,15 @@ const getCommonFields = (node: WorkflowNode) => {
       { field: "model", description: "Model used" },
     ];
   }
-  if (actionType === "Generate Image") {
+  if (isActionType(actionType, "Generate Image", "ai-gateway/generate-image")) {
     return [
       { field: "base64", description: "Base64 image data" },
       { field: "model", description: "Model used" },
     ];
   }
-  if (actionType === "Scrape") {
+  if (
+    isActionType(actionType, "Scrape", "Scrape URL", "firecrawl/scrape")
+  ) {
     return [
       { field: "markdown", description: "Scraped content as markdown" },
       { field: "metadata.url", description: "Page URL" },
@@ -174,20 +189,27 @@ const getCommonFields = (node: WorkflowNode) => {
       { field: "metadata.favicon", description: "Favicon URL" },
     ];
   }
-  if (actionType === "Search") {
+  if (isActionType(actionType, "Search", "Search Web", "firecrawl/search")) {
     return [{ field: "web", description: "Array of search results" }];
   }
-  if (actionType === "Create Chat") {
+  if (isActionType(actionType, "Create Chat", "v0/create-chat")) {
     return [
       { field: "chatId", description: "v0 chat ID" },
       { field: "url", description: "v0 chat URL" },
       { field: "demoUrl", description: "Demo preview URL" },
     ];
   }
-  if (actionType === "Send Message") {
+  if (isActionType(actionType, "Send Message", "v0/send-message")) {
     return [
       { field: "chatId", description: "v0 chat ID" },
       { field: "demoUrl", description: "Demo preview URL" },
+    ];
+  }
+  if (isActionType(actionType, "Send Slack Message", "slack/send-message")) {
+    return [
+      { field: "ok", description: "Success status" },
+      { field: "ts", description: "Message timestamp" },
+      { field: "channel", description: "Channel ID" },
     ];
   }
   if (node.data.type === "trigger") {

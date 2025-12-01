@@ -1,25 +1,28 @@
 /**
  * ICON COMPONENT TEMPLATE
- * 
- * Define your integration's icon here.
- * You can use a Lucide icon, an SVG component, or an image file.
- * 
- * For custom SVG icons, create a component like this:
+ *
+ * Define your integration's icon here as an SVG component.
+ * The icon should accept an optional className prop for styling.
+ *
+ * Tips:
+ * - Use fill="currentColor" to inherit the text color
+ * - Standard viewBox is "0 0 24 24" but adjust as needed for your SVG
+ * - Include aria-label and title for accessibility
+ * - Find the SVG for the [IntegrationName] logo at https://simpleicons.org/?q=[integration-name]
  */
 
 export function [IntegrationName]Icon({ className }: { className?: string }) {
   return (
     <svg
-      aria-label="[Integration Name]"
+      aria-label="[Integration Name] logo"
       className={className}
       fill="currentColor"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"
     >
       <title>[Integration Name]</title>
-      {/* Your SVG path here */}
-      <path d="..." />
+      {/* Replace with your SVG path(s) */}
+      <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z" />
     </svg>
   );
 }
-

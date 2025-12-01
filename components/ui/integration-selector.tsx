@@ -10,7 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { api, type Integration, type IntegrationType } from "@/lib/api-client";
+import { api, type Integration } from "@/lib/api-client";
+import type { IntegrationType } from "@/lib/types/integration";
 import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 
 type IntegrationSelectorProps = {
