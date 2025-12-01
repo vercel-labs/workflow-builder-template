@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { validateWorkflowIntegrations } from "@/lib/db/integrations";
 import { workflowExecutions, workflows } from "@/lib/db/schema";
 import { executeWorkflow } from "@/lib/workflow-executor.workflow";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
@@ -89,6 +90,25 @@ export async function POST(
 
     if (workflow.userId !== session.user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Validate that all integrationIds in workflow nodes belong to the current user
+    const validation = await validateWorkflowIntegrations(
+      workflow.nodes as WorkflowNode[],
+      session.user.id
+    );
+    if (!validation.valid) {
+      console.error(
+        "[Workflow Execute] Invalid integration references:",
+        validation.invalidIds
+      );
+      return NextResponse.json(
+        {
+          error: "Workflow contains invalid integration references",
+          invalidIds: validation.invalidIds,
+        },
+        { status: 403 }
+      );
     }
 
     // Parse request body
