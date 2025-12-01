@@ -38,18 +38,24 @@ You can deploy your own version of the workflow builder to Vercel with one click
 
 ### Environment Variables
 
-Create a `.env.local` file with the following:
+Create a `.env.local` file (or rename the existing `.env.example` file) with the following:
 
 ```env
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/workflow_builder
 
 # Better Auth
-BETTER_AUTH_SECRET=your-secret-key
+BETTER_AUTH_SECRET=your-secret-key # Generate with: openssl rand -base64 32
 BETTER_AUTH_URL=http://localhost:3000
 
 # AI Gateway (for AI workflow generation)
 AI_GATEWAY_API_KEY=your-openai-api-key
+
+# API URL (for application Route Handlers)
+NEXT_PUBLIC_API_URL=http://localhost:3000
+
+# Credentials Encryption
+INTEGRATION_ENCRYPTION_KEY=your-32-byte-hexadecimal-key # Generate with: openssl rand -hex 32
 ```
 
 ### Installation

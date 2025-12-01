@@ -68,16 +68,20 @@ Required variables for development:
 
 ```bash
 # Database
-DATABASE_URL=postgres://localhost:5432/workflow
+DATABASE_URL=postgresql://user:password@localhost:5432/workflow_builder
 
-# Authentication
-BETTER_AUTH_SECRET=your-auth-secret-here  # Generate with: openssl rand -base64 32
+# Better Auth
+BETTER_AUTH_SECRET=your-secret-key # Generate with: openssl rand -base64 32
+BETTER_AUTH_URL=http://localhost:3000
+
+# AI Gateway (for AI workflow generation)
+AI_GATEWAY_API_KEY=your-openai-api-key
+
+# API URL (for application Route Handlers)
+NEXT_PUBLIC_API_URL=http://localhost:3000
 
 # Credentials Encryption
-INTEGRATION_ENCRYPTION_KEY=your-64-character-hex-string  # Generate with: openssl rand -hex 32
-
-# App URLs
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+INTEGRATION_ENCRYPTION_KEY=your-32-byte-hexadecimal-key # Generate with: openssl rand -hex 32
 ```
 
 Optional OAuth providers (configure at least one for authentication):
@@ -312,7 +316,9 @@ export type SendMessageInput = StepInput & {
 /**
  * Send message logic - separated for clarity and testability
  */
-async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
+async function sendMessage(
+  input: SendMessageInput
+): Promise<SendMessageResult> {
   const credentials = input.integrationId
     ? await fetchCredentials(input.integrationId)
     : {};
@@ -665,7 +671,9 @@ import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 
-type MyResult = { success: true; data: string } | { success: false; error: string };
+type MyResult =
+  | { success: true; data: string }
+  | { success: false; error: string };
 
 export type MyInput = StepInput & {
   integrationId?: string;
