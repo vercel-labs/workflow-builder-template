@@ -242,18 +242,28 @@ export const PanelInner = () => {
     return code;
   }, [nodes, edges, currentWorkflowName]);
 
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
     if (selectedNode) {
-      navigator.clipboard.writeText(generateNodeCode(selectedNode));
-      setCopiedNode(true);
-      setTimeout(() => setCopiedNode(false), 2000);
+      try {
+        await navigator.clipboard.writeText(generateNodeCode(selectedNode));
+        setCopiedNode(true);
+        setTimeout(() => setCopiedNode(false), 2000);
+      } catch (error) {
+        console.error("Failed to copy:", error);
+        toast.error("Failed to copy code to clipboard");
+      }
     }
   };
 
-  const handleCopyWorkflowCode = () => {
-    navigator.clipboard.writeText(workflowCode);
-    setCopiedWorkflow(true);
-    setTimeout(() => setCopiedWorkflow(false), 2000);
+  const handleCopyWorkflowCode = async () => {
+    try {
+      await navigator.clipboard.writeText(workflowCode);
+      setCopiedWorkflow(true);
+      setTimeout(() => setCopiedWorkflow(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error("Failed to copy code to clipboard");
+    }
   };
 
   const handleDelete = () => {
