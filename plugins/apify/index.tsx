@@ -1,11 +1,8 @@
-import { Globe } from "lucide-react";
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
 import { runActorCodegenTemplate } from "./codegen/run-actor";
 import { scrapeSingleUrlCodegenTemplate } from "./codegen/scrape-single-url";
 import { ApifyIcon } from "./icon";
-import { ApifySettings } from "./settings";
-import { testApify } from "./test";
 
 const apifyPlugin: IntegrationPlugin = {
   type: "apify",
@@ -14,8 +11,6 @@ const apifyPlugin: IntegrationPlugin = {
 
   icon: ApifyIcon,
 
-  settingsComponent: ApifySettings,
-
   formFields: [
     {
       id: "apifyApiKey",
@@ -23,6 +18,7 @@ const apifyPlugin: IntegrationPlugin = {
       type: "password",
       placeholder: "apify_api_...",
       configKey: "apifyApiKey",
+      envVar: "APIFY_API_KEY",
       helpText: "Get your API token from ",
       helpLink: {
         text: "Apify Console",
@@ -31,16 +27,11 @@ const apifyPlugin: IntegrationPlugin = {
     },
   ],
 
-  credentialMapping: (config) => {
-    const creds: Record<string, string> = {};
-    if (config.apifyApiKey) {
-      creds.APIFY_API_KEY = String(config.apifyApiKey);
-    }
-    return creds;
-  },
-
   testConfig: {
-    testFunction: testApify,
+    getTestFunction: async () => {
+      const { testApify } = await import("./test");
+      return testApify;
+    },
   },
 
   actions: [
@@ -49,7 +40,6 @@ const apifyPlugin: IntegrationPlugin = {
       label: "Run Apify Actor",
       description: "Run an Apify Actor and get results",
       category: "Apify",
-      icon: ApifyIcon,
       stepFunction: "apifyRunActorStep",
       stepImportPath: "run-actor/step",
       configFields: [
@@ -78,7 +68,6 @@ const apifyPlugin: IntegrationPlugin = {
       label: "Scrape Single URL",
       description: "Scrape a single URL and get markdown output",
       category: "Apify",
-      icon: Globe,
       stepFunction: "scrapeSingleUrlStep",
       stepImportPath: "scrape-single-url/step",
       configFields: [
