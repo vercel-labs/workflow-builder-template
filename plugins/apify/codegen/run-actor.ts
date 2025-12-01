@@ -7,7 +7,7 @@ export const runActorCodegenTemplate = `import { ApifyClient } from "apify-clien
 
 export async function apifyRunActorStep(input: {
   actorId: string;
-  actorInput?: Record<string, unknown>;
+  actorInput?: string;
 }) {
   "use step";
 
@@ -17,30 +17,36 @@ export async function apifyRunActorStep(input: {
     throw new Error("Apify API Token is not configured. Set APIFY_API_KEY environment variable.");
   }
 
+  let parsedActorInput: Record<string, unknown> = {};
+  if (input.actorInput) {
+    try {
+      parsedActorInput = JSON.parse(input.actorInput);
+    } catch (err) {
+      throw new Error(\`Cannot parse Actor input: \${err instanceof Error ? err.message : String(err)}\`);
+    }
+  }
+
   try {
     const client = new ApifyClient({ token: apiKey });
     const actorClient = client.actor(input.actorId);
-    const maxWaitSecs = 120;
 
     // Run synchronously and wait for completion
-    const runData = await actorClient.call(input.actorInput || {}, {
-      waitSecs: maxWaitSecs,
-    });
+    const runData = await actorClient.call(parsedActorInput);
 
     // Get dataset items
-    let data: unknown[] = [];
+    let datasetItems: unknown[] = [];
     if (runData.defaultDatasetId) {
-      const datasetItems = await client
+      const dataset = await client
         .dataset(runData.defaultDatasetId)
         .listItems();
-      data = datasetItems.items;
+      datasetItems = dataset.items;
     }
 
     return {
       runId: runData.id || "unknown",
       status: runData.status || "SUCCEEDED",
       datasetId: runData.defaultDatasetId,
-      data,
+      datasetItems,
     };
   } catch (error) {
     throw new Error(\`Failed to run Actor: \${error instanceof Error ? error.message : String(error)}\`);

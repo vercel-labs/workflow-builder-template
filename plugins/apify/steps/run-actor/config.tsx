@@ -1,6 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { TemplateBadgeInput } from "@/components/ui/template-badge-input";
-import { TemplateBadgeTextarea } from "@/components/ui/template-badge-textarea";
+import { TemplateBadgeJson } from "@/components/ui/template-badge-json";
 
 /**
  * Run Apify Actor Config Fields Component
@@ -27,20 +27,26 @@ export function RunActorConfigFields({
           value={(config?.actorId as string) || ""}
         />
         <p className="text-muted-foreground text-xs">
-          Enter the Actor ID (e.g., apify/web-scraper) or use a template
-          reference.
+            Enter an Actor ID or name (e.g., apify/website-content-crawler). Browse all available Actors in the <a
+            href='https://apify.com/store'
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+        >
+            Apify Store
+        </a>.
         </p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="actorInput">Actor Input (JSON)</Label>
-        <TemplateBadgeTextarea
-            disabled={disabled}
-            id="actorInput"
-            placeholder='{"startUrls": [{"url": "https://example.com"}]}'
-            rows={6}
-            onChange={(value) => onUpdateConfig("actorInput", value)}
-            value={(config?.actorInput as string) || ""}
+        <TemplateBadgeJson
+          disabled={disabled}
+          id="actorInput"
+          placeholder='{"startUrls": [{"url": "https://example.com"}]}'
+          rows={6}
+          onChange={(value) => onUpdateConfig("actorInput", value)}
+          value={(config?.actorInput as string) || ""}
         />
         <p className="text-muted-foreground text-xs">
           JSON input for the Actor. Check the Actor's documentation for required

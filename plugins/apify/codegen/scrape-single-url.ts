@@ -24,7 +24,7 @@ export async function scrapeSingleUrlStep(input: {
   try {
     const client = new ApifyClient({ token: apiKey });
     const actorClient = client.actor("apify/website-content-crawler");
-    const crawlerType = input.crawlerType || "playwright";
+    const crawlerType = input.crawlerType || "playwright:adaptive";
 
     // Prepare actor input
     const actorInput = {
@@ -37,15 +37,11 @@ export async function scrapeSingleUrlStep(input: {
         useApifyProxy: true,
       },
       removeCookieWarnings: true,
-      saveHtml: true,
       saveMarkdown: true,
     };
 
     // Run synchronously and wait for completion
-    const maxWaitSecs = 120;
-    const runData = await actorClient.call(actorInput, {
-      waitSecs: maxWaitSecs,
-    });
+    const runData = await actorClient.call(actorInput);
 
     // Get dataset items
     let markdown: string | undefined;
@@ -57,7 +53,7 @@ export async function scrapeSingleUrlStep(input: {
       // Extract markdown from the first item
       if (datasetItems.items && datasetItems.items.length > 0) {
         const firstItem = datasetItems.items[0] as Record<string, unknown>;
-        markdown = (firstItem.markdown as string) || (firstItem.text as string) || undefined;
+        markdown = firstItem.markdown as string;
       }
     }
 
