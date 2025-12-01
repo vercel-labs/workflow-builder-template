@@ -32,10 +32,6 @@ const slackPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    "@slack/web-api": "^7.12.0",
-  },
-
   actions: [
     {
       slug: "send-message",

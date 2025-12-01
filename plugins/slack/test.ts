@@ -1,4 +1,9 @@
-import { WebClient } from "@slack/web-api";
+const SLACK_API_URL = "https://slack.com/api";
+
+type SlackAuthTestResponse = {
+  ok: boolean;
+  error?: string;
+};
 
 export async function testSlack(credentials: Record<string, string>) {
   try {
@@ -11,20 +16,30 @@ export async function testSlack(credentials: Record<string, string>) {
       };
     }
 
-    // Test the Slack API by calling auth.test
-    const slack = new WebClient(apiKey);
-    const result = await slack.auth.test();
+    const response = await fetch(`${SLACK_API_URL}/auth.test`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `API validation failed: HTTP ${response.status}`,
+      };
+    }
+
+    const result = (await response.json()) as SlackAuthTestResponse;
 
     if (!result.ok) {
       return {
         success: false,
-        error: "Invalid Slack Bot Token",
+        error: result.error || "Invalid Slack Bot Token",
       };
     }
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (error) {
     return {
       success: false,
