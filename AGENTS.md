@@ -78,3 +78,8 @@ If any of the above commands fail or show errors:
   - `api.workflow.*` - Workflow CRUD and operations (create, update, delete, deploy, execute, etc.)
 - **No Barrel Files**: Do not create barrel/index files that re-export from other files
 
+## Plugin Guidelines
+- **No SDK Dependencies**: Plugin step files must use `fetch` directly instead of SDK client libraries. Do not add npm package dependencies for API integrations.
+- **No dependencies field**: Do not use the `dependencies` field in plugin `index.ts` files. All API calls should use native `fetch`.
+- **Why**: Using `fetch` instead of SDKs reduces supply chain attack surface. SDKs have transitive dependencies that could be compromised.
+

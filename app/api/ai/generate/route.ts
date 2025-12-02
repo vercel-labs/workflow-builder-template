@@ -220,9 +220,6 @@ Edge structure:
   "type": "default"
 }
 
-TEMPLATE VARIABLES: To reference data from another node, use {{@nodeId:Label.field}}
-Example: If node id="create-user" label="Create User" returns {user: {id: "..."}}, reference it as {{@create-user:Create User.user.id}}
-
 WORKFLOW FLOW:
 - Trigger connects to first action
 - Actions connect in sequence or to multiple branches
