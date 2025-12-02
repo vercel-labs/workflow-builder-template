@@ -23,7 +23,7 @@ export type ClerkDeleteUserInput = StepInput &
  */
 async function stepHandler(
   input: ClerkDeleteUserCoreInput,
-  credentials: { CLERK_SECRET_KEY?: string }
+  credentials: ClerkCredentials
 ): Promise<DeleteUserResult> {
   const secretKey = credentials.CLERK_SECRET_KEY;
 
