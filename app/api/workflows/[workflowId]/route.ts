@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { validateWorkflowIntegrations } from "@/lib/db/integrations";
 import { workflows } from "@/lib/db/schema";
 
 export async function GET(
@@ -79,6 +80,24 @@ export async function PATCH(
     }
 
     const body = await request.json();
+
+    // Validate that all integrationIds in nodes belong to the current user
+    if (Array.isArray(body.nodes)) {
+      const validation = await validateWorkflowIntegrations(
+        body.nodes,
+        session.user.id
+      );
+      if (!validation.valid) {
+        return NextResponse.json(
+          {
+            error: "Invalid integration references in workflow",
+            invalidIds: validation.invalidIds,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };

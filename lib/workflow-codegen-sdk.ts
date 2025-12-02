@@ -397,7 +397,6 @@ export function generateWorkflowSDKCode(
   function buildClerkGetUserParams(config: Record<string, unknown>): string[] {
     return [
       `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
-      "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
   }
 
@@ -406,7 +405,6 @@ export function generateWorkflowSDKCode(
   ): string[] {
     const params = [
       `emailAddress: \`${convertTemplateToJS((config.emailAddress as string) || "")}\``,
-      "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
     if (config.password) {
       params.push(
@@ -441,7 +439,6 @@ export function generateWorkflowSDKCode(
   ): string[] {
     const params = [
       `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
-      "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
     if (config.firstName) {
       params.push(
@@ -471,7 +468,6 @@ export function generateWorkflowSDKCode(
   ): string[] {
     return [
       `userId: \`${convertTemplateToJS((config.userId as string) || "")}\``,
-      "secretKey: process.env.CLERK_SECRET_KEY!",
     ];
   }
 

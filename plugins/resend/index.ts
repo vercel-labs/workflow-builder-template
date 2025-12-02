@@ -41,10 +41,6 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    resend: "^6.4.0",
-  },
-
   actions: [
     {
       slug: "send-email",

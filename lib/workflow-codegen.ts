@@ -655,6 +655,8 @@ export function generateWorkflowCode(
     const firstName = (config.firstName as string) || "";
     const lastName = (config.lastName as string) || "";
     const password = (config.password as string) || "";
+    const publicMetadata = (config.publicMetadata as string) || "";
+    const privateMetadata = (config.privateMetadata as string) || "";
 
     const lines = [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -673,6 +675,16 @@ export function generateWorkflowCode(
     }
     if (password) {
       lines.push(`${indent}  password: ${formatTemplateValue(password)},`);
+    }
+    if (publicMetadata) {
+      lines.push(
+        `${indent}  publicMetadata: ${formatTemplateValue(publicMetadata)},`
+      );
+    }
+    if (privateMetadata) {
+      lines.push(
+        `${indent}  privateMetadata: ${formatTemplateValue(privateMetadata)},`
+      );
     }
 
     lines.push(`${indent}});`);
@@ -694,6 +706,8 @@ export function generateWorkflowCode(
     const userId = (config.userId as string) || "";
     const firstName = (config.firstName as string) || "";
     const lastName = (config.lastName as string) || "";
+    const publicMetadata = (config.publicMetadata as string) || "";
+    const privateMetadata = (config.privateMetadata as string) || "";
 
     const lines = [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -705,6 +719,16 @@ export function generateWorkflowCode(
     }
     if (lastName) {
       lines.push(`${indent}  lastName: ${formatTemplateValue(lastName)},`);
+    }
+    if (publicMetadata) {
+      lines.push(
+        `${indent}  publicMetadata: ${formatTemplateValue(publicMetadata)},`
+      );
+    }
+    if (privateMetadata) {
+      lines.push(
+        `${indent}  privateMetadata: ${formatTemplateValue(privateMetadata)},`
+      );
     }
 
     lines.push(`${indent}});`);

@@ -1,10 +1,18 @@
 import "server-only";
 
-import { WebClient } from "@slack/web-api";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { SlackCredentials } from "../credentials";
+
+const SLACK_API_URL = "https://slack.com/api";
+
+type SlackPostMessageResponse = {
+  ok: boolean;
+  ts?: string;
+  channel?: string;
+  error?: string;
+};
 
 type SendSlackMessageResult =
   | { success: true; ts: string; channel: string }
@@ -38,12 +46,26 @@ async function stepHandler(
   }
 
   try {
-    const slack = new WebClient(apiKey);
-
-    const result = await slack.chat.postMessage({
-      channel: input.slackChannel,
-      text: input.slackMessage,
+    const response = await fetch(`${SLACK_API_URL}/chat.postMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        channel: input.slackChannel,
+        text: input.slackMessage,
+      }),
     });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `HTTP ${response.status}: Failed to send Slack message`,
+      };
+    }
+
+    const result = (await response.json()) as SlackPostMessageResponse;
 
     if (!result.ok) {
       return {

@@ -1,4 +1,16 @@
-import { LinearClient } from "@linear/sdk";
+const LINEAR_API_URL = "https://api.linear.app/graphql";
+
+type LinearGraphQLResponse<T> = {
+  data?: T;
+  errors?: Array<{ message: string }>;
+};
+
+type ViewerQueryResponse = {
+  viewer: {
+    id: string;
+    name: string;
+  };
+};
 
 export async function testLinear(credentials: Record<string, string>) {
   try {
@@ -11,21 +23,48 @@ export async function testLinear(credentials: Record<string, string>) {
       };
     }
 
-    const linear = new LinearClient({ apiKey });
+    // Validate API key by fetching viewer (lightweight query)
+    const response = await fetch(LINEAR_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({
+        query: `query { viewer { id name } }`,
+      }),
+    });
 
-    // Try to fetch teams to verify the API key works
-    const teams = await linear.teams();
-
-    if (teams.nodes.length === 0) {
+    if (!response.ok) {
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: "Invalid API key. Please check your Linear API key.",
+        };
+      }
       return {
         success: false,
-        error: "No teams found in Linear workspace",
+        error: `API validation failed: HTTP ${response.status}`,
       };
     }
 
-    return {
-      success: true,
-    };
+    const result = (await response.json()) as LinearGraphQLResponse<ViewerQueryResponse>;
+
+    if (result.errors?.length) {
+      return {
+        success: false,
+        error: result.errors[0].message,
+      };
+    }
+
+    if (!result.data?.viewer) {
+      return {
+        success: false,
+        error: "Failed to verify Linear connection",
+      };
+    }
+
+    return { success: true };
   } catch (error) {
     return {
       success: false,

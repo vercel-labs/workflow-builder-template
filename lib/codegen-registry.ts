@@ -494,7 +494,7 @@ const secretKey = credentials.CLERK_SECRET_KEY;
   }
 }`,
 
-  "firecrawl/scrape": `import FirecrawlApp from "@mendable/firecrawl-js";
+  "firecrawl/scrape": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -522,21 +522,39 @@ const apiKey = credentials.FIRECRAWL_API_KEY;
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey });
-    const result = await firecrawl.scrape(input.url, {
-      formats: input.formats || ["markdown"],
+    const response = await fetch(\`\${FIRECRAWL_API_URL}/scrape\`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: \`Bearer \${apiKey}\`,
+      },
+      body: JSON.stringify({
+        url: input.url,
+        formats: input.formats || ["markdown"],
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(\`HTTP \${response.status}: \${errorText}\`);
+    }
+
+    const result = (await response.json()) as FirecrawlScrapeResponse;
+
+    if (!result.success) {
+      throw new Error(result.error || "Scrape failed");
+    }
+
     return {
-      markdown: result.markdown,
-      metadata: result.metadata,
+      markdown: result.data?.markdown,
+      metadata: result.data?.metadata,
     };
   } catch (error) {
     throw new Error(\`Failed to scrape: \${getErrorMessage(error)}\`);
   }
 }`,
 
-  "firecrawl/search": `import FirecrawlApp from "@mendable/firecrawl-js";
+  "firecrawl/search": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -545,7 +563,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 type SearchResult = {
-  web?: unknown[];
+  data?: unknown[];
 };
 
 export type FirecrawlSearchCoreInput = {
@@ -566,21 +584,39 @@ const apiKey = credentials.FIRECRAWL_API_KEY;
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey });
-    const result = await firecrawl.search(input.query, {
-      limit: input.limit ? Number(input.limit) : undefined,
-      scrapeOptions: input.scrapeOptions,
+    const response = await fetch(\`\${FIRECRAWL_API_URL}/search\`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: \`Bearer \${apiKey}\`,
+      },
+      body: JSON.stringify({
+        query: input.query,
+        limit: input.limit ? Number(input.limit) : undefined,
+        scrapeOptions: input.scrapeOptions,
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(\`HTTP \${response.status}: \${errorText}\`);
+    }
+
+    const result = (await response.json()) as FirecrawlSearchResponse;
+
+    if (!result.success) {
+      throw new Error(result.error || "Search failed");
+    }
+
     return {
-      web: result.web,
+      data: result.data,
     };
   } catch (error) {
     throw new Error(\`Failed to search: \${getErrorMessage(error)}\`);
   }
 }`,
 
-  "linear/create-ticket": `import { LinearClient } from "@linear/sdk";
+  "linear/create-ticket": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -612,12 +648,22 @@ const apiKey = credentials.LINEAR_API_KEY;
   }
 
   try {
-    const linear = new LinearClient({ apiKey });
-
     let targetTeamId = teamId;
+
     if (!targetTeamId) {
-      const teams = await linear.teams();
-      const firstTeam = teams.nodes[0];
+      const teamsResult = await linearQuery<TeamsQueryResponse>(
+        apiKey,
+        \`query { teams { nodes { id name } } }\`
+      );
+
+      if (teamsResult.errors?.length) {
+        return {
+          success: false,
+          error: teamsResult.errors[0].message,
+        };
+      }
+
+      const firstTeam = teamsResult.data?.teams.nodes[0];
       if (!firstTeam) {
         return {
           success: false,
@@ -627,14 +673,33 @@ const apiKey = credentials.LINEAR_API_KEY;
       targetTeamId = firstTeam.id;
     }
 
-    const issuePayload = await linear.createIssue({
-      title: input.ticketTitle,
-      description: input.ticketDescription,
-      teamId: targetTeamId,
-    });
+    const createResult = await linearQuery<CreateIssueMutationResponse>(
+      apiKey,
+      \`mutation CreateIssue($title: String!, $description: String, $teamId: String!) {
+        issueCreate(input: { title: $title, description: $description, teamId: $teamId }) {
+          success
+          issue {
+            id
+            title
+            url
+          }
+        }
+      }\`,
+      {
+        title: input.ticketTitle,
+        description: input.ticketDescription,
+        teamId: targetTeamId,
+      }
+    );
 
-    const issue = await issuePayload.issue;
+    if (createResult.errors?.length) {
+      return {
+        success: false,
+        error: createResult.errors[0].message,
+      };
+    }
 
+    const issue = createResult.data?.issueCreate.issue;
     if (!issue) {
       return {
         success: false,
@@ -656,7 +721,7 @@ const apiKey = credentials.LINEAR_API_KEY;
   }
 }`,
 
-  "linear/find-issues": `import { LinearClient } from "@linear/sdk";
+  "linear/find-issues": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -689,8 +754,7 @@ const apiKey = credentials.LINEAR_API_KEY;
   }
 
   try {
-    const linear = new LinearClient({ apiKey });
-
+    // Build filter object for Linear's GraphQL API
     const filter: Record<string, unknown> = {};
 
     if (input.linearAssigneeId) {
@@ -709,19 +773,40 @@ const apiKey = credentials.LINEAR_API_KEY;
       filter.labels = { name: { eqIgnoreCase: input.linearLabel } };
     }
 
-    const issues = await linear.issues({ filter });
+    const result = await linearQuery<IssuesQueryResponse>(
+      apiKey,
+      \`query FindIssues($filter: IssueFilter) {
+        issues(filter: $filter) {
+          nodes {
+            id
+            title
+            url
+            priority
+            assigneeId
+            state {
+              name
+            }
+          }
+        }
+      }\`,
+      { filter: Object.keys(filter).length > 0 ? filter : undefined }
+    );
 
-    const mappedIssues: LinearIssue[] = await Promise.all(
-      issues.nodes.map(async (issue) => {
-        const state = await issue.state;
-        return {
-          id: issue.id,
-          title: issue.title,
-          url: issue.url,
-          state: state?.name || "Unknown",
-          priority: issue.priority,
-          assigneeId: issue.assigneeId || undefined,
-        };
+    if (result.errors?.length) {
+      return {
+        success: false,
+        error: result.errors[0].message,
+      };
+    }
+
+    const mappedIssues: LinearIssue[] = (result.data?.issues.nodes || []).map(
+      (issue) => ({
+        id: issue.id,
+        title: issue.title,
+        url: issue.url,
+        state: issue.state?.name || "Unknown",
+        priority: issue.priority,
+        assigneeId: issue.assigneeId || undefined,
       })
     );
 
@@ -738,7 +823,7 @@ const apiKey = credentials.LINEAR_API_KEY;
   }
 }`,
 
-  "resend/send-email": `import { Resend } from "resend";
+  "resend/send-email": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -788,31 +873,40 @@ const apiKey = credentials.RESEND_API_KEY;
   }
 
   try {
-    const resend = new Resend(apiKey);
+    const headers: Record<string, string> = {
+      Authorization: \`Bearer \${apiKey}\`,
+      "Content-Type": "application/json",
+    };
 
-    const result = await resend.emails.send(
-      {
+    if (input.idempotencyKey) {
+      headers["Idempotency-Key"] = input.idempotencyKey;
+    }
+
+    const response = await fetch(\`\${RESEND_API_URL}/emails\`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
         from: senderEmail,
         to: input.emailTo,
         subject: input.emailSubject,
         text: input.emailBody,
         ...(input.emailCc && { cc: input.emailCc }),
         ...(input.emailBcc && { bcc: input.emailBcc }),
-        ...(input.emailReplyTo && { replyTo: input.emailReplyTo }),
-        ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
-        ...(input.emailTopicId && { topicId: input.emailTopicId }),
-      },
-      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
-    );
+        ...(input.emailReplyTo && { reply_to: input.emailReplyTo }),
+        ...(input.emailScheduledAt && { scheduled_at: input.emailScheduledAt }),
+      }),
+    });
 
-    if (result.error) {
+    if (!response.ok) {
+      const errorData = (await response.json()) as ResendErrorResponse;
       return {
         success: false,
-        error: result.error.message || "Failed to send email",
+        error: errorData.message || \`HTTP \${response.status}: Failed to send email\`,
       };
     }
 
-    return { success: true, id: result.data?.id || "" };
+    const data = (await response.json()) as ResendEmailResponse;
+    return { success: true, id: data.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -822,7 +916,7 @@ const apiKey = credentials.RESEND_API_KEY;
   }
 }`,
 
-  "slack/send-message": `import { WebClient } from "@slack/web-api";
+  "slack/send-message": `
 import { fetchCredentials } from './lib/credential-helper';
 
 function getErrorMessage(error: unknown): string {
@@ -853,12 +947,26 @@ const apiKey = credentials.SLACK_API_KEY;
   }
 
   try {
-    const slack = new WebClient(apiKey);
-
-    const result = await slack.chat.postMessage({
-      channel: input.slackChannel,
-      text: input.slackMessage,
+    const response = await fetch(\`\${SLACK_API_URL}/chat.postMessage\`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: \`Bearer \${apiKey}\`,
+      },
+      body: JSON.stringify({
+        channel: input.slackChannel,
+        text: input.slackMessage,
+      }),
     });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: \`HTTP \${response.status}: Failed to send Slack message\`,
+      };
+    }
+
+    const result = (await response.json()) as SlackPostMessageResponse;
 
     if (!result.ok) {
       return {

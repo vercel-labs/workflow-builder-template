@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { db } from "@/lib/db";
+import { validateWorkflowIntegrations } from "@/lib/db/integrations";
 import { workflowExecutions, workflows } from "@/lib/db/schema";
 import { executeWorkflow } from "@/lib/workflow-executor.workflow";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
@@ -91,6 +92,22 @@ export async function POST(
       return NextResponse.json(
         { error: "This workflow is not configured for webhook triggers" },
         { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Validate that all integrationIds in workflow nodes belong to the workflow owner
+    const validation = await validateWorkflowIntegrations(
+      workflow.nodes as WorkflowNode[],
+      workflow.userId
+    );
+    if (!validation.valid) {
+      console.error(
+        "[Webhook] Invalid integration references:",
+        validation.invalidIds
+      );
+      return NextResponse.json(
+        { error: "Workflow contains invalid integration references" },
+        { status: 403, headers: corsHeaders }
       );
     }
 

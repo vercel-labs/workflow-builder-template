@@ -1,13 +1,20 @@
 import "server-only";
 
-import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { FirecrawlCredentials } from "../credentials";
 
+const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1";
+
+type FirecrawlSearchResponse = {
+  success: boolean;
+  data?: unknown[];
+  error?: string;
+};
+
 type SearchResult = {
-  web?: unknown[];
+  data?: unknown[];
 };
 
 export type FirecrawlSearchCoreInput = {
@@ -37,14 +44,32 @@ async function stepHandler(
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey });
-    const result = await firecrawl.search(input.query, {
-      limit: input.limit ? Number(input.limit) : undefined,
-      scrapeOptions: input.scrapeOptions,
+    const response = await fetch(`${FIRECRAWL_API_URL}/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        query: input.query,
+        limit: input.limit ? Number(input.limit) : undefined,
+        scrapeOptions: input.scrapeOptions,
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const result = (await response.json()) as FirecrawlSearchResponse;
+
+    if (!result.success) {
+      throw new Error(result.error || "Search failed");
+    }
+
     return {
-      web: result.web,
+      data: result.data,
     };
   } catch (error) {
     throw new Error(`Failed to search: ${getErrorMessage(error)}`);

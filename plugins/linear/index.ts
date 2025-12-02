@@ -42,10 +42,6 @@ const linearPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    "@linear/sdk": "^63.2.0",
-  },
-
   actions: [
     {
       slug: "create-ticket",

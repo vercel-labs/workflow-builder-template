@@ -1,10 +1,6 @@
-import { LinearClient } from "@linear/sdk";
-import FirecrawlApp from "@mendable/firecrawl-js";
-import { WebClient } from "@slack/web-api";
 import { createGateway } from "ai";
 import { NextResponse } from "next/server";
 import postgres from "postgres";
-import { Resend } from "resend";
 import { auth } from "@/lib/auth";
 import { getIntegration } from "@/lib/db/integrations";
 
@@ -107,8 +103,35 @@ async function testLinearConnection(
       };
     }
 
-    const client = new LinearClient({ apiKey });
-    await client.viewer;
+    const response = await fetch("https://api.linear.app/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: apiKey,
+      },
+      body: JSON.stringify({
+        query: "query { viewer { id } }",
+      }),
+    });
+
+    if (!response.ok) {
+      return {
+        status: "error",
+        message: "Connection failed",
+      };
+    }
+
+    const result = (await response.json()) as {
+      data?: { viewer?: { id: string } };
+      errors?: Array<{ message: string }>;
+    };
+
+    if (result.errors?.length || !result.data?.viewer) {
+      return {
+        status: "error",
+        message: "Connection failed",
+      };
+    }
 
     return {
       status: "success",
@@ -133,13 +156,26 @@ async function testSlackConnection(
       };
     }
 
-    const client = new WebClient(apiKey);
-    const slackAuth = await client.auth.test();
+    const response = await fetch("https://slack.com/api/auth.test", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
 
-    if (!slackAuth.ok) {
+    if (!response.ok) {
       return {
         status: "error",
-        message: slackAuth.error || "Connection failed",
+        message: "Connection failed",
+      };
+    }
+
+    const result = (await response.json()) as { ok: boolean; error?: string };
+
+    if (!result.ok) {
+      return {
+        status: "error",
+        message: result.error || "Connection failed",
       };
     }
 
@@ -166,10 +202,14 @@ async function testResendConnection(
       };
     }
 
-    const resend = new Resend(apiKey);
-    const domains = await resend.domains.list();
+    const response = await fetch("https://api.resend.com/domains", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
 
-    if (!domains.data) {
+    if (!response.ok) {
       return {
         status: "error",
         message: "Connection failed",
@@ -266,12 +306,19 @@ async function testFirecrawlConnection(
       };
     }
 
-    const app = new FirecrawlApp({ apiKey });
-    const result = await app.scrape("https://firecrawl.dev", {
-      formats: ["markdown"],
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url: "https://example.com",
+        formats: ["markdown"],
+      }),
     });
 
-    if (!result) {
+    if (!response.ok) {
       return {
         status: "error",
         message: "Authentication or scrape failed",

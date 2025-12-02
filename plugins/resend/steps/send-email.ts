@@ -1,9 +1,20 @@
 import "server-only";
 
-import { Resend } from "resend";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import type { ResendCredentials } from "../credentials";
+
+const RESEND_API_URL = "https://api.resend.com";
+
+type ResendEmailResponse = {
+  id: string;
+};
+
+type ResendErrorResponse = {
+  statusCode: number;
+  message: string;
+  name: string;
+};
 
 type SendEmailResult =
   | { success: true; id: string }
@@ -25,7 +36,7 @@ export type SendEmailCoreInput = {
 export type SendEmailInput = StepInput &
   SendEmailCoreInput & {
     integrationId?: string;
-};
+  };
 
 /**
  * Core logic - portable between app and export
@@ -56,31 +67,40 @@ async function stepHandler(
   }
 
   try {
-    const resend = new Resend(apiKey);
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
 
-    const result = await resend.emails.send(
-      {
+    if (input.idempotencyKey) {
+      headers["Idempotency-Key"] = input.idempotencyKey;
+    }
+
+    const response = await fetch(`${RESEND_API_URL}/emails`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
         from: senderEmail,
         to: input.emailTo,
         subject: input.emailSubject,
         text: input.emailBody,
         ...(input.emailCc && { cc: input.emailCc }),
         ...(input.emailBcc && { bcc: input.emailBcc }),
-        ...(input.emailReplyTo && { replyTo: input.emailReplyTo }),
-        ...(input.emailScheduledAt && { scheduledAt: input.emailScheduledAt }),
-        ...(input.emailTopicId && { topicId: input.emailTopicId }),
-      },
-      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
-    );
+        ...(input.emailReplyTo && { reply_to: input.emailReplyTo }),
+        ...(input.emailScheduledAt && { scheduled_at: input.emailScheduledAt }),
+      }),
+    });
 
-    if (result.error) {
+    if (!response.ok) {
+      const errorData = (await response.json()) as ResendErrorResponse;
       return {
         success: false,
-        error: result.error.message || "Failed to send email",
+        error: errorData.message || `HTTP ${response.status}: Failed to send email`,
       };
     }
 
-    return { success: true, id: result.data?.id || "" };
+    const data = (await response.json()) as ResendEmailResponse;
+    return { success: true, id: data.id };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {

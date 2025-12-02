@@ -32,10 +32,6 @@ const firecrawlPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    "@mendable/firecrawl-js": "^4.6.2",
-  },
-
   actions: [
     {
       slug: "scrape",

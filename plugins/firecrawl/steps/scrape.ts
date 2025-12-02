@@ -1,10 +1,20 @@
 import "server-only";
 
-import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { FirecrawlCredentials } from "../credentials";
+
+const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1";
+
+type FirecrawlScrapeResponse = {
+  success: boolean;
+  data?: {
+    markdown?: string;
+    metadata?: Record<string, unknown>;
+  };
+  error?: string;
+};
 
 type ScrapeResult = {
   markdown?: string;
@@ -35,14 +45,32 @@ async function stepHandler(
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey });
-    const result = await firecrawl.scrape(input.url, {
-      formats: input.formats || ["markdown"],
+    const response = await fetch(`${FIRECRAWL_API_URL}/scrape`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url: input.url,
+        formats: input.formats || ["markdown"],
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const result = (await response.json()) as FirecrawlScrapeResponse;
+
+    if (!result.success) {
+      throw new Error(result.error || "Scrape failed");
+    }
+
     return {
-      markdown: result.markdown,
-      metadata: result.metadata,
+      markdown: result.data?.markdown,
+      metadata: result.data?.metadata,
     };
   } catch (error) {
     throw new Error(`Failed to scrape: ${getErrorMessage(error)}`);

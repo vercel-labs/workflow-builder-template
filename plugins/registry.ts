@@ -149,7 +149,8 @@ export type IntegrationPlugin = {
     >;
   };
 
-  // NPM dependencies required by this plugin (package name -> version)
+  // Avoid using this field. Plugins should use fetch instead of SDK dependencies
+  // to reduce supply chain attack surface. Only use for codegen if absolutely necessary.
   dependencies?: Record<string, string>;
 
   // Actions provided by this integration
