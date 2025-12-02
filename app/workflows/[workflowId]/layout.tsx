@@ -39,7 +39,9 @@ export async function generateMetadata({
     // Ignore errors, use defaults
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://workflow-builder.dev";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://workflow-builder.dev";
+  const workflowUrl = `${baseUrl}/workflows/${workflowId}`;
   const ogImageUrl = isPublic
     ? `${baseUrl}/api/og/workflow/${workflowId}`
     : `${baseUrl}/og-default.png`;
@@ -51,6 +53,8 @@ export async function generateMetadata({
       title: `${title} | AI Workflow Builder`,
       description: `View and explore the "${title}" workflow built with AI Workflow Builder.`,
       type: "website",
+      url: workflowUrl,
+      siteName: "AI Workflow Builder",
       images: [
         {
           url: ogImageUrl,
