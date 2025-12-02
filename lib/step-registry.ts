@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 14
+ * Generated entries: 18
  */
 
 import "server-only";
@@ -101,6 +101,22 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/slack/steps/send-slack-message"),
     stepFunction: "sendSlackMessageStep",
   },
+  "stripe/create-customer": {
+    importer: () => import("@/plugins/stripe/steps/create-customer"),
+    stepFunction: "createCustomerStep",
+  },
+  "stripe/get-customer": {
+    importer: () => import("@/plugins/stripe/steps/get-customer"),
+    stepFunction: "getCustomerStep",
+  },
+  "stripe/create-checkout-session": {
+    importer: () => import("@/plugins/stripe/steps/create-checkout-session"),
+    stepFunction: "createCheckoutSessionStep",
+  },
+  "stripe/create-invoice": {
+    importer: () => import("@/plugins/stripe/steps/create-invoice"),
+    stepFunction: "createInvoiceStep",
+  },
   "superagent/guard": {
     importer: () => import("@/plugins/superagent/steps/guard"),
     stepFunction: "superagentGuardStep",
@@ -142,6 +158,10 @@ export const ACTION_LABELS: Record<string, string> = {
   "linear/find-issues": "Find Issues",
   "resend/send-email": "Send Email",
   "slack/send-message": "Send Slack Message",
+  "stripe/create-customer": "Create Customer",
+  "stripe/get-customer": "Get Customer",
+  "stripe/create-checkout-session": "Create Checkout Session",
+  "stripe/create-invoice": "Create Invoice",
   "superagent/guard": "Guard",
   "superagent/redact": "Redact",
   "v0/create-chat": "Create Chat",

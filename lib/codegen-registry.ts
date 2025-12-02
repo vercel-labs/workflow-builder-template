@@ -7,7 +7,7 @@
  * Contains auto-generated codegen templates for steps with stepHandler.
  * These templates are used when exporting workflows to standalone projects.
  *
- * Generated templates: 14
+ * Generated templates: 18
  */
 
 /**
@@ -861,6 +861,522 @@ export async function sendSlackMessageStep(
     return {
       success: false,
       error: \`Failed to send Slack message: \${getErrorMessage(error)}\`,
+    };
+  }
+}
+`,
+
+  "stripe/create-customer": `import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+type CreateCustomerResult =
+  | { success: true; id: string; email: string }
+  | { success: false; error: string };
+
+export type CreateCustomerCoreInput = {
+  email: string;
+  name?: string;
+  phone?: string;
+  description?: string;
+  metadata?: string;
+};
+
+export async function createCustomerStep(
+  input: CreateCustomerCoreInput,
+): Promise<CreateCustomerResult> {
+  "use step";
+  const credentials = await fetchCredentials("stripe");
+  const apiKey = credentials.STRIPE_SECRET_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "STRIPE_SECRET_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.append("email", input.email);
+
+    if (input.name) {
+      params.append("name", input.name);
+    }
+    if (input.phone) {
+      params.append("phone", input.phone);
+    }
+    if (input.description) {
+      params.append("description", input.description);
+    }
+    if (input.metadata) {
+      try {
+        const metadataObj = JSON.parse(input.metadata) as Record<
+          string,
+          string
+        >;
+        for (const [key, value] of Object.entries(metadataObj)) {
+          params.append(\`metadata[\${key}]\`, String(value));
+        }
+      } catch {
+        return {
+          success: false,
+          error: "Invalid metadata JSON format",
+        };
+      }
+    }
+
+    const response = await fetch(\`\${STRIPE_API_URL}/customers\`, {
+      method: "POST",
+      headers: {
+        Authorization: \`Bearer \${apiKey}\`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = (await response.json()) as StripeErrorResponse;
+      return {
+        success: false,
+        error:
+          errorData.error?.message ||
+          \`HTTP \${response.status}: Failed to create customer\`,
+      };
+    }
+
+    const data = (await response.json()) as StripeCustomerResponse;
+    return { success: true, id: data.id, email: data.email };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: \`Failed to create customer: \${message}\`,
+    };
+  }
+}
+`,
+
+  "stripe/get-customer": `import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+type GetCustomerResult =
+  | {
+      success: true;
+      id: string;
+      email: string;
+      name: string | null;
+      created: number;
+    }
+  | { success: false; error: string };
+
+export type GetCustomerCoreInput = {
+  customerId?: string;
+  email?: string;
+};
+
+export async function getCustomerStep(
+  input: GetCustomerCoreInput,
+): Promise<GetCustomerResult> {
+  "use step";
+  const credentials = await fetchCredentials("stripe");
+  const apiKey = credentials.STRIPE_SECRET_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "STRIPE_SECRET_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  if (!input.customerId && !input.email) {
+    return {
+      success: false,
+      error: "Either Customer ID or Email is required",
+    };
+  }
+
+  try {
+    let customer: StripeCustomerResponse | null = null;
+
+    if (input.customerId) {
+      // Direct lookup by ID
+      const response = await fetch(
+        \`\${STRIPE_API_URL}/customers/\${input.customerId}\`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: \`Bearer \${apiKey}\`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = (await response.json()) as StripeErrorResponse;
+        return {
+          success: false,
+          error:
+            errorData.error?.message ||
+            \`HTTP \${response.status}: Failed to get customer\`,
+        };
+      }
+
+      customer = (await response.json()) as StripeCustomerResponse;
+    } else if (input.email) {
+      // Search by email
+      const params = new URLSearchParams();
+      params.append("email", input.email);
+      params.append("limit", "1");
+
+      const response = await fetch(
+        \`\${STRIPE_API_URL}/customers?\${params.toString()}\`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: \`Bearer \${apiKey}\`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = (await response.json()) as StripeErrorResponse;
+        return {
+          success: false,
+          error:
+            errorData.error?.message ||
+            \`HTTP \${response.status}: Failed to search customers\`,
+        };
+      }
+
+      const data = (await response.json()) as StripeCustomerListResponse;
+      if (data.data.length === 0) {
+        return {
+          success: false,
+          error: \`No customer found with email: \${input.email}\`,
+        };
+      }
+      customer = data.data[0];
+    }
+
+    if (!customer) {
+      return {
+        success: false,
+        error: "Customer not found",
+      };
+    }
+
+    return {
+      success: true,
+      id: customer.id,
+      email: customer.email,
+      name: customer.name,
+      created: customer.created,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: \`Failed to get customer: \${message}\`,
+    };
+  }
+}
+`,
+
+  "stripe/create-checkout-session": `import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+type CreateCheckoutSessionResult =
+  | { success: true; id: string; url: string }
+  | { success: false; error: string };
+
+export type CreateCheckoutSessionCoreInput = {
+  mode: "payment" | "subscription";
+  priceId: string;
+  quantity?: number;
+  successUrl: string;
+  cancelUrl: string;
+  customerId?: string;
+  customerEmail?: string;
+  allowPromotionCodes?: string;
+  metadata?: string;
+};
+
+export async function createCheckoutSessionStep(
+  input: CreateCheckoutSessionCoreInput,
+): Promise<CreateCheckoutSessionResult> {
+  "use step";
+  const credentials = await fetchCredentials("stripe");
+  const apiKey = credentials.STRIPE_SECRET_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "STRIPE_SECRET_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.append("mode", input.mode);
+    params.append("line_items[0][price]", input.priceId);
+    params.append("line_items[0][quantity]", String(input.quantity || 1));
+    params.append("success_url", input.successUrl);
+    params.append("cancel_url", input.cancelUrl);
+
+    if (input.customerId) {
+      params.append("customer", input.customerId);
+    }
+    if (input.customerEmail && !input.customerId) {
+      params.append("customer_email", input.customerEmail);
+    }
+    if (input.allowPromotionCodes === "true") {
+      params.append("allow_promotion_codes", "true");
+    }
+    if (input.metadata) {
+      try {
+        const metadataObj = JSON.parse(input.metadata) as Record<
+          string,
+          string
+        >;
+        for (const [key, value] of Object.entries(metadataObj)) {
+          params.append(\`metadata[\${key}]\`, String(value));
+        }
+      } catch {
+        return {
+          success: false,
+          error: "Invalid metadata JSON format",
+        };
+      }
+    }
+
+    const response = await fetch(\`\${STRIPE_API_URL}/checkout/sessions\`, {
+      method: "POST",
+      headers: {
+        Authorization: \`Bearer \${apiKey}\`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = (await response.json()) as StripeErrorResponse;
+      return {
+        success: false,
+        error:
+          errorData.error?.message ||
+          \`HTTP \${response.status}: Failed to create checkout session\`,
+      };
+    }
+
+    const data = (await response.json()) as StripeCheckoutSessionResponse;
+    return { success: true, id: data.id, url: data.url };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: \`Failed to create checkout session: \${message}\`,
+    };
+  }
+}
+`,
+
+  "stripe/create-invoice": `import { fetchCredentials } from "./lib/credential-helper";
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+type CreateInvoiceResult =
+  | {
+      success: true;
+      id: string;
+      number: string | null;
+      hostedInvoiceUrl: string | null;
+      status: string;
+    }
+  | { success: false; error: string };
+
+export type CreateInvoiceCoreInput = {
+  customerId: string;
+  description?: string;
+  lineItems: string;
+  daysUntilDue?: number;
+  autoAdvance?: string;
+  collectionMethod?: "send_invoice" | "charge_automatically";
+  metadata?: string;
+};
+
+export async function createInvoiceStep(
+  input: CreateInvoiceCoreInput,
+): Promise<CreateInvoiceResult> {
+  "use step";
+  const credentials = await fetchCredentials("stripe");
+  const apiKey = credentials.STRIPE_SECRET_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error:
+        "STRIPE_SECRET_KEY is not configured. Please add it in Project Integrations.",
+    };
+  }
+
+  let lineItems: LineItem[];
+  try {
+    lineItems = JSON.parse(input.lineItems) as LineItem[];
+    if (!Array.isArray(lineItems) || lineItems.length === 0) {
+      return {
+        success: false,
+        error: "Line items must be a non-empty JSON array",
+      };
+    }
+  } catch {
+    return {
+      success: false,
+      error:
+        'Invalid line items JSON format. Expected: [{"description": "Item", "amount": 1000, "quantity": 1}]',
+    };
+  }
+
+  try {
+    // Step 1: Create the invoice
+    const invoiceParams = new URLSearchParams();
+    invoiceParams.append("customer", input.customerId);
+    invoiceParams.append(
+      "collection_method",
+      input.collectionMethod || "send_invoice",
+    );
+    invoiceParams.append("days_until_due", String(input.daysUntilDue || 30));
+    invoiceParams.append(
+      "auto_advance",
+      input.autoAdvance === "false" ? "false" : "true",
+    );
+
+    if (input.description) {
+      invoiceParams.append("description", input.description);
+    }
+    if (input.metadata) {
+      try {
+        const metadataObj = JSON.parse(input.metadata) as Record<
+          string,
+          string
+        >;
+        for (const [key, value] of Object.entries(metadataObj)) {
+          invoiceParams.append(\`metadata[\${key}]\`, String(value));
+        }
+      } catch {
+        return {
+          success: false,
+          error: "Invalid metadata JSON format",
+        };
+      }
+    }
+
+    const invoiceResponse = await fetch(\`\${STRIPE_API_URL}/invoices\`, {
+      method: "POST",
+      headers: {
+        Authorization: \`Bearer \${apiKey}\`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: invoiceParams.toString(),
+    });
+
+    if (!invoiceResponse.ok) {
+      const errorData = (await invoiceResponse.json()) as StripeErrorResponse;
+      return {
+        success: false,
+        error:
+          errorData.error?.message ||
+          \`HTTP \${invoiceResponse.status}: Failed to create invoice\`,
+      };
+    }
+
+    const invoice = (await invoiceResponse.json()) as StripeInvoiceResponse;
+
+    // Step 2: Add line items
+    for (const item of lineItems) {
+      const itemParams = new URLSearchParams();
+      itemParams.append("invoice", invoice.id);
+      itemParams.append("description", item.description);
+      itemParams.append("quantity", String(item.quantity || 1));
+      itemParams.append("unit_amount", String(item.amount));
+      itemParams.append("currency", "usd");
+
+      const itemResponse = await fetch(\`\${STRIPE_API_URL}/invoiceitems\`, {
+        method: "POST",
+        headers: {
+          Authorization: \`Bearer \${apiKey}\`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: itemParams.toString(),
+      });
+
+      if (!itemResponse.ok) {
+        const errorData = (await itemResponse.json()) as StripeErrorResponse;
+        return {
+          success: false,
+          error:
+            errorData.error?.message ||
+            \`HTTP \${itemResponse.status}: Failed to add line item\`,
+        };
+      }
+    }
+
+    // Step 3: Finalize invoice if auto_advance is true
+    let finalInvoice = invoice;
+    if (input.autoAdvance !== "false") {
+      const finalizeResponse = await fetch(
+        \`\${STRIPE_API_URL}/invoices/\${invoice.id}/finalize\`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: \`Bearer \${apiKey}\`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        },
+      );
+
+      if (!finalizeResponse.ok) {
+        const errorData =
+          (await finalizeResponse.json()) as StripeErrorResponse;
+        return {
+          success: false,
+          error:
+            errorData.error?.message ||
+            \`HTTP \${finalizeResponse.status}: Failed to finalize invoice\`,
+        };
+      }
+
+      finalInvoice = (await finalizeResponse.json()) as StripeInvoiceResponse;
+    }
+
+    return {
+      success: true,
+      id: finalInvoice.id,
+      number: finalInvoice.number,
+      hostedInvoiceUrl: finalInvoice.hosted_invoice_url,
+      status: finalInvoice.status,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: \`Failed to create invoice: \${message}\`,
     };
   }
 }
