@@ -13,7 +13,7 @@
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
  *
- * Discovered plugins: ai-gateway, blob, firecrawl, github, linear, resend, slack, superagent, v0
+ * Discovered plugins: ai-gateway, blob, firecrawl, github, linear, perplexity, resend, slack, superagent, v0
  */
 
 import "./ai-gateway";
@@ -21,6 +21,7 @@ import "./blob";
 import "./firecrawl";
 import "./github";
 import "./linear";
+import "./perplexity";
 import "./resend";
 import "./slack";
 import "./superagent";
