@@ -88,5 +88,6 @@ export async function clerkDeleteUserStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+clerkDeleteUserStep.maxRetries = 0;
 
 export const _integrationType = "clerk";

@@ -1,9 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { createUserCodegenTemplate } from "./codegen/create-user";
-import { deleteUserCodegenTemplate } from "./codegen/delete-user";
-import { getUserCodegenTemplate } from "./codegen/get-user";
-import { updateUserCodegenTemplate } from "./codegen/update-user";
 import { ClerkIcon } from "./icon";
 
 const clerkPlugin: IntegrationPlugin = {
@@ -44,7 +40,11 @@ const clerkPlugin: IntegrationPlugin = {
       category: "Clerk",
       stepFunction: "clerkGetUserStep",
       stepImportPath: "get-user",
-      codegenTemplate: getUserCodegenTemplate,
+      outputFields: [
+        { field: "user.id", description: "User ID" },
+        { field: "user.first_name", description: "First name" },
+        { field: "user.last_name", description: "Last name" },
+      ],
       configFields: [
         {
           key: "userId",
@@ -63,7 +63,11 @@ const clerkPlugin: IntegrationPlugin = {
       category: "Clerk",
       stepFunction: "clerkCreateUserStep",
       stepImportPath: "create-user",
-      codegenTemplate: createUserCodegenTemplate,
+      outputFields: [
+        { field: "user.id", description: "User ID" },
+        { field: "user.first_name", description: "First name" },
+        { field: "user.last_name", description: "Last name" },
+      ],
       configFields: [
         {
           key: "emailAddress",
@@ -124,7 +128,11 @@ const clerkPlugin: IntegrationPlugin = {
       category: "Clerk",
       stepFunction: "clerkUpdateUserStep",
       stepImportPath: "update-user",
-      codegenTemplate: updateUserCodegenTemplate,
+      outputFields: [
+        { field: "user.id", description: "User ID" },
+        { field: "user.first_name", description: "First name" },
+        { field: "user.last_name", description: "Last name" },
+      ],
       configFields: [
         {
           key: "userId",
@@ -176,7 +184,7 @@ const clerkPlugin: IntegrationPlugin = {
       category: "Clerk",
       stepFunction: "clerkDeleteUserStep",
       stepImportPath: "delete-user",
-      codegenTemplate: deleteUserCodegenTemplate,
+      outputFields: [{ field: "deleted", description: "Deletion success" }],
       configFields: [
         {
           key: "userId",
