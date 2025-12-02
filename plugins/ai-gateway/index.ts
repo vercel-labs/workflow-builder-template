@@ -112,6 +112,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
       category: "AI Gateway",
       stepFunction: "generateImageStep",
       stepImportPath: "generate-image",
+      outputFields: [{ field: "base64", description: "Base64-encoded image data" }],
       configFields: [
         {
           key: "imageModel",

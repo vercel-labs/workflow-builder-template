@@ -43,3 +43,8 @@ next-env.d.ts
 .env*.local
 
 tmp/
+
+# generated files
+lib/types/integration.ts
+lib/codegen-registry.ts
+lib/step-registry.ts

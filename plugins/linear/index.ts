@@ -58,6 +58,11 @@ const linearPlugin: IntegrationPlugin = {
       category: "Linear",
       stepFunction: "createTicketStep",
       stepImportPath: "create-ticket",
+      outputFields: [
+        { field: "id", description: "Ticket ID" },
+        { field: "url", description: "Ticket URL" },
+        { field: "title", description: "Ticket title" },
+      ],
       configFields: [
         {
           key: "ticketTitle",
@@ -98,6 +103,10 @@ const linearPlugin: IntegrationPlugin = {
       category: "Linear",
       stepFunction: "findIssuesStep",
       stepImportPath: "find-issues",
+      outputFields: [
+        { field: "issues", description: "Array of issues found" },
+        { field: "count", description: "Number of issues" },
+      ],
       configFields: [
         {
           key: "linearAssigneeId",

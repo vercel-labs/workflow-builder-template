@@ -41,6 +41,12 @@ const superagentPlugin: IntegrationPlugin = {
       category: "Superagent",
       stepFunction: "superagentGuardStep",
       stepImportPath: "guard",
+      outputFields: [
+        { field: "classification", description: "Threat classification" },
+        { field: "violationTypes", description: "Array of violation types" },
+        { field: "cweCodes", description: "Array of CWE codes" },
+        { field: "reasoning", description: "Analysis reasoning" },
+      ],
       configFields: [
         {
           key: "text",
@@ -61,6 +67,10 @@ const superagentPlugin: IntegrationPlugin = {
       category: "Superagent",
       stepFunction: "superagentRedactStep",
       stepImportPath: "redact",
+      outputFields: [
+        { field: "redactedText", description: "Text with PII redacted" },
+        { field: "reasoning", description: "Redaction reasoning" },
+      ],
       configFields: [
         {
           key: "text",
