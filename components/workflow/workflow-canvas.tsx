@@ -415,10 +415,12 @@ export function WorkflowCanvas() {
       }, 50);
 
       // Create connection from the source node to the new node
+      const fromSource = connectingHandleType.current === "source";
+
       const newEdge = {
         id: nanoid(),
-        source: sourceNodeId,
-        target: newNode.id,
+        source: fromSource ? sourceNodeId : newNode.id,
+        target: fromSource ? newNode.id : sourceNodeId,
         type: "animated",
       };
       setEdges([...edges, newEdge]);
