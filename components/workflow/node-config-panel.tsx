@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -180,6 +180,23 @@ export const PanelInner = () => {
   const selectedNodes = nodes.filter((node) => node.selected);
   const selectedEdges = edges.filter((edge) => edge.selected);
   const hasMultipleSelections = selectedNodes.length + selectedEdges.length > 1;
+
+  // Switch to Properties tab if Code tab is hidden for the selected node
+  useEffect(() => {
+    if (!selectedNode || activeTab !== "code") {
+      return;
+    }
+
+    const isConditionAction =
+      selectedNode.data.config?.actionType === "Condition";
+    const isManualTrigger =
+      selectedNode.data.type === "trigger" &&
+      selectedNode.data.config?.triggerType === "Manual";
+
+    if (isConditionAction || isManualTrigger) {
+      setActiveTab("properties");
+    }
+  }, [selectedNode, activeTab, setActiveTab]);
 
   // Generate workflow code
   const workflowCode = useMemo(() => {
@@ -668,8 +685,9 @@ export const PanelInner = () => {
           >
             Properties
           </TabsTrigger>
-          {selectedNode.data.type !== "trigger" ||
-          (selectedNode.data.config?.triggerType as string) !== "Manual" ? (
+          {(selectedNode.data.type !== "trigger" ||
+            (selectedNode.data.config?.triggerType as string) !== "Manual") &&
+          selectedNode.data.config?.actionType !== "Condition" ? (
             <TabsTrigger
               className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
               value="code"
