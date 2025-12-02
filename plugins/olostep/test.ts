@@ -1,10 +1,19 @@
 export async function testOlostep(credentials: Record<string, string>) {
   try {
+    const apiKey = credentials.OLOSTEP_API_KEY;
+
+    if (!apiKey) {
+      return {
+        success: false,
+        error: "OLOSTEP_API_KEY is required",
+      };
+    }
+
     const response = await fetch("https://api.olostep.com/v1/scrapes", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${credentials.OLOSTEP_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         url_to_scrape: "https://example.com",
