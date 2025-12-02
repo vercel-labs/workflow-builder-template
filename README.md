@@ -82,6 +82,7 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **AI Gateway**: Generate Text, Generate Image
 - **Firecrawl**: Scrape URL, Search Web
 - **Linear**: Create Ticket, Find Issues
+- **Olostep**: Scrape URL, Search Web, Map Website, AI Answer
 - **Resend**: Send Email
 - **Slack**: Send Slack Message
 - **v0**: Create Chat, Send Message

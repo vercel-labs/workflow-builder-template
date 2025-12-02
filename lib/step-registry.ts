@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 10
+ * Generated entries: 14
  */
 
 import "server-only";
@@ -45,7 +45,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
-  Scrape: {
+  "Scrape": {
     importer: () => import("@/plugins/firecrawl/steps/scrape"),
     stepFunction: "firecrawlScrapeStep",
   },
@@ -53,7 +53,7 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
-  Search: {
+  "Search": {
     importer: () => import("@/plugins/firecrawl/steps/search"),
     stepFunction: "firecrawlSearchStep",
   },
@@ -72,6 +72,22 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
   "Find Issues": {
     importer: () => import("@/plugins/linear/steps/find-issues"),
     stepFunction: "findIssuesStep",
+  },
+  "olostep/scrape": {
+    importer: () => import("@/plugins/olostep/steps/scrape"),
+    stepFunction: "olostepScrapeStep",
+  },
+  "olostep/search": {
+    importer: () => import("@/plugins/olostep/steps/search"),
+    stepFunction: "olostepSearchStep",
+  },
+  "olostep/map": {
+    importer: () => import("@/plugins/olostep/steps/map"),
+    stepFunction: "olostepMapStep",
+  },
+  "olostep/answer": {
+    importer: () => import("@/plugins/olostep/steps/answer"),
+    stepFunction: "olostepAnswerStep",
   },
   "resend/send-email": {
     importer: () => import("@/plugins/resend/steps/send-email"),
@@ -118,12 +134,16 @@ export const ACTION_LABELS: Record<string, string> = {
   "firecrawl/search": "Search Web",
   "linear/create-ticket": "Create Ticket",
   "linear/find-issues": "Find Issues",
+  "olostep/scrape": "Scrape URL",
+  "olostep/search": "Search Web",
+  "olostep/map": "Map Website",
+  "olostep/answer": "AI Answer",
   "resend/send-email": "Send Email",
   "slack/send-message": "Send Slack Message",
   "v0/create-chat": "Create Chat",
   "v0/send-message": "Send Message",
-  Scrape: "Scrape URL",
-  Search: "Search Web",
+  "Scrape": "Scrape URL",
+  "Search": "Search Web",
   "Generate Text": "Generate Text",
   "Generate Image": "Generate Image",
   "Send Email": "Send Email",

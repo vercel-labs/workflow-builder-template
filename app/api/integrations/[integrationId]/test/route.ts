@@ -68,6 +68,9 @@ export async function POST(
           integration.config.firecrawlApiKey
         );
         break;
+      case "olostep":
+        result = await testOlostepConnection(integration.config.olostepApiKey);
+        break;
       default:
         return NextResponse.json(
           { error: "Invalid integration type" },
@@ -267,6 +270,49 @@ async function testFirecrawlConnection(
       return {
         status: "error",
         message: "Authentication or scrape failed",
+      };
+    }
+
+    return {
+      status: "success",
+      message: "Connected successfully",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Connection failed",
+    };
+  }
+}
+
+async function testOlostepConnection(
+  apiKey?: string
+): Promise<TestConnectionResult> {
+  try {
+    if (!apiKey) {
+      return {
+        status: "error",
+        message: "Olostep API Key is not configured",
+      };
+    }
+
+    const response = await fetch("https://api.olostep.com/v1/scrapes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url_to_scrape: "https://example.com",
+        formats: ["markdown"],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        status: "error",
+        message: `Connection failed: ${errorText}`,
       };
     }
 
