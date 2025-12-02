@@ -18,6 +18,9 @@ export type WorkflowNodeData = {
 export type WorkflowNode = Node<WorkflowNodeData>;
 export type WorkflowEdge = Edge;
 
+// Workflow visibility type
+export type WorkflowVisibility = "private" | "public";
+
 // Atoms for workflow state (now backed by database)
 export const nodesAtom = atom<WorkflowNode[]>([]);
 export const edgesAtom = atom<WorkflowEdge[]>([]);
@@ -28,6 +31,9 @@ export const isLoadingAtom = atom(false);
 export const isGeneratingAtom = atom(false);
 export const currentWorkflowIdAtom = atom<string | null>(null);
 export const currentWorkflowNameAtom = atom<string>("");
+export const currentWorkflowVisibilityAtom =
+  atom<WorkflowVisibility>("private");
+export const isWorkflowOwnerAtom = atom<boolean>(true); // Whether current user owns this workflow
 
 // UI state atoms
 export const propertiesPanelActiveTabAtom = atom<string>("properties");

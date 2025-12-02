@@ -103,10 +103,7 @@ export async function POST(
         validation.invalidIds
       );
       return NextResponse.json(
-        {
-          error: "Workflow contains invalid integration references",
-          invalidIds: validation.invalidIds,
-        },
+        { error: "Workflow contains invalid integration references" },
         { status: 403 }
       );
     }

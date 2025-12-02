@@ -37,6 +37,7 @@ import {
   deleteSelectedItemsAtom,
   edgesAtom,
   isGeneratingAtom,
+  isWorkflowOwnerAtom,
   nodesAtom,
   pendingIntegrationNodesAtom,
   propertiesPanelActiveTabAtom,
@@ -153,6 +154,7 @@ export const PanelInner = () => {
   const [currentWorkflowName, setCurrentWorkflowName] = useAtom(
     currentWorkflowNameAtom
   );
+  const isOwner = useAtomValue(isWorkflowOwnerAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
   const deleteEdge = useSetAtom(deleteEdgeAtom);
@@ -487,12 +489,14 @@ export const PanelInner = () => {
             >
               Code
             </TabsTrigger>
-            <TabsTrigger
-              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-              value="runs"
-            >
-              Runs
-            </TabsTrigger>
+            {isOwner && (
+              <TabsTrigger
+                className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                value="runs"
+              >
+                Runs
+              </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent
             className="flex flex-col overflow-hidden"
@@ -504,6 +508,7 @@ export const PanelInner = () => {
                   Workflow Name
                 </Label>
                 <Input
+                  disabled={!isOwner}
                   id="workflow-name"
                   onChange={(e) => handleUpdateWorkspaceName(e.target.value)}
                   value={currentWorkflowName}
@@ -519,45 +524,63 @@ export const PanelInner = () => {
                   value={currentWorkflowId || "Not saved"}
                 />
               </div>
+              {!isOwner && (
+                <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                  <p className="text-muted-foreground text-sm">
+                    You are viewing a public workflow. Duplicate it to make
+                    changes.
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex shrink-0 items-center gap-2 border-t p-4">
-              <Button onClick={() => setShowClearDialog(true)} variant="ghost">
-                <Eraser className="size-4" />
-                Clear
-              </Button>
-              <Button onClick={() => setShowDeleteDialog(true)} variant="ghost">
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-            </div>
+            {isOwner && (
+              <div className="flex shrink-0 items-center gap-2 border-t p-4">
+                <Button
+                  onClick={() => setShowClearDialog(true)}
+                  variant="ghost"
+                >
+                  <Eraser className="size-4" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </Button>
+              </div>
+            )}
           </TabsContent>
-          <TabsContent className="flex flex-col overflow-hidden" value="runs">
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              <WorkflowRuns
-                isActive={activeTab === "runs"}
-                onRefreshRef={refreshRunsRef}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-2 border-t p-4">
-              <Button
-                disabled={isRefreshing}
-                onClick={handleRefreshRuns}
-                size="icon"
-                variant="ghost"
-              >
-                <RefreshCw
-                  className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+          {isOwner && (
+            <TabsContent className="flex flex-col overflow-hidden" value="runs">
+              <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                <WorkflowRuns
+                  isActive={activeTab === "runs"}
+                  onRefreshRef={refreshRunsRef}
                 />
-              </Button>
-              <Button
-                onClick={() => setShowDeleteRunsAlert(true)}
-                size="icon"
-                variant="ghost"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </TabsContent>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 border-t p-4">
+                <Button
+                  disabled={isRefreshing}
+                  onClick={handleRefreshRuns}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <RefreshCw
+                    className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteRunsAlert(true)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </TabsContent>
+          )}
           <TabsContent className="flex flex-col overflow-hidden" value="code">
             <div className="shrink-0 border-b bg-muted/30 px-3 pb-2">
               <div className="flex items-center gap-2">
@@ -654,12 +677,14 @@ export const PanelInner = () => {
               Code
             </TabsTrigger>
           ) : null}
-          <TabsTrigger
-            className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-            value="runs"
-          >
-            Runs
-          </TabsTrigger>
+          {isOwner && (
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="runs"
+            >
+              Runs
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent
           className="flex flex-col overflow-hidden"
@@ -669,27 +694,38 @@ export const PanelInner = () => {
             {selectedNode.data.type === "trigger" && (
               <TriggerConfig
                 config={selectedNode.data.config || {}}
-                disabled={isGenerating}
+                disabled={isGenerating || !isOwner}
                 onUpdateConfig={handleUpdateConfig}
                 workflowId={currentWorkflowId ?? undefined}
               />
             )}
 
             {selectedNode.data.type === "action" &&
-            !selectedNode.data.config?.actionType ? (
-              <ActionGrid
-                disabled={isGenerating}
-                onSelectAction={(actionType) =>
-                  handleUpdateConfig("actionType", actionType)
-                }
-              />
-            ) : null}
+              !selectedNode.data.config?.actionType &&
+              isOwner && (
+                <ActionGrid
+                  disabled={isGenerating}
+                  onSelectAction={(actionType) =>
+                    handleUpdateConfig("actionType", actionType)
+                  }
+                />
+              )}
+
+            {selectedNode.data.type === "action" &&
+              !selectedNode.data.config?.actionType &&
+              !isOwner && (
+                <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                  <p className="text-muted-foreground text-sm">
+                    No action configured for this step.
+                  </p>
+                </div>
+              )}
 
             {selectedNode.data.type === "action" &&
             selectedNode.data.config?.actionType ? (
               <ActionConfig
                 config={selectedNode.data.config || {}}
-                disabled={isGenerating}
+                disabled={isGenerating || !isOwner}
                 onUpdateConfig={handleUpdateConfig}
               />
             ) : null}
@@ -702,7 +738,7 @@ export const PanelInner = () => {
                     Label
                   </Label>
                   <Input
-                    disabled={isGenerating}
+                    disabled={isGenerating || !isOwner}
                     id="label"
                     onChange={(e) => handleUpdateLabel(e.target.value)}
                     value={selectedNode.data.label}
@@ -714,7 +750,7 @@ export const PanelInner = () => {
                     Description
                   </Label>
                   <Input
-                    disabled={isGenerating}
+                    disabled={isGenerating || !isOwner}
                     id="description"
                     onChange={(e) => handleUpdateDescription(e.target.value)}
                     placeholder="Optional description"
@@ -723,8 +759,17 @@ export const PanelInner = () => {
                 </div>
               </>
             ) : null}
+
+            {!isOwner && (
+              <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                <p className="text-muted-foreground text-sm">
+                  You are viewing a public workflow. Duplicate it to make
+                  changes.
+                </p>
+              </div>
+            )}
           </div>
-          {selectedNode.data.type === "action" && (
+          {selectedNode.data.type === "action" && isOwner && (
             <div className="flex shrink-0 items-center justify-between border-t p-4">
               <div className="flex items-center gap-2">
                 <Button
@@ -787,7 +832,7 @@ export const PanelInner = () => {
               })()}
             </div>
           )}
-          {selectedNode.data.type === "trigger" && (
+          {selectedNode.data.type === "trigger" && isOwner && (
             <div className="shrink-0 border-t p-4">
               <Button
                 onClick={() => setShowDeleteNodeAlert(true)}
@@ -864,35 +909,37 @@ export const PanelInner = () => {
             );
           })()}
         </TabsContent>
-        <TabsContent className="flex flex-col overflow-hidden" value="runs">
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            <WorkflowRuns
-              isActive={activeTab === "runs"}
-              onRefreshRef={refreshRunsRef}
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2 border-t p-4">
-            <Button
-              disabled={isRefreshing}
-              onClick={handleRefreshRuns}
-              size="sm"
-              variant="ghost"
-            >
-              <RefreshCw
-                className={`mr-2 size-4 ${isRefreshing ? "animate-spin" : ""}`}
+        {isOwner && (
+          <TabsContent className="flex flex-col overflow-hidden" value="runs">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <WorkflowRuns
+                isActive={activeTab === "runs"}
+                onRefreshRef={refreshRunsRef}
               />
-              Refresh Runs
-            </Button>
-            <Button
-              onClick={() => setShowDeleteRunsAlert(true)}
-              size="sm"
-              variant="ghost"
-            >
-              <Eraser className="mr-2 size-4" />
-              Clear All Runs
-            </Button>
-          </div>
-        </TabsContent>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border-t p-4">
+              <Button
+                disabled={isRefreshing}
+                onClick={handleRefreshRuns}
+                size="sm"
+                variant="ghost"
+              >
+                <RefreshCw
+                  className={`mr-2 size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                Refresh Runs
+              </Button>
+              <Button
+                onClick={() => setShowDeleteRunsAlert(true)}
+                size="sm"
+                variant="ghost"
+              >
+                <Eraser className="mr-2 size-4" />
+                Clear All Runs
+              </Button>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       <AlertDialog

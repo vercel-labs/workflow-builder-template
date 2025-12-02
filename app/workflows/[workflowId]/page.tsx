@@ -13,6 +13,7 @@ import { api } from "@/lib/api-client";
 import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
+  currentWorkflowVisibilityAtom,
   edgesAtom,
   hasSidebarBeenShownAtom,
   hasUnsavedChangesAtom,
@@ -20,6 +21,7 @@ import {
   isPanelAnimatingAtom,
   isSavingAtom,
   isSidebarCollapsedAtom,
+  isWorkflowOwnerAtom,
   nodesAtom,
   rightPanelWidthAtom,
   selectedExecutionIdAtom,
@@ -27,6 +29,7 @@ import {
   triggerExecuteAtom,
   updateNodeDataAtom,
   type WorkflowNode,
+  type WorkflowVisibility,
   workflowNotFoundAtom,
 } from "@/lib/workflow-store";
 
@@ -59,6 +62,10 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     hasSidebarBeenShownAtom
   );
   const [panelCollapsed, setPanelCollapsed] = useAtom(isSidebarCollapsedAtom);
+  const setCurrentWorkflowVisibility = useSetAtom(
+    currentWorkflowVisibilityAtom
+  );
+  const setIsWorkflowOwner = useSetAtom(isWorkflowOwnerAtom);
 
   // Panel width state for resizing
   const [panelWidth, setPanelWidth] = useState(30); // default percentage
@@ -287,6 +294,10 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       setEdges(workflow.edges);
       setCurrentWorkflowId(workflow.id);
       setCurrentWorkflowName(workflow.name);
+      setCurrentWorkflowVisibility(
+        (workflow.visibility as WorkflowVisibility) ?? "private"
+      );
+      setIsWorkflowOwner(workflow.isOwner !== false); // Default to true if not set
       setHasUnsavedChanges(false);
       setWorkflowNotFound(false);
 
@@ -304,6 +315,8 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setEdges,
     setCurrentWorkflowId,
     setCurrentWorkflowName,
+    setCurrentWorkflowVisibility,
+    setIsWorkflowOwner,
     setHasUnsavedChanges,
     setWorkflowNotFound,
     setSelectedNodeId,

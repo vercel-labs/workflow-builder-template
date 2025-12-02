@@ -1,0 +1,1 @@
+ALTER TABLE "workflows" ADD COLUMN "visibility" text DEFAULT 'private' NOT NULL;
