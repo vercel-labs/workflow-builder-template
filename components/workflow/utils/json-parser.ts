@@ -42,6 +42,11 @@ const processArray = (arr: unknown[]): ArrayStructure => {
   }
 
   const firstElement = arr[0];
+
+  if (Array.isArray(firstElement)) {
+    return { type: "array", itemType: "object" };
+  }
+
   if (
     typeof firstElement === "object" &&
     firstElement !== null &&
@@ -50,8 +55,11 @@ const processArray = (arr: unknown[]): ArrayStructure => {
     return { type: "array", itemType: extractFields(firstElement) };
   }
 
-  // For primitive arrays, detect the type of the first element
-  return { type: "array", itemType: detectType(firstElement) };
+  const detectedType = detectType(firstElement);
+  if (detectedType === "array") {
+    return { type: "array", itemType: "object" };
+  }
+  return { type: "array", itemType: detectedType };
 };
 
 const extractFields = (obj: unknown): FieldsStructure => {
@@ -98,7 +106,12 @@ const createArrayField = (
   };
 
   if (typeof arrayStructure.itemType === "string") {
-    field.itemType = arrayStructure.itemType as ValidItemType;
+    if (arrayStructure.itemType === "array") {
+      field.itemType = "object";
+      field.fields = [];
+    } else {
+      field.itemType = arrayStructure.itemType as ValidItemType;
+    }
   } else if (typeof arrayStructure.itemType === "object") {
     field.itemType = "object";
     field.fields = convertToSchemaFields(arrayStructure.itemType);

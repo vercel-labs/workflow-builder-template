@@ -1,9 +1,15 @@
 "use client";
 
-import { Clock, Copy, Play, Webhook } from "lucide-react";
+import { Clock, Copy, MoreVertical, Play, Webhook } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -125,7 +131,28 @@ export function TriggerConfig({
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="webhookMockRequest">Mock Request (Optional)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="webhookMockRequest">
+                Mock Request (Optional)
+              </Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={disabled} size="icon" variant="outline">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={disabled || !config?.webhookMockRequest}
+                    onClick={() => {
+                      handleInferSchema(config.webhookMockRequest as string);
+                    }}
+                  >
+                    Infer Schema
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="overflow-hidden rounded-md border">
               <CodeEditor
                 defaultLanguage="json"
@@ -144,28 +171,9 @@ export function TriggerConfig({
                 value={(config?.webhookMockRequest as string) || ""}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-muted-foreground text-xs">
-                Enter a sample JSON payload to test the webhook trigger.
-              </p>
-              <Button
-                disabled={disabled || !config?.webhookMockRequest}
-                onClick={() => {
-                  const mockRequest = config?.webhookMockRequest as string;
-                  if (mockRequest) {
-                    try {
-                      handleInferSchema(config?.webhookMockRequest as string);
-                    } catch {
-                      toast.error("Failed to infer schema from mock payload");
-                    }
-                  }
-                }}
-                size="sm"
-                variant="outline"
-              >
-                Infer Schema
-              </Button>
-            </div>
+            <p className="text-muted-foreground text-xs">
+              Enter a sample JSON payload to test the webhook trigger.
+            </p>
           </div>
         </>
       )}
