@@ -1,6 +1,6 @@
 import { and, count, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { workflowExecutions } from "@/lib/db/schema";
+import { rateLimitEvents, workflowExecutions } from "@/lib/db/schema";
 
 type RateLimitConfig = {
   maxRequests: number;
@@ -53,47 +53,51 @@ export async function checkExecutionRateLimit(
   };
 }
 
-// In-memory rate limit for AI generation (doesn't persist to DB)
-const aiRequestCounts = new Map<string, { count: number; resetAt: number }>();
-
 /**
- * Check rate limit for AI generation requests (in-memory)
+ * Check rate limit for AI generation requests (database-backed)
  */
-export function checkAIRateLimit(
+export async function checkAIRateLimit(
   userId: string,
   limitKey: "aiGenerate" = "aiGenerate"
-): RateLimitResult {
+): Promise<RateLimitResult> {
   const config = RATE_LIMITS[limitKey];
-  const now = Date.now();
-  const windowMs = config.windowInHours * 60 * 60 * 1000;
+  const windowStart = new Date(
+    Date.now() - config.windowInHours * 60 * 60 * 1000
+  );
+  const resetAt = new Date(Date.now() + config.windowInHours * 60 * 60 * 1000);
 
-  const existing = aiRequestCounts.get(userId);
+  const [result] = await db
+    .select({ count: count(rateLimitEvents.id) })
+    .from(rateLimitEvents)
+    .where(
+      and(
+        eq(rateLimitEvents.userId, userId),
+        eq(rateLimitEvents.eventType, "ai_generate"),
+        gte(rateLimitEvents.createdAt, windowStart)
+      )
+    );
 
-  // Reset if window has passed
-  if (!existing || now > existing.resetAt) {
-    aiRequestCounts.set(userId, { count: 1, resetAt: now + windowMs });
-    return {
-      allowed: true,
-      remaining: config.maxRequests - 1,
-      resetAt: new Date(now + windowMs),
-    };
-  }
+  const currentCount = result?.count ?? 0;
+  const remaining = Math.max(0, config.maxRequests - currentCount);
 
-  // Check if within limit
-  if (existing.count >= config.maxRequests) {
+  if (currentCount >= config.maxRequests) {
     return {
       allowed: false,
       remaining: 0,
-      resetAt: new Date(existing.resetAt),
+      resetAt,
     };
   }
 
-  // Increment count
-  existing.count += 1;
+  // Record this request
+  await db.insert(rateLimitEvents).values({
+    userId,
+    eventType: "ai_generate",
+  });
+
   return {
     allowed: true,
-    remaining: config.maxRequests - existing.count,
-    resetAt: new Date(existing.resetAt),
+    remaining: remaining - 1,
+    resetAt,
   };
 }
 

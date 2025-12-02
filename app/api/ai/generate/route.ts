@@ -258,7 +258,7 @@ export async function POST(request: Request) {
     }
 
     // Check rate limit
-    const rateLimit = checkAIRateLimit(session.user.id);
+    const rateLimit = await checkAIRateLimit(session.user.id);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please try again later." },

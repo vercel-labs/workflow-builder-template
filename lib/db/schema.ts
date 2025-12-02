@@ -184,3 +184,15 @@ export type WorkflowExecutionLog = typeof workflowExecutionLogs.$inferSelect;
 export type NewWorkflowExecutionLog = typeof workflowExecutionLogs.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type NewApiKey = typeof apiKeys.$inferInsert;
+
+// Rate limit events table for tracking requests
+export const rateLimitEvents = pgTable("rate_limit_events", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  eventType: text("event_type").notNull(), // e.g., "ai_generate", "webhook_execute"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
