@@ -7,7 +7,7 @@
  * Contains auto-generated codegen templates for steps with stepHandler.
  * These templates are used when exporting workflows to standalone projects.
  *
- * Generated templates: 18
+ * Generated templates: 17
  */
 
 /**
@@ -1086,109 +1086,6 @@ export async function getCustomerStep(
     return {
       success: false,
       error: \`Failed to get customer: \${message}\`,
-    };
-  }
-}
-`,
-
-  "stripe/create-checkout-session": `import { fetchCredentials } from "./lib/credential-helper";
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return String(error);
-}
-
-type CreateCheckoutSessionResult =
-  | { success: true; id: string; url: string }
-  | { success: false; error: string };
-
-export type CreateCheckoutSessionCoreInput = {
-  mode: "payment" | "subscription";
-  priceId: string;
-  quantity?: number;
-  successUrl: string;
-  cancelUrl: string;
-  customerId?: string;
-  customerEmail?: string;
-  allowPromotionCodes?: string;
-  metadata?: string;
-};
-
-export async function createCheckoutSessionStep(
-  input: CreateCheckoutSessionCoreInput,
-): Promise<CreateCheckoutSessionResult> {
-  "use step";
-  const credentials = await fetchCredentials("stripe");
-  const apiKey = credentials.STRIPE_SECRET_KEY;
-
-  if (!apiKey) {
-    return {
-      success: false,
-      error:
-        "STRIPE_SECRET_KEY is not configured. Please add it in Project Integrations.",
-    };
-  }
-
-  try {
-    const params = new URLSearchParams();
-    params.append("mode", input.mode);
-    params.append("line_items[0][price]", input.priceId);
-    params.append("line_items[0][quantity]", String(input.quantity || 1));
-    params.append("success_url", input.successUrl);
-    params.append("cancel_url", input.cancelUrl);
-
-    if (input.customerId) {
-      params.append("customer", input.customerId);
-    }
-    if (input.customerEmail && !input.customerId) {
-      params.append("customer_email", input.customerEmail);
-    }
-    if (input.allowPromotionCodes === "true") {
-      params.append("allow_promotion_codes", "true");
-    }
-    if (input.metadata) {
-      try {
-        const metadataObj = JSON.parse(input.metadata) as Record<
-          string,
-          string
-        >;
-        for (const [key, value] of Object.entries(metadataObj)) {
-          params.append(\`metadata[\${key}]\`, String(value));
-        }
-      } catch {
-        return {
-          success: false,
-          error: "Invalid metadata JSON format",
-        };
-      }
-    }
-
-    const response = await fetch(\`\${STRIPE_API_URL}/checkout/sessions\`, {
-      method: "POST",
-      headers: {
-        Authorization: \`Bearer \${apiKey}\`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      const errorData = (await response.json()) as StripeErrorResponse;
-      return {
-        success: false,
-        error:
-          errorData.error?.message ||
-          \`HTTP \${response.status}: Failed to create checkout session\`,
-      };
-    }
-
-    const data = (await response.json()) as StripeCheckoutSessionResponse;
-    return { success: true, id: data.id, url: data.url };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return {
-      success: false,
-      error: \`Failed to create checkout session: \${message}\`,
     };
   }
 }

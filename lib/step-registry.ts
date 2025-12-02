@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 18
+ * Generated entries: 17
  */
 
 import "server-only";
@@ -109,10 +109,6 @@ export const PLUGIN_STEP_IMPORTERS: Record<string, StepImporter> = {
     importer: () => import("@/plugins/stripe/steps/get-customer"),
     stepFunction: "getCustomerStep",
   },
-  "stripe/create-checkout-session": {
-    importer: () => import("@/plugins/stripe/steps/create-checkout-session"),
-    stepFunction: "createCheckoutSessionStep",
-  },
   "stripe/create-invoice": {
     importer: () => import("@/plugins/stripe/steps/create-invoice"),
     stepFunction: "createInvoiceStep",
@@ -160,7 +156,6 @@ export const ACTION_LABELS: Record<string, string> = {
   "slack/send-message": "Send Slack Message",
   "stripe/create-customer": "Create Customer",
   "stripe/get-customer": "Get Customer",
-  "stripe/create-checkout-session": "Create Checkout Session",
   "stripe/create-invoice": "Create Invoice",
   "superagent/guard": "Guard",
   "superagent/redact": "Redact",

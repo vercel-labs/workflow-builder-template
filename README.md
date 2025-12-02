@@ -85,7 +85,7 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **Linear**: Create Ticket, Find Issues
 - **Resend**: Send Email
 - **Slack**: Send Slack Message
-- **Stripe**: Create Customer, Get Customer, Create Checkout Session, Create Invoice
+- **Stripe**: Create Customer, Get Customer, Create Invoice
 - **Superagent**: Guard, Redact
 - **v0**: Create Chat, Send Message
 <!-- PLUGINS:END -->
