@@ -685,6 +685,7 @@ function useWorkflowState() {
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showMakePublicDialog, setShowMakePublicDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
     Array<{
@@ -751,6 +752,8 @@ function useWorkflowState() {
     setShowCodeDialog,
     showExportDialog,
     setShowExportDialog,
+    showMakePublicDialog,
+    setShowMakePublicDialog,
     generatedCode,
     allWorkflows,
     setAllWorkflows,
@@ -791,6 +794,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setShowRenameDialog,
     setIsDownloading,
     setIsDuplicating,
+    setShowMakePublicDialog,
     generatedCode,
     setActiveTab,
     setNodes,
@@ -961,16 +965,37 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       return;
     }
 
+    // Show confirmation dialog when making public
+    if (newVisibility === "public") {
+      setShowMakePublicDialog(true);
+      return;
+    }
+
+    // Switch to private immediately (no risks)
     try {
       await api.workflow.update(currentWorkflowId, {
         visibility: newVisibility,
       });
       setWorkflowVisibility(newVisibility);
-      toast.success(
-        newVisibility === "public"
-          ? "Workflow is now public"
-          : "Workflow is now private"
-      );
+      toast.success("Workflow is now private");
+    } catch (error) {
+      console.error("Failed to update visibility:", error);
+      toast.error("Failed to update visibility. Please try again.");
+    }
+  };
+
+  const handleConfirmMakePublic = async () => {
+    if (!currentWorkflowId) {
+      return;
+    }
+
+    try {
+      await api.workflow.update(currentWorkflowId, {
+        visibility: "public",
+      });
+      setWorkflowVisibility("public");
+      setShowMakePublicDialog(false);
+      toast.success("Workflow is now public");
     } catch (error) {
       console.error("Failed to update visibility:", error);
       toast.error("Failed to update visibility. Please try again.");
@@ -1020,6 +1045,7 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     loadWorkflows,
     handleCopyCode,
     handleToggleVisibility,
+    handleConfirmMakePublic,
     handleDuplicate,
   };
 }
@@ -1942,6 +1968,46 @@ function WorkflowDialogsComponent({
       </Dialog>
 
       <WorkflowIssuesDialog actions={actions} state={state} />
+
+      {/* Make Public Confirmation Dialog */}
+      <AlertDialog
+        onOpenChange={state.setShowMakePublicDialog}
+        open={state.showMakePublicDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Globe className="size-5" />
+              Make Workflow Public?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Making this workflow public means anyone with the link can:
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                  <li>View the workflow structure and steps</li>
+                  <li>See action types and configurations</li>
+                  <li>Duplicate the workflow to their own account</li>
+                </ul>
+                <p className="font-medium text-foreground">
+                  The following will remain private:
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                  <li>Your integration credentials (API keys, tokens)</li>
+                  <li>Execution logs and run history</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={actions.handleConfirmMakePublic}>
+              Make Public
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
