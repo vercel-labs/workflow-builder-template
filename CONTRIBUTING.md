@@ -448,11 +448,6 @@ const myIntegrationPlugin: IntegrationPlugin = {
     },
   },
 
-  // NPM dependencies for code export
-  dependencies: {
-    "my-integration-sdk": "^1.0.0",
-  },
-
   // Actions provided by this integration
   actions: [
     {
@@ -494,9 +489,8 @@ export default myIntegrationPlugin;
 1. **Icon**: Direct component reference (not an object with type/value)
 2. **envVar**: Maps formField to environment variable (auto-generates credential mapping)
 3. **getTestFunction**: Lazy-loads test function to avoid bundling server code
-4. **dependencies**: NPM packages included when exporting workflows
-5. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
-6. **configFields**: Declarative array defining UI fields (not React components)
+4. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
+5. **configFields**: Declarative array defining UI fields (not React components)
 
 **Supported configField types:**
 - `template-input`: Single-line input with `{{variable}}` support
@@ -571,7 +565,6 @@ See `plugins/firecrawl/` for a complete, production-ready example with:
 - Custom SVG icon
 - Multiple actions (Scrape, Search)
 - Declarative config fields
-- NPM dependencies for code export
 - Lazy-loaded test function
 
 ### Example 2: Using Lucide Icons
