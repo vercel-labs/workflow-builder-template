@@ -28,8 +28,12 @@ export async function generateMetadata({
     });
 
     if (workflow) {
-      title = workflow.name;
       isPublic = workflow.visibility === "public";
+      // Only expose workflow name in metadata if it's public
+      // This prevents private workflow name enumeration
+      if (isPublic) {
+        title = workflow.name;
+      }
     }
   } catch {
     // Ignore errors, use defaults
