@@ -40,6 +40,10 @@ const firecrawlPlugin: IntegrationPlugin = {
       category: "Firecrawl",
       stepFunction: "firecrawlScrapeStep",
       stepImportPath: "scrape",
+      outputFields: [
+        { field: "markdown", description: "Scraped content as markdown" },
+        { field: "metadata", description: "Page metadata object" },
+      ],
       configFields: [
         {
           key: "url",
@@ -58,6 +62,7 @@ const firecrawlPlugin: IntegrationPlugin = {
       category: "Firecrawl",
       stepFunction: "firecrawlSearchStep",
       stepImportPath: "search",
+      outputFields: [{ field: "data", description: "Array of search results" }],
       configFields: [
         {
           key: "query",

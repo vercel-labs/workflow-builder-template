@@ -40,6 +40,10 @@ const slackPlugin: IntegrationPlugin = {
       category: "Slack",
       stepFunction: "sendSlackMessageStep",
       stepImportPath: "send-slack-message",
+      outputFields: [
+        { field: "ts", description: "Message timestamp" },
+        { field: "channel", description: "Channel ID" },
+      ],
       configFields: [
         {
           key: "slackChannel",
