@@ -103,6 +103,7 @@ export async function olostepSearchStep(
   "use step";
   return withStepLogging(input, () => search(input));
 }
+olostepSearchStep.maxRetries = 0;
 
 
 

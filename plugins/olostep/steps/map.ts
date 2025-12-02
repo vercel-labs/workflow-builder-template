@@ -73,6 +73,7 @@ export async function olostepMapStep(
   "use step";
   return withStepLogging(input, () => mapUrls(input));
 }
+olostepMapStep.maxRetries = 0;
 
 
 
