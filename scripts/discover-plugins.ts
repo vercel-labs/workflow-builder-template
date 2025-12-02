@@ -109,8 +109,6 @@ function generateIndexFile(plugins: string[]): void {
  * To remove an integration:
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
- *
- * Discovered plugins: ${plugins.join(", ") || "none"}
  */
 
 ${imports || "// No plugins discovered"}
