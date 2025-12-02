@@ -7,7 +7,7 @@
  * This registry enables dynamic step imports that are statically analyzable
  * by the bundler. Each action type maps to its step importer function.
  *
- * Generated entries: 12
+ * Generated entries: 13
  */
 
 import "server-only";

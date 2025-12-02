@@ -91,6 +91,15 @@ export type ActionConfigFieldGroup = {
 export type ActionConfigField = ActionConfigFieldBase | ActionConfigFieldGroup;
 
 /**
+ * Output Field Definition
+ * Describes an output field available for template autocomplete
+ */
+export type OutputField = {
+  field: string;
+  description: string;
+};
+
+/**
  * Action Definition
  * Describes a single action provided by a plugin
  */
@@ -114,6 +123,9 @@ export type PluginAction = {
 
   // Config fields for the action (declarative definition)
   configFields: ActionConfigField[];
+
+  // Output fields for template autocomplete (what this action returns)
+  outputFields?: OutputField[];
 
   // Code generation template (the actual template string, not a path)
   // Optional - if not provided, will fall back to auto-generated template

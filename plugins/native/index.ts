@@ -17,6 +17,10 @@ const nativePlugin: IntegrationPlugin = {
       category: "Native",
       stepFunction: "httpRequestStep",
       stepImportPath: "http-request",
+      outputFields: [
+        { field: "data", description: "Response data" },
+        { field: "status", description: "HTTP status code" },
+      ],
       configFields: [
         {
           key: "integrationId",
