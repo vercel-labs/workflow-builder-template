@@ -387,22 +387,34 @@ export function generateWorkflowCode(
     const headers = config.httpHeaders;
     const body = config.httpBody;
 
-    // Helper to format object properties (from ObjectProperty[] or Record)
+    // Helper to format object properties (from ObjectProperty[], Record, or JSON string)
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multiple type checks needed for different input formats
     function formatProperties(props: unknown): string {
       if (!props) {
         return "{}";
       }
 
+      // Handle JSON string input (from ObjectBuilder serialization)
+      let parsedProps = props;
+      if (typeof props === "string") {
+        try {
+          parsedProps = JSON.parse(props);
+        } catch {
+          // If parsing fails, return empty object
+          return "{}";
+        }
+      }
+
       let entries: [string, string][] = [];
 
-      if (Array.isArray(props)) {
+      if (Array.isArray(parsedProps)) {
         // Handle ObjectProperty[]
-        entries = props
+        entries = parsedProps
           .filter((p) => p.key?.trim())
           .map((p) => [p.key, String(p.value || "")]);
-      } else if (typeof props === "object") {
+      } else if (typeof parsedProps === "object" && parsedProps !== null) {
         // Handle plain object
-        entries = Object.entries(props as Record<string, unknown>).map(
+        entries = Object.entries(parsedProps as Record<string, unknown>).map(
           ([k, v]) => [k, String(v)]
         );
       }
