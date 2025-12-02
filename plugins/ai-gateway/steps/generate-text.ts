@@ -143,5 +143,6 @@ export async function generateTextStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+generateTextStep.maxRetries = 0;
 
 export const _integrationType = "ai-gateway";

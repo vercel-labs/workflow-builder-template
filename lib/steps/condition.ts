@@ -26,3 +26,4 @@ export async function conditionStep(
     Promise.resolve(evaluateCondition(input))
   );
 }
+conditionStep.maxRetries = 0;

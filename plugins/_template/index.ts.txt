@@ -55,12 +55,6 @@ const [integrationName]Plugin: IntegrationPlugin = {
     },
   },
 
-  // NPM dependencies required by this plugin
-  // These are included when exporting workflows
-  dependencies: {
-    "[package-name]": "^[version]",
-  },
-
   // Actions provided by this integration
   actions: [
     {

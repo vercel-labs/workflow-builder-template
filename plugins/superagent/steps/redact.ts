@@ -96,5 +96,6 @@ export async function superagentRedactStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+superagentRedactStep.maxRetries = 0;
 
 export const _integrationType = "superagent";

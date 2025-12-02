@@ -514,7 +514,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           executionId,
           nodeId: node.id,
           nodeName: getNodeName(node),
-          nodeType: node.data.type,
+          nodeType: actionType,
         };
 
         // Execute the action step with stepHandler (logging is handled inside)

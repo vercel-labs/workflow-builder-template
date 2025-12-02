@@ -174,5 +174,6 @@ export async function findIssuesStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+findIssuesStep.maxRetries = 0;
 
 export const _integrationType = "linear";

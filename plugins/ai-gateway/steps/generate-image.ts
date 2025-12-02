@@ -87,5 +87,6 @@ export async function generateImageStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+generateImageStep.maxRetries = 0;
 
 export const _integrationType = "ai-gateway";

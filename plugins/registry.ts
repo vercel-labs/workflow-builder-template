@@ -83,6 +83,26 @@ export type ActionConfigFieldGroup = {
 export type ActionConfigField = ActionConfigFieldBase | ActionConfigFieldGroup;
 
 /**
+ * Output Field Definition
+ * Describes an output field available for template autocomplete
+ */
+export type OutputField = {
+  field: string;
+  description: string;
+};
+
+/**
+ * Output Display Config
+ * Specifies how to render step output in the workflow runs panel
+ */
+export type OutputDisplayConfig = {
+  // Type of display: image renders as img, video renders as video element, url renders in iframe
+  type: "image" | "video" | "url";
+  // Field name in the step output that contains the displayable value
+  field: string;
+};
+
+/**
  * Action Definition
  * Describes a single action provided by a plugin
  */
@@ -106,6 +126,12 @@ export type PluginAction = {
 
   // Config fields for the action (declarative definition)
   configFields: ActionConfigField[];
+
+  // Output fields for template autocomplete (what this action returns)
+  outputFields?: OutputField[];
+
+  // Output display configuration (how to render output in workflow runs panel)
+  outputConfig?: OutputDisplayConfig;
 
   // Code generation template (the actual template string, not a path)
   // Optional - if not provided, will fall back to auto-generated template

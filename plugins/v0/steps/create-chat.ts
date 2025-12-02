@@ -73,5 +73,6 @@ export async function createChatStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+createChatStep.maxRetries = 0;
 
 export const _integrationType = "v0";

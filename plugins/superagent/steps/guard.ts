@@ -98,5 +98,6 @@ export async function superagentGuardStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+superagentGuardStep.maxRetries = 0;
 
 export const _integrationType = "superagent";

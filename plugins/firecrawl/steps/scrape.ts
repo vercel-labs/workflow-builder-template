@@ -91,5 +91,6 @@ export async function firecrawlScrapeStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+firecrawlScrapeStep.maxRetries = 0;
 
 export const _integrationType = "firecrawl";

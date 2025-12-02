@@ -448,11 +448,6 @@ const myIntegrationPlugin: IntegrationPlugin = {
     },
   },
 
-  // NPM dependencies for code export
-  dependencies: {
-    "my-integration-sdk": "^1.0.0",
-  },
-
   // Actions provided by this integration
   actions: [
     {
@@ -462,6 +457,11 @@ const myIntegrationPlugin: IntegrationPlugin = {
       category: "My Integration",
       stepFunction: "sendMessageStep",
       stepImportPath: "send-message",
+      // Output fields for template autocomplete (what this action returns)
+      outputFields: [
+        { field: "id", description: "Message ID" },
+        { field: "url", description: "Message URL" },
+      ],
       // Declarative config fields (not React components)
       configFields: [
         {
@@ -494,9 +494,23 @@ export default myIntegrationPlugin;
 1. **Icon**: Direct component reference (not an object with type/value)
 2. **envVar**: Maps formField to environment variable (auto-generates credential mapping)
 3. **getTestFunction**: Lazy-loads test function to avoid bundling server code
-4. **dependencies**: NPM packages included when exporting workflows
-5. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
+4. **slug**: Action identifier (full ID becomes `my-integration/send-message`)
+5. **outputFields**: Defines what fields the action returns (for template autocomplete)
 6. **configFields**: Declarative array defining UI fields (not React components)
+
+**Output Fields:**
+
+The `outputFields` array defines what fields the action returns, enabling autocomplete when referencing this action's output in subsequent steps:
+
+```typescript
+outputFields: [
+  { field: "id", description: "Message ID" },
+  { field: "url", description: "Message URL" },
+  { field: "items", description: "Array of items" }, // For arrays, just use the array name
+],
+```
+
+These fields appear in the template variable dropdown when users type `@` in a template input field. The `field` should match the property names in your step's return type.
 
 **Supported configField types:**
 - `template-input`: Single-line input with `{{variable}}` support
@@ -505,6 +519,7 @@ export default myIntegrationPlugin;
 - `number`: Number input (with optional `min` property)
 - `select`: Dropdown (requires `options` array)
 - `schema-builder`: JSON schema builder for structured output
+- `group`: Groups related fields in a collapsible section
 
 #### Step 7: Run Plugin Discovery
 
@@ -571,7 +586,6 @@ See `plugins/firecrawl/` for a complete, production-ready example with:
 - Custom SVG icon
 - Multiple actions (Scrape, Search)
 - Declarative config fields
-- NPM dependencies for code export
 - Lazy-loaded test function
 
 ### Example 2: Using Lucide Icons
@@ -600,6 +614,10 @@ actions: [
     category: "My Integration",
     stepFunction: "sendMessageStep",
     stepImportPath: "send-message",
+    outputFields: [
+      { field: "id", description: "Message ID" },
+      { field: "timestamp", description: "Send timestamp" },
+    ],
     configFields: [
       { key: "message", label: "Message", type: "template-input" },
       { key: "channel", label: "Channel", type: "text" },
@@ -612,6 +630,10 @@ actions: [
     category: "My Integration",
     stepFunction: "createRecordStep",
     stepImportPath: "create-record",
+    outputFields: [
+      { field: "id", description: "Record ID" },
+      { field: "url", description: "Record URL" },
+    ],
     configFields: [
       { key: "title", label: "Title", type: "template-input", required: true },
       { key: "description", label: "Description", type: "template-textarea" },
