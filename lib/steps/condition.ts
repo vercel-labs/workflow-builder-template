@@ -7,6 +7,10 @@ import { type StepInput, withStepLogging } from "./step-handler";
 
 export type ConditionInput = StepInput & {
   condition: boolean;
+  /** Original condition expression string for logging (e.g., "{{@nodeId:Label.field}} === 'good'") */
+  expression?: string;
+  /** Resolved values of template variables for logging (e.g., { "Label.field": "actual_value" }) */
+  values?: Record<string, unknown>;
 };
 
 type ConditionResult = {
