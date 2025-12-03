@@ -16,7 +16,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "discover-plugins": "tsx scripts/discover-plugins.ts",
-    "create-plugin": "tsx scripts/create-plugin.ts"
+    "create-plugin": "tsx scripts/create-plugin.ts",
+    "workflow:runs:web": "npx workflow inspect runs --web"
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
@@ -36,6 +37,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
+    "exa-js": "^2.0.11",
     "jotai": "^2.15.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.552.0",
