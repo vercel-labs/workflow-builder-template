@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     try {
       const wallet = await getUserWallet(session.user.id);
       walletAddress = wallet.walletAddress;
-    } catch (error) {
+    } catch (_error) {
       // User doesn't have a wallet yet, that's ok
       walletAddress = null;
     }

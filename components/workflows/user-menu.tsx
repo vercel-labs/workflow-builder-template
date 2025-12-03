@@ -136,7 +136,7 @@ export const UserMenu = () => {
               {session?.user?.email}
             </p>
             {walletAddress && (
-              <p className="text-muted-foreground font-mono text-xs leading-none">
+              <p className="font-mono text-muted-foreground text-xs leading-none">
                 {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
               </p>
             )}

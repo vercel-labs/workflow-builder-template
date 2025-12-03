@@ -1,6 +1,6 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY!;
+const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
 const ALGORITHM = "aes-256-gcm";
 
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
@@ -30,9 +30,7 @@ export function encryptUserShare(userShare: string): string {
   const authTag = cipher.getAuthTag();
 
   // Format: iv:authTag:encryptedData
-  return (
-    iv.toString("hex") + ":" + authTag.toString("hex") + ":" + encrypted
-  );
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
 /**

@@ -1,8 +1,8 @@
+import { Environment, Para as ParaServer } from "@getpara/server-sdk";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous, genericOAuth } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
-import { Para as ParaServer, Environment } from "@getpara/server-sdk";
 import { db } from "./db";
 import {
   accounts,
@@ -221,7 +221,7 @@ export const auth = betterAuth({
               `[Para] ✓ Wallet created successfully: ${wallet.address}`
             );
           } catch (error) {
-            console.error(`[Para] Failed to create wallet:`, error);
+            console.error("[Para] Failed to create wallet:", error);
             // Don't throw - let signup succeed even if wallet creation fails
           }
         },

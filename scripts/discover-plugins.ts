@@ -157,7 +157,7 @@ export {
 async function updateReadme(): Promise<void> {
   // Import registry first, then plugins
   const { getAllIntegrations } = await import("../plugins/registry");
-  
+
   // Dynamically import the plugins to populate the registry
   // This works because we already generated plugins/index.ts above
   try {
@@ -598,7 +598,7 @@ async function generateStepRegistry(): Promise<void> {
   // Import registry FIRST - this is critical! Plugins need the registry to exist before they register
   const registryModule = await import("../plugins/registry");
   const { getAllIntegrations, computeActionId } = registryModule;
-  
+
   // Import plugins to trigger registration (they will use the registry we just imported)
   try {
     await import("../plugins/index");
@@ -606,10 +606,12 @@ async function generateStepRegistry(): Promise<void> {
     console.error("Error importing plugins:", error);
     throw error;
   }
-  
+
   const { LEGACY_ACTION_MAPPINGS } = await import("../plugins/legacy-mappings");
   const integrations = getAllIntegrations();
-  console.log(`[generateStepRegistry] Found ${integrations.length} integration(s) with ${integrations.reduce((sum, i) => sum + i.actions.length, 0)} total action(s)`);
+  console.log(
+    `[generateStepRegistry] Found ${integrations.length} integration(s) with ${integrations.reduce((sum, i) => sum + i.actions.length, 0)} total action(s)`
+  );
 
   // Collect all action -> step mappings
   const stepEntries: Array<{

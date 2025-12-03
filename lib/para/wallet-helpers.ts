@@ -1,10 +1,10 @@
 import "server-only";
+import { ParaEthersSigner } from "@getpara/ethers-v6-integration";
+import { Environment, Para as ParaServer } from "@getpara/server-sdk";
+import { eq } from "drizzle-orm";
+import { ethers } from "ethers";
 import { db } from "@/lib/db";
 import { paraWallets } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { Para as ParaServer, Environment } from "@getpara/server-sdk";
-import { ParaEthersSigner } from "@getpara/ethers-v6-integration";
-import { ethers } from "ethers";
 import { decryptUserShare } from "@/lib/encryption";
 
 /**
