@@ -740,6 +740,7 @@ export const PanelInner = () => {
     <>
       <Tabs
         className="size-full"
+        data-testid="properties-panel"
         defaultValue="properties"
         onValueChange={setActiveTab}
         value={activeTab}

@@ -273,6 +273,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
           selected && "border-primary",
           isDisabled && "opacity-50"
         )}
+        data-testid={`action-node-${id}`}
         handles={{ target: true, source: true }}
         status={status}
       >
@@ -342,6 +343,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
         selected && "border-primary",
         isDisabled && "opacity-50"
       )}
+      data-testid={`action-node-${id}`}
       handles={{ target: true, source: true }}
       status={status}
     >

@@ -112,6 +112,7 @@ export function ActionGrid({
           <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
             className="pl-8"
+            data-testid="action-search-input"
             disabled={disabled}
             id="action-filter"
             onChange={(e) => setFilter(e.target.value)}
@@ -122,13 +123,14 @@ export function ActionGrid({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2" data-testid="action-grid">
         {filteredActions.map((action) => (
           <button
             className={cn(
               "flex flex-col items-center justify-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-accent",
               disabled && "pointer-events-none opacity-50"
             )}
+            data-testid={`action-option-${action.id.toLowerCase().replace(/\s+/g, "-")}`}
             disabled={disabled}
             key={action.id}
             onClick={() => onSelectAction(action.id)}

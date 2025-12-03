@@ -16,7 +16,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "discover-plugins": "tsx scripts/discover-plugins.ts",
-    "create-plugin": "tsx scripts/create-plugin.ts"
+    "create-plugin": "tsx scripts/create-plugin.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
@@ -62,6 +64,7 @@
   },
   "devDependencies": {
     "@inquirer/prompts": "^8.0.1",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
