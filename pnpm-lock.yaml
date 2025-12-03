@@ -65,6 +65,9 @@ importers:
       drizzle-orm:
         specifier: ^0.44.7
         version: 0.44.7(@opentelemetry/api@1.9.0)(kysely@0.28.8)(postgres@3.4.7)
+      exa-js:
+        specifier: ^2.0.11
+        version: 2.0.11(ws@8.18.3)
       jotai:
         specifier: ^2.15.1
         version: 2.15.1(@babel/core@7.28.5)(@babel/template@7.27.2)(@types/react@19.2.2)(react@19.2.0)
@@ -2867,6 +2870,9 @@ packages:
       typescript:
         optional: true
 
+  cross-fetch@4.1.0:
+    resolution: {integrity: sha512-uKm5PU+MHTootlWEY+mZ4vvXoCn4fLQxT9dSc1sXVMSFkINTJVN8cAQROpwcKm8bJ/c7rgZVIBWzH5T78sNZZw==}
+
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -2986,6 +2992,10 @@ packages:
 
   dompurify@3.1.7:
     resolution: {integrity: sha512-VaTstWtsneJY8xzy7DekmYWEOZcmzIe3Qb3zPd4STve1OBTa+e+WmS1ITQec1fZYXI3HCsOZZiSMpG6oxoWMWQ==}
+
+  dotenv@16.4.7:
+    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
+    engines: {node: '>=12'}
 
   dotenv@17.2.3:
     resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
@@ -3202,6 +3212,9 @@ packages:
   eventsource-parser@3.0.6:
     resolution: {integrity: sha512-Vo1ab+QXPzZ4tCa8SwIHJFaSzy4R6SHf7BY79rFBDf0idraZWAkYrDjDj8uWaSm3S2TK+hJ7/t1CEmZ7jXw+pg==}
     engines: {node: '>=18.0.0'}
+
+  exa-js@2.0.11:
+    resolution: {integrity: sha512-xMZjtZQ9dqhHCFspWhq9mQFF7H+hJw1yQE2wKS99ZuzO3JrqzqxbPK60BjNhkiMqiD/n+06O1fuLZs/HAqeaEg==}
 
   execa@9.6.0:
     resolution: {integrity: sha512-jpWzZ1ZhwUmeWRhS7Qv3mhpOhLfwI+uAX4e5fOcXqwMR7EcJ0pj2kV1CVzHVMX/LphnKWD3LObjZCoJ71lKpHw==}
@@ -3875,6 +3888,18 @@ packages:
   open@10.2.0:
     resolution: {integrity: sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==}
     engines: {node: '>=18'}
+
+  openai@5.23.2:
+    resolution: {integrity: sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   openai@6.8.1:
     resolution: {integrity: sha512-ACifslrVgf+maMz9vqwMP4+v9qvx5Yzssydizks8n+YUJ6YwUoxj51sKRQ8HYMfR6wgKLSIlaI108ZwCk+8yig==}
@@ -7689,6 +7714,12 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  cross-fetch@4.1.0:
+    dependencies:
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
@@ -7788,6 +7819,8 @@ snapshots:
       path-type: 4.0.0
 
   dompurify@3.1.7: {}
+
+  dotenv@16.4.7: {}
 
   dotenv@17.2.3: {}
 
@@ -7951,6 +7984,17 @@ snapshots:
   eventemitter3@5.0.1: {}
 
   eventsource-parser@3.0.6: {}
+
+  exa-js@2.0.11(ws@8.18.3):
+    dependencies:
+      cross-fetch: 4.1.0
+      dotenv: 16.4.7
+      openai: 5.23.2(ws@8.18.3)(zod@3.25.76)
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.0(zod@3.25.76)
+    transitivePeerDependencies:
+      - encoding
+      - ws
 
   execa@9.6.0:
     dependencies:
@@ -8544,6 +8588,11 @@ snapshots:
       define-lazy-prop: 3.0.0
       is-inside-container: 1.0.0
       wsl-utils: 0.1.0
+
+  openai@5.23.2(ws@8.18.3)(zod@3.25.76):
+    optionalDependencies:
+      ws: 8.18.3
+      zod: 3.25.76
 
   openai@6.8.1(ws@8.18.3)(zod@4.1.12):
     optionalDependencies:
