@@ -5,6 +5,7 @@ import { start } from "workflow/api";
 import { db } from "@/lib/db";
 import { validateWorkflowIntegrations } from "@/lib/db/integrations";
 import { apiKeys, workflowExecutions, workflows } from "@/lib/db/schema";
+import { checkExecutionRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 import { executeWorkflow } from "@/lib/workflow-executor.workflow";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
 
@@ -146,6 +147,18 @@ export async function POST(
       return NextResponse.json(
         { error: apiKeyValidation.error },
         { status: apiKeyValidation.statusCode || 401, headers: corsHeaders }
+      );
+    }
+
+    // Check rate limit
+    const rateLimit = await checkExecutionRateLimit(workflow.userId);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        {
+          status: 429,
+          headers: { ...corsHeaders, ...getRateLimitHeaders(rateLimit) },
+        }
       );
     }
 

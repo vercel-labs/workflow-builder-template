@@ -27,6 +27,8 @@
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-dialog": "^1.1.15",
     "@slack/web-api": "^7.12.0",
+    "@upstash/ratelimit": "^2.0.7",
+    "@upstash/redis": "^1.35.7",
     "@vercel/analytics": "^1.5.0",
     "@vercel/og": "^0.8.5",
     "@vercel/sdk": "^1.17.1",

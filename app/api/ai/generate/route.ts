@@ -1,6 +1,7 @@
 import { streamText } from "ai";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { checkAIRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
 import { generateAIActionPrompts } from "@/plugins";
 
 // Simple type for operations
@@ -254,6 +255,15 @@ export async function POST(request: Request) {
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check rate limit
+    const rateLimit = await checkAIRateLimit(session.user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429, headers: getRateLimitHeaders(rateLimit) }
+      );
     }
 
     const body = await request.json();
