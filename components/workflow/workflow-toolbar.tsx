@@ -1084,25 +1084,10 @@ function ToolbarActions({
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
   const hasSelection = selectedNode || selectedEdge;
 
-  // For non-owners viewing public workflows, only show duplicate button
+  // For non-owners viewing public workflows, don't show toolbar actions
+  // (Duplicate button is now in the main toolbar next to Sign In)
   if (workflowId && !state.isOwner) {
-    return (
-      <Button
-        className="h-9 border hover:bg-black/5 dark:hover:bg-white/5"
-        disabled={state.isDuplicating}
-        onClick={actions.handleDuplicate}
-        size="sm"
-        title="Duplicate to your workflows"
-        variant="secondary"
-      >
-        {state.isDuplicating ? (
-          <Loader2 className="mr-2 size-4 animate-spin" />
-        ) : (
-          <Copy className="mr-2 size-4" />
-        )}
-        Duplicate
-      </Button>
-    );
+    return null;
   }
 
   if (!workflowId) {
@@ -1476,6 +1461,33 @@ function RunButtonGroup({
   );
 }
 
+// Duplicate Button Component - placed next to Sign In for non-owners
+function DuplicateButton({
+  isDuplicating,
+  onDuplicate,
+}: {
+  isDuplicating: boolean;
+  onDuplicate: () => void;
+}) {
+  return (
+    <Button
+      className="h-9 border hover:bg-black/5 dark:hover:bg-white/5"
+      disabled={isDuplicating}
+      onClick={onDuplicate}
+      size="sm"
+      title="Duplicate to your workflows"
+      variant="secondary"
+    >
+      {isDuplicating ? (
+        <Loader2 className="mr-2 size-4 animate-spin" />
+      ) : (
+        <Copy className="mr-2 size-4" />
+      )}
+      Duplicate
+    </Button>
+  );
+}
+
 // Workflow Menu Component
 function WorkflowMenuComponent({
   workflowId,
@@ -1487,12 +1499,12 @@ function WorkflowMenuComponent({
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
+    <div className="flex flex-col gap-1">
+      <div className="flex h-9 max-w-[160px] items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground sm:max-w-none">
         <DropdownMenu onOpenChange={(open) => open && actions.loadWorkflows()}>
           <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
-            <WorkflowIcon className="size-4" />
-            <p className="font-medium text-sm">
+            <WorkflowIcon className="size-4 shrink-0" />
+            <p className="truncate font-medium text-sm">
               {workflowId ? (
                 state.workflowName
               ) : (
@@ -1502,7 +1514,7 @@ function WorkflowMenuComponent({
                 </>
               )}
             </p>
-            <ChevronDown className="size-3 opacity-50" />
+            <ChevronDown className="size-3 shrink-0 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <DropdownMenuItem
@@ -1539,7 +1551,7 @@ function WorkflowMenuComponent({
         </DropdownMenu>
       </div>
       {workflowId && !state.isOwner && (
-        <span className="text-muted-foreground text-xs uppercase">
+        <span className="text-muted-foreground text-xs uppercase lg:hidden">
           Read-only
         </span>
       )}
@@ -2043,11 +2055,18 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         className="flex flex-col gap-2 rounded-none border-none bg-transparent p-0 lg:flex-row lg:items-center"
         position="top-left"
       >
-        <WorkflowMenuComponent
-          actions={actions}
-          state={state}
-          workflowId={workflowId}
-        />
+        <div className="flex items-center gap-2">
+          <WorkflowMenuComponent
+            actions={actions}
+            state={state}
+            workflowId={workflowId}
+          />
+          {workflowId && !state.isOwner && (
+            <span className="hidden text-muted-foreground text-xs uppercase lg:inline">
+              Read-only
+            </span>
+          )}
+        </div>
       </Panel>
 
       <div className="pointer-events-auto absolute top-4 right-4 z-10">
@@ -2063,6 +2082,12 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <GitHubStarsButton />
                 <DeployButton />
               </>
+            )}
+            {workflowId && !state.isOwner && (
+              <DuplicateButton
+                isDuplicating={state.isDuplicating}
+                onDuplicate={actions.handleDuplicate}
+              />
             )}
             <UserMenu />
           </div>
