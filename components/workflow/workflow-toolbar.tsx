@@ -57,7 +57,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
-import { integrationsAtom } from "@/lib/integrations-store";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
@@ -98,7 +101,7 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
-import { IntegrationsDialog } from "../settings/integrations-dialog";
+import { IntegrationFormDialog } from "../settings/integration-form-dialog";
 import { IntegrationIcon } from "../ui/integration-icon";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
@@ -338,9 +341,10 @@ function getMissingRequiredFields(
 // Also handles built-in actions that aren't in the plugin registry
 function getMissingIntegrations(
   nodes: WorkflowNode[],
-  userIntegrations: Array<{ type: IntegrationType }>
+  userIntegrations: Array<{ id: string; type: IntegrationType }>
 ): MissingIntegrationInfo[] {
   const userIntegrationTypes = new Set(userIntegrations.map((i) => i.type));
+  const userIntegrationIds = new Set(userIntegrations.map((i) => i.id));
   const missingByType = new Map<IntegrationType, string[]>();
   const integrationLabels = getIntegrationLabels();
 
@@ -365,9 +369,15 @@ function getMissingIntegrations(
       continue;
     }
 
-    // Check if this node has an integrationId configured
-    const hasIntegrationConfigured = Boolean(node.data.config?.integrationId);
-    if (hasIntegrationConfigured) {
+    // Check if this node has a valid integrationId configured
+    // The integration must exist (not just be configured)
+    const configuredIntegrationId = node.data.config?.integrationId as
+      | string
+      | undefined;
+    const hasValidIntegration =
+      configuredIntegrationId &&
+      userIntegrationIds.has(configuredIntegrationId);
+    if (hasValidIntegration) {
       continue;
     }
 
@@ -509,7 +519,7 @@ type WorkflowHandlerParams = {
   setEdges: (edges: WorkflowEdge[]) => void;
   setSelectedNodeId: (id: string | null) => void;
   setSelectedExecutionId: (id: string | null) => void;
-  userIntegrations: Array<{ type: IntegrationType }>;
+  userIntegrations: Array<{ id: string; type: IntegrationType }>;
 };
 
 function useWorkflowHandlers({
@@ -1545,7 +1555,9 @@ function WorkflowIssuesDialog({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [addingIntegrationType, setAddingIntegrationType] =
+    useState<IntegrationType | null>(null);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
   const { brokenReferences, missingRequiredFields, missingIntegrations } =
     actions.workflowIssues;
 
@@ -1555,9 +1567,9 @@ function WorkflowIssuesDialog({
     state.setActiveTab("properties");
   };
 
-  const handleAddIntegrations = () => {
+  const handleAddIntegration = (integrationType: IntegrationType) => {
     actions.setShowWorkflowIssuesDialog(false);
-    setShowIntegrationsDialog(true);
+    setAddingIntegrationType(integrationType);
   };
 
   const totalIssues =
@@ -1705,7 +1717,9 @@ function WorkflowIssuesDialog({
                       </div>
                       <Button
                         className="shrink-0"
-                        onClick={handleAddIntegrations}
+                        onClick={() =>
+                          handleAddIntegration(missing.integrationType)
+                        }
                         size="sm"
                         variant="outline"
                       >
@@ -1727,9 +1741,16 @@ function WorkflowIssuesDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <IntegrationsDialog
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
+      <IntegrationFormDialog
+        mode="create"
+        onClose={() => setAddingIntegrationType(null)}
+        onSuccess={() => {
+          setAddingIntegrationType(null);
+          // Increment version to trigger auto-fix for nodes
+          setIntegrationsVersion((v) => v + 1);
+        }}
+        open={addingIntegrationType !== null}
+        preselectedType={addingIntegrationType ?? undefined}
       />
     </>
   );
