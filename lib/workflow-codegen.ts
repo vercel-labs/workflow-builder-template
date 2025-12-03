@@ -1,3 +1,4 @@
+import { findActionById, flattenConfigFields } from "@/plugins";
 import {
   analyzeNodeUsage,
   buildAccessPath,
@@ -55,12 +56,23 @@ export function generateWorkflowCode(
     (node) => node.data.type === "trigger" && !nodesWithIncoming.has(node.id)
   );
 
+  // Check if any trigger's output is used (meaning input param is needed)
+  const inputIsUsed = triggerNodes.some((trigger) =>
+    usedNodeOutputs.has(trigger.id)
+  );
+
   // Generate code for each node
   const codeLines: string[] = [];
   const visited = new Set<string>();
 
-  // Start function
-  codeLines.push(`export async function ${functionName}() {`);
+  // Start function - only add input parameter if trigger data is actually used
+  if (inputIsUsed) {
+    codeLines.push(
+      `export async function ${functionName}<TInput>(input: TInput) {`
+    );
+  } else {
+    codeLines.push(`export async function ${functionName}() {`);
+  }
   codeLines.push(`  "use workflow";`);
   codeLines.push("");
 
@@ -85,8 +97,8 @@ export function generateWorkflowCode(
       }
       usedVarNames.add(varName);
     } else {
-      // For triggers, use a simple name
-      varName = `${node.data.type}_${node.id.replace(/-/g, "_")}`;
+      // For triggers, use `input` directly - no intermediate variable needed
+      varName = "input";
     }
 
     nodeIdToVarName.set(node.id, varName);
@@ -617,6 +629,74 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  /**
+   * Generate code for plugin-based actions discovered from the plugin registry
+   */
+  function generatePluginActionCode(
+    node: WorkflowNode,
+    actionType: string,
+    indent: string,
+    varName: string
+  ): string[] | null {
+    const action = findActionById(actionType);
+    if (!action) {
+      return null;
+    }
+
+    const stepInfo = getStepInfo(actionType);
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const configFields = flattenConfigFields(action.configFields);
+
+    // Build parameter lines from config fields
+    const paramLines: string[] = [];
+    for (const field of configFields) {
+      const value = config[field.key];
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+
+      // Handle different field types
+      if (
+        field.type === "template-input" ||
+        field.type === "template-textarea"
+      ) {
+        paramLines.push(
+          `${indent}  ${field.key}: ${formatTemplateValue(String(value))},`
+        );
+      } else if (field.type === "number") {
+        paramLines.push(`${indent}  ${field.key}: ${value},`);
+      } else if (field.type === "select") {
+        paramLines.push(`${indent}  ${field.key}: "${value}",`);
+      } else if (field.type === "schema-builder") {
+        // Schema builder generates JSON, keep it as-is
+        paramLines.push(`${indent}  ${field.key}: ${JSON.stringify(value)},`);
+      } else {
+        // Default: treat as string
+        paramLines.push(`${indent}  ${field.key}: "${value}",`);
+      }
+    }
+
+    // Generate the function call
+    const lines: string[] = [];
+    if (paramLines.length > 0) {
+      lines.push(
+        `${indent}const ${varName} = await ${stepInfo.functionName}({`
+      );
+      lines.push(...paramLines);
+      lines.push(`${indent}});`);
+    } else {
+      lines.push(
+        `${indent}const ${varName} = await ${stepInfo.functionName}({});`
+      );
+    }
+
+    return lines;
+  }
+
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
@@ -725,10 +805,28 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateHTTPActionCode(node, indent, varName))
       );
-    } else if (outputIsUsed) {
-      lines.push(`${indent}const ${varName} = { status: 'success' };`);
     } else {
-      lines.push(`${indent}void ({ status: 'success' });`);
+      // Try to find the action in the plugin registry
+      const pluginCode = generatePluginActionCode(
+        node,
+        actionType,
+        indent,
+        varName
+      );
+      if (pluginCode) {
+        lines.push(...wrapActionCall(pluginCode));
+      } else if (outputIsUsed) {
+        // Unknown action type - generate placeholder
+        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
+        lines.push(
+          `${indent}const ${varName} = { status: 'pending', actionType: "${actionType}" };`
+        );
+      } else {
+        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
+        lines.push(
+          `${indent}void ({ status: 'pending', actionType: "${actionType}" });`
+        );
+      }
     }
 
     return lines;
@@ -775,47 +873,19 @@ export function generateWorkflowCode(
     return lines;
   }
 
-  // Helper to generate trigger node code
-  function generateTriggerCode(
-    node: WorkflowNode,
-    nodeId: string,
-    varName: string,
-    indent: string
-  ): string[] {
-    // Skip trigger code entirely if trigger outputs aren't used
-    if (!usedNodeOutputs.has(nodeId)) {
-      return [];
-    }
-
-    const lines: string[] = [];
-    lines.push(`${indent}// Trigger: ${node.data.label}`);
-    if (node.data.description) {
-      lines.push(`${indent}// ${node.data.description}`);
-    }
-
-    lines.push(`${indent}const ${varName} = { triggered: true };`);
-    return lines;
-  }
-
-  // Helper to process trigger node
+  // Helper to process trigger node - triggers use the `input` parameter directly
+  // so no code generation is needed, just process next nodes
   function processTriggerNode(
-    node: WorkflowNode,
     nodeId: string,
-    varName: string,
     indent: string
   ): { lines: string[]; wasSkipped: boolean } {
-    const triggerCode = generateTriggerCode(node, nodeId, varName, indent);
-    // If trigger was skipped (empty array), process next nodes
-    if (triggerCode.length === 0) {
-      const lines: string[] = [];
-      const nextNodes = edgesBySource.get(nodeId) || [];
-      for (const nextNodeId of nextNodes) {
-        const nextCode = generateNodeCode(nextNodeId, indent);
-        lines.push(...nextCode);
-      }
-      return { lines, wasSkipped: true };
+    const lines: string[] = [];
+    const nextNodes = edgesBySource.get(nodeId) || [];
+    for (const nextNodeId of nextNodes) {
+      const nextCode = generateNodeCode(nextNodeId, indent);
+      lines.push(...nextCode);
     }
-    return { lines: triggerCode, wasSkipped: false };
+    return { lines, wasSkipped: true };
   }
 
   // Helper to process action node
@@ -880,9 +950,7 @@ export function generateWorkflowCode(
     switch (node.data.type) {
       case "trigger": {
         const { lines: triggerLines, wasSkipped } = processTriggerNode(
-          node,
           nodeId,
-          varName,
           indent
         );
         // If trigger was skipped, triggerLines already contains next nodes
