@@ -1,29 +1,50 @@
 import "server-only";
 
-import { Resend } from "resend";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
-import { getErrorMessage } from "@/lib/utils";
+import type { ResendCredentials } from "../credentials";
+
+const RESEND_API_URL = "https://api.resend.com";
+
+type ResendEmailResponse = {
+  id: string;
+};
+
+type ResendErrorResponse = {
+  statusCode: number;
+  message: string;
+  name: string;
+};
 
 type SendEmailResult =
   | { success: true; id: string }
   | { success: false; error: string };
 
-export type SendEmailInput = StepInput & {
-  integrationId?: string;
+export type SendEmailCoreInput = {
+  emailFrom?: string;
   emailTo: string;
   emailSubject: string;
   emailBody: string;
+  emailCc?: string;
+  emailBcc?: string;
+  emailReplyTo?: string;
+  emailScheduledAt?: string;
+  emailTopicId?: string;
+  idempotencyKey?: string;
 };
 
-/**
- * Send email logic - separated for clarity and testability
- */
-async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type SendEmailInput = StepInput &
+  SendEmailCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: SendEmailCoreInput,
+  credentials: ResendCredentials
+): Promise<SendEmailResult> {
   const apiKey = credentials.RESEND_API_KEY;
   const fromEmail = credentials.RESEND_FROM_EMAIL;
 
@@ -35,47 +56,80 @@ async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
     };
   }
 
-  if (!fromEmail) {
+  const senderEmail = input.emailFrom || fromEmail;
+
+  if (!senderEmail) {
     return {
       success: false,
       error:
-        "RESEND_FROM_EMAIL is not configured. Please add it in Project Integrations.",
+        "No sender is configured. Please add it in the action or in Project Integrations.",
     };
   }
 
   try {
-    const resend = new Resend(apiKey);
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
 
-    const result = await resend.emails.send({
-      from: fromEmail,
-      to: input.emailTo,
-      subject: input.emailSubject,
-      text: input.emailBody,
+    if (input.idempotencyKey) {
+      headers["Idempotency-Key"] = input.idempotencyKey;
+    }
+
+    const response = await fetch(`${RESEND_API_URL}/emails`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        from: senderEmail,
+        to: input.emailTo,
+        subject: input.emailSubject,
+        text: input.emailBody,
+        ...(input.emailCc && { cc: input.emailCc }),
+        ...(input.emailBcc && { bcc: input.emailBcc }),
+        ...(input.emailReplyTo && { reply_to: input.emailReplyTo }),
+        ...(input.emailScheduledAt && { scheduled_at: input.emailScheduledAt }),
+      }),
     });
 
-    if (result.error) {
+    if (!response.ok) {
+      const errorData = (await response.json()) as ResendErrorResponse;
       return {
         success: false,
-        error: result.error.message || "Failed to send email",
+        error: errorData.message || `HTTP ${response.status}: Failed to send email`,
       };
     }
 
-    return { success: true, id: result.data?.id || "" };
+    const data = (await response.json()) as ResendEmailResponse;
+    return { success: true, id: data.id };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to send email: ${getErrorMessage(error)}`,
+      error: `Failed to send email: ${message}`,
     };
   }
 }
 
 /**
- * Send Email Step
- * Sends an email using Resend
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function sendEmailStep(
   input: SendEmailInput
 ): Promise<SendEmailResult> {
   "use step";
-  return withStepLogging(input, () => sendEmail(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  const coreInput: SendEmailCoreInput = {
+    ...input,
+    idempotencyKey: input._context?.executionId,
+  };
+
+  return withStepLogging(input, () => stepHandler(coreInput, credentials));
 }
+sendEmailStep.maxRetries = 0;
+
+// Export marker for codegen auto-generation
+export const _integrationType = "resend";

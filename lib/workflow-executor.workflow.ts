@@ -105,6 +105,11 @@ function replaceTemplateVariable(
   return varName;
 }
 
+type ConditionEvalResult = {
+  result: boolean;
+  resolvedValues: Record<string, unknown>;
+};
+
 /**
  * Evaluate condition expression with template variable replacement
  * Uses Function constructor to evaluate user-defined conditions dynamically
@@ -115,11 +120,11 @@ function replaceTemplateVariable(
 function evaluateConditionExpression(
   conditionExpression: unknown,
   outputs: NodeOutputs
-): boolean {
+): ConditionEvalResult {
   console.log("[Condition] Original expression:", conditionExpression);
 
   if (typeof conditionExpression === "boolean") {
-    return conditionExpression;
+    return { result: conditionExpression, resolvedValues: {} };
   }
 
   if (typeof conditionExpression === "string") {
@@ -128,26 +133,31 @@ function evaluateConditionExpression(
     if (!preValidation.valid) {
       console.error("[Condition] Pre-validation failed:", preValidation.error);
       console.error("[Condition] Expression was:", conditionExpression);
-      return false;
+      return { result: false, resolvedValues: {} };
     }
 
     try {
       const evalContext: Record<string, unknown> = {};
+      const resolvedValues: Record<string, unknown> = {};
       let transformedExpression = conditionExpression;
       const templatePattern = /\{\{@([^:]+):([^}]+)\}\}/g;
       const varCounter = { value: 0 };
 
       transformedExpression = transformedExpression.replace(
         templatePattern,
-        (match, nodeId, rest) =>
-          replaceTemplateVariable(
+        (match, nodeId, rest) => {
+          const varName = replaceTemplateVariable(
             match,
             nodeId,
             rest,
             outputs,
             evalContext,
             varCounter
-          )
+          );
+          // Store the resolved value with a readable key (the display text from the template)
+          resolvedValues[rest] = evalContext[varName];
+          return varName;
+        }
       );
 
       // Validate the transformed expression before evaluation
@@ -159,7 +169,7 @@ function evaluateConditionExpression(
           "[Condition] Transformed expression:",
           transformedExpression
         );
-        return false;
+        return { result: false, resolvedValues };
       }
 
       const varNames = Object.keys(evalContext);
@@ -172,15 +182,15 @@ function evaluateConditionExpression(
         `return (${transformedExpression});`
       );
       const result = evalFunc(...varValues);
-      return Boolean(result);
+      return { result: Boolean(result), resolvedValues };
     } catch (error) {
       console.error("[Condition] Failed to evaluate condition:", error);
       console.error("[Condition] Expression was:", conditionExpression);
-      return false;
+      return { result: false, resolvedValues: {} };
     }
   }
 
-  return Boolean(conditionExpression);
+  return { result: Boolean(conditionExpression), resolvedValues: {} };
 }
 
 /**
@@ -206,14 +216,18 @@ async function executeActionStep(input: {
   if (actionType === "Condition") {
     const systemAction = SYSTEM_ACTIONS.Condition;
     const module = await systemAction.importer();
-    const evaluatedCondition = evaluateConditionExpression(
-      stepInput.condition,
-      outputs
-    );
+    const originalExpression = stepInput.condition;
+    const { result: evaluatedCondition, resolvedValues } =
+      evaluateConditionExpression(originalExpression, outputs);
     console.log("[Condition] Final result:", evaluatedCondition);
 
     return await module[systemAction.stepFunction]({
       condition: evaluatedCondition,
+      // Include original expression and resolved values for logging purposes
+      expression:
+        typeof originalExpression === "string" ? originalExpression : undefined,
+      values:
+        Object.keys(resolvedValues).length > 0 ? resolvedValues : undefined,
       _context: context,
     });
   }
@@ -514,7 +528,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           executionId,
           nodeId: node.id,
           nodeName: getNodeName(node),
-          nodeType: node.data.type,
+          nodeType: actionType,
         };
 
         // Execute the action step with stepHandler (logging is handled inside)

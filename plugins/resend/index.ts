@@ -1,6 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { sendEmailCodegenTemplate } from "./codegen/send-email";
 import { ResendIcon } from "./icon";
 
 const resendPlugin: IntegrationPlugin = {
@@ -26,12 +25,12 @@ const resendPlugin: IntegrationPlugin = {
     },
     {
       id: "fromEmail",
-      label: "From Email",
+      label: "Default Sender",
       type: "text",
-      placeholder: "noreply@yourdomain.com",
+      placeholder: "Your Name <noreply@yourdomain.com>",
       configKey: "fromEmail",
       envVar: "RESEND_FROM_EMAIL",
-      helpText: "The email address that will appear as the sender",
+      helpText: "The name and email that will appear as the sender",
     },
   ],
 
@@ -42,10 +41,6 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    resend: "^6.4.0",
-  },
-
   actions: [
     {
       slug: "send-email",
@@ -54,12 +49,20 @@ const resendPlugin: IntegrationPlugin = {
       category: "Resend",
       stepFunction: "sendEmailStep",
       stepImportPath: "send-email",
+      outputFields: [{ field: "id", description: "Email ID" }],
       configFields: [
         {
-          key: "emailTo",
-          label: "To (Email Address)",
+          key: "emailFrom",
+          label: "From (Sender)",
           type: "template-input",
-          placeholder: "user@example.com or {{NodeName.email}}",
+          placeholder: "Your Name <noreply@example.com>",
+          example: "Support <support@example.com>",
+        },
+        {
+          key: "emailTo",
+          label: "To",
+          type: "template-input",
+          placeholder: "recipient@example.com",
           example: "user@example.com",
           required: true,
         },
@@ -80,8 +83,54 @@ const resendPlugin: IntegrationPlugin = {
           example: "This is the email body content.",
           required: true,
         },
+        {
+          type: "group",
+          label: "Additional Recipients",
+          fields: [
+            {
+              key: "emailCc",
+              label: "CC",
+              type: "template-input",
+              placeholder: "cc@example.com",
+              example: "manager@example.com",
+            },
+            {
+              key: "emailBcc",
+              label: "BCC",
+              type: "template-input",
+              placeholder: "bcc@example.com",
+              example: "archive@example.com",
+            },
+            {
+              key: "emailReplyTo",
+              label: "Reply-To",
+              type: "template-input",
+              placeholder: "reply@example.com",
+              example: "support@example.com",
+            },
+          ],
+        },
+        {
+          type: "group",
+          label: "Scheduling",
+          fields: [
+            {
+              key: "emailScheduledAt",
+              label: "Schedule At (ISO 8601)",
+              type: "template-input",
+              placeholder: "2024-12-25T09:00:00Z",
+              example: "2024-12-25T09:00:00Z",
+            },
+            {
+              key: "emailTopicId",
+              label: "Topic ID",
+              type: "template-input",
+              placeholder: "topic_abc123",
+              example: "topic_abc123",
+            },
+          ],
+        },
       ],
-      codegenTemplate: sendEmailCodegenTemplate,
     },
   ],
 };

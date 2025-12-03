@@ -6,9 +6,12 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Copy,
   Download,
   FlaskConical,
+  Globe,
   Loader2,
+  Lock,
   Play,
   Plus,
   Redo2,
@@ -53,8 +56,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
-import { useSession } from "@/lib/auth-client";
-import { integrationsAtom } from "@/lib/integrations-store";
+import { authClient, useSession } from "@/lib/auth-client";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
@@ -63,6 +69,7 @@ import {
   clearWorkflowAtom,
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
+  currentWorkflowVisibilityAtom,
   deleteEdgeAtom,
   deleteNodeAtom,
   edgesAtom,
@@ -70,6 +77,7 @@ import {
   isExecutingAtom,
   isGeneratingAtom,
   isSavingAtom,
+  isWorkflowOwnerAtom,
   nodesAtom,
   propertiesPanelActiveTabAtom,
   redoAtom,
@@ -83,12 +91,17 @@ import {
   updateNodeDataAtom,
   type WorkflowEdge,
   type WorkflowNode,
+  type WorkflowVisibility,
 } from "@/lib/workflow-store";
-import { findActionById, getIntegrationLabels } from "@/plugins";
+import {
+  findActionById,
+  flattenConfigFields,
+  getIntegrationLabels,
+} from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
-import { IntegrationsDialog } from "../settings/integrations-dialog";
+import { IntegrationFormDialog } from "../settings/integration-form-dialog";
 import { IntegrationIcon } from "../ui/integration-icon";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
@@ -215,15 +228,14 @@ function getBrokenTemplateReferences(
       // Get action for label lookups
       const actionType = config.actionType as string | undefined;
       const action = actionType ? findActionById(actionType) : undefined;
+      const flatFields = action ? flattenConfigFields(action.configFields) : [];
 
       brokenByNode.push({
         nodeId: node.id,
         nodeLabel: node.data.label || action?.label || "Unnamed Step",
         brokenReferences: brokenRefs.map((ref) => {
           // Look up human-readable field label
-          const configField = action?.configFields.find(
-            (f) => f.key === ref.field
-          );
+          const configField = flatFields.find((f) => f.key === ref.field);
           return {
             fieldKey: ref.field,
             fieldLabel: configField?.label || ref.field,
@@ -289,7 +301,10 @@ function getNodeMissingFields(
     return null;
   }
 
-  const missingFields = action.configFields
+  // Flatten grouped fields to check all required fields
+  const flatFields = flattenConfigFields(action.configFields);
+
+  const missingFields = flatFields
     .filter(
       (field) =>
         field.required &&
@@ -326,9 +341,10 @@ function getMissingRequiredFields(
 // Also handles built-in actions that aren't in the plugin registry
 function getMissingIntegrations(
   nodes: WorkflowNode[],
-  userIntegrations: Array<{ type: IntegrationType }>
+  userIntegrations: Array<{ id: string; type: IntegrationType }>
 ): MissingIntegrationInfo[] {
   const userIntegrationTypes = new Set(userIntegrations.map((i) => i.type));
+  const userIntegrationIds = new Set(userIntegrations.map((i) => i.id));
   const missingByType = new Map<IntegrationType, string[]>();
   const integrationLabels = getIntegrationLabels();
 
@@ -353,9 +369,15 @@ function getMissingIntegrations(
       continue;
     }
 
-    // Check if this node has an integrationId configured
-    const hasIntegrationConfigured = Boolean(node.data.config?.integrationId);
-    if (hasIntegrationConfigured) {
+    // Check if this node has a valid integrationId configured
+    // The integration must exist (not just be configured)
+    const configuredIntegrationId = node.data.config?.integrationId as
+      | string
+      | undefined;
+    const hasValidIntegration =
+      configuredIntegrationId &&
+      userIntegrationIds.has(configuredIntegrationId);
+    if (hasValidIntegration) {
       continue;
     }
 
@@ -497,7 +519,7 @@ type WorkflowHandlerParams = {
   setEdges: (edges: WorkflowEdge[]) => void;
   setSelectedNodeId: (id: string | null) => void;
   setSelectedExecutionId: (id: string | null) => void;
-  userIntegrations: Array<{ type: IntegrationType }>;
+  userIntegrations: Array<{ id: string; type: IntegrationType }>;
 };
 
 function useWorkflowHandlers({
@@ -646,6 +668,10 @@ function useWorkflowState() {
   const [workflowName, setCurrentWorkflowName] = useAtom(
     currentWorkflowNameAtom
   );
+  const [workflowVisibility, setWorkflowVisibility] = useAtom(
+    currentWorkflowVisibilityAtom
+  );
+  const isOwner = useAtomValue(isWorkflowOwnerAtom);
   const router = useRouter();
   const [showClearDialog, setShowClearDialog] = useAtom(showClearDialogAtom);
   const [showDeleteDialog, setShowDeleteDialog] = useAtom(showDeleteDialogAtom);
@@ -666,8 +692,10 @@ function useWorkflowState() {
   const [triggerExecute, setTriggerExecute] = useAtom(triggerExecuteAtom);
 
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showMakePublicDialog, setShowMakePublicDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
     Array<{
@@ -708,6 +736,9 @@ function useWorkflowState() {
     currentWorkflowId,
     workflowName,
     setCurrentWorkflowName,
+    workflowVisibility,
+    setWorkflowVisibility,
+    isOwner,
     router,
     showClearDialog,
     setShowClearDialog,
@@ -725,10 +756,14 @@ function useWorkflowState() {
     session,
     isDownloading,
     setIsDownloading,
+    isDuplicating,
+    setIsDuplicating,
     showCodeDialog,
     setShowCodeDialog,
     showExportDialog,
     setShowExportDialog,
+    showMakePublicDialog,
+    setShowMakePublicDialog,
     generatedCode,
     allWorkflows,
     setAllWorkflows,
@@ -763,10 +798,13 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     clearWorkflow,
     setShowDeleteDialog,
     setCurrentWorkflowName,
+    setWorkflowVisibility,
     setAllWorkflows,
     newWorkflowName,
     setShowRenameDialog,
     setIsDownloading,
+    setIsDuplicating,
+    setShowMakePublicDialog,
     generatedCode,
     setActiveTab,
     setNodes,
@@ -776,6 +814,8 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     userIntegrations,
     triggerExecute,
     setTriggerExecute,
+    router,
+    session,
   } = state;
 
   const {
@@ -930,6 +970,73 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     toast.success("Code copied to clipboard");
   };
 
+  const handleToggleVisibility = async (newVisibility: WorkflowVisibility) => {
+    if (!currentWorkflowId) {
+      return;
+    }
+
+    // Show confirmation dialog when making public
+    if (newVisibility === "public") {
+      setShowMakePublicDialog(true);
+      return;
+    }
+
+    // Switch to private immediately (no risks)
+    try {
+      await api.workflow.update(currentWorkflowId, {
+        visibility: newVisibility,
+      });
+      setWorkflowVisibility(newVisibility);
+      toast.success("Workflow is now private");
+    } catch (error) {
+      console.error("Failed to update visibility:", error);
+      toast.error("Failed to update visibility. Please try again.");
+    }
+  };
+
+  const handleConfirmMakePublic = async () => {
+    if (!currentWorkflowId) {
+      return;
+    }
+
+    try {
+      await api.workflow.update(currentWorkflowId, {
+        visibility: "public",
+      });
+      setWorkflowVisibility("public");
+      setShowMakePublicDialog(false);
+      toast.success("Workflow is now public");
+    } catch (error) {
+      console.error("Failed to update visibility:", error);
+      toast.error("Failed to update visibility. Please try again.");
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!currentWorkflowId) {
+      return;
+    }
+
+    setIsDuplicating(true);
+    try {
+      // Auto-sign in as anonymous if user has no session
+      if (!session?.user) {
+        await authClient.signIn.anonymous();
+        // Wait for session to be established
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      const newWorkflow = await api.workflow.duplicate(currentWorkflowId);
+      toast.success("Workflow duplicated successfully");
+      router.push(`/workflows/${newWorkflow.id}`);
+    } catch (error) {
+      console.error("Failed to duplicate workflow:", error);
+      toast.error("Failed to duplicate workflow. Please try again.");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   return {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
@@ -947,6 +1054,9 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     handleDownload,
     loadWorkflows,
     handleCopyCode,
+    handleToggleVisibility,
+    handleConfirmMakePublic,
+    handleDuplicate,
   };
 }
 
@@ -973,6 +1083,27 @@ function ToolbarActions({
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
   const hasSelection = selectedNode || selectedEdge;
+
+  // For non-owners viewing public workflows, only show duplicate button
+  if (workflowId && !state.isOwner) {
+    return (
+      <Button
+        className="h-9 border hover:bg-black/5 dark:hover:bg-white/5"
+        disabled={state.isDuplicating}
+        onClick={actions.handleDuplicate}
+        size="sm"
+        title="Duplicate to your workflows"
+        variant="secondary"
+      >
+        {state.isDuplicating ? (
+          <Loader2 className="mr-2 size-4 animate-spin" />
+        ) : (
+          <Copy className="mr-2 size-4" />
+        )}
+        Duplicate
+      </Button>
+    );
+  }
 
   if (!workflowId) {
     return null;
@@ -1196,6 +1327,9 @@ function ToolbarActions({
         <DownloadButton state={state} />
       </ButtonGroup>
 
+      {/* Visibility Toggle */}
+      <VisibilityButton actions={actions} state={state} />
+
       <RunButtonGroup actions={actions} state={state} />
     </>
   );
@@ -1265,6 +1399,55 @@ function DownloadButton({
   );
 }
 
+// Visibility Button Component
+function VisibilityButton({
+  state,
+  actions,
+}: {
+  state: ReturnType<typeof useWorkflowState>;
+  actions: ReturnType<typeof useWorkflowActions>;
+}) {
+  const isPublic = state.workflowVisibility === "public";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className="border hover:bg-black/5 dark:hover:bg-white/5"
+          disabled={!state.currentWorkflowId || state.isGenerating}
+          size="icon"
+          title={isPublic ? "Public workflow" : "Private workflow"}
+          variant="secondary"
+        >
+          {isPublic ? (
+            <Globe className="size-4" />
+          ) : (
+            <Lock className="size-4" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          className="flex items-center gap-2"
+          onClick={() => actions.handleToggleVisibility("private")}
+        >
+          <Lock className="size-4" />
+          Private
+          {!isPublic && <Check className="ml-auto size-4" />}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="flex items-center gap-2"
+          onClick={() => actions.handleToggleVisibility("public")}
+        >
+          <Globe className="size-4" />
+          Public
+          {isPublic && <Check className="ml-auto size-4" />}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // Run Button Group Component
 function RunButtonGroup({
   state,
@@ -1311,18 +1494,53 @@ function WorkflowMenuComponent({
   };
 
   return (
-    <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
-      <DropdownMenu onOpenChange={(open) => open && actions.loadWorkflows()}>
-        <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
-          <WorkflowIcon className="size-4" />
-          <p className="font-medium text-sm">
-            {workflowId ? (
-              state.workflowName
+    <div className="flex items-center gap-2">
+      <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
+        <DropdownMenu onOpenChange={(open) => open && actions.loadWorkflows()}>
+          <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
+            <WorkflowIcon className="size-4" />
+            <p className="font-medium text-sm">
+              {workflowId ? (
+                state.workflowName
+              ) : (
+                <>
+                  <span className="sm:hidden">New</span>
+                  <span className="hidden sm:inline">New Workflow</span>
+                </>
+              )}
+            </p>
+            <ChevronDown className="size-3 opacity-50" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuItem
+              asChild
+              className="flex items-center justify-between"
+            >
+              <a href="/">
+                New Workflow{" "}
+                {!workflowId && <Check className="size-4 shrink-0" />}
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {state.allWorkflows.length === 0 ? (
+              <DropdownMenuItem disabled>No workflows found</DropdownMenuItem>
             ) : (
-              <>
-                <span className="sm:hidden">New</span>
-                <span className="hidden sm:inline">New Workflow</span>
-              </>
+              state.allWorkflows
+                .filter((w) => w.name !== "__current__")
+                .map((workflow) => (
+                  <DropdownMenuItem
+                    className="flex items-center justify-between"
+                    key={workflow.id}
+                    onClick={() =>
+                      state.router.push(`/workflows/${workflow.id}`)
+                    }
+                  >
+                    <span className="truncate">{workflow.name}</span>
+                    {workflow.id === state.currentWorkflowId && (
+                      <Check className="size-4 shrink-0" />
+                    )}
+                  </DropdownMenuItem>
+                ))
             )}
           </p>
           <ChevronDown className="size-3 opacity-50" />
@@ -1358,6 +1576,14 @@ function WorkflowMenuComponent({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {workflowId && !state.isOwner && (
+        <span className="text-muted-foreground text-xs uppercase">
+          Read-only
+        </span>
+      )}
     </div>
   );
 }
@@ -1370,7 +1596,9 @@ function WorkflowIssuesDialog({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [addingIntegrationType, setAddingIntegrationType] =
+    useState<IntegrationType | null>(null);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
   const { brokenReferences, missingRequiredFields, missingIntegrations } =
     actions.workflowIssues;
 
@@ -1380,9 +1608,9 @@ function WorkflowIssuesDialog({
     state.setActiveTab("properties");
   };
 
-  const handleAddIntegrations = () => {
+  const handleAddIntegration = (integrationType: IntegrationType) => {
     actions.setShowWorkflowIssuesDialog(false);
-    setShowIntegrationsDialog(true);
+    setAddingIntegrationType(integrationType);
   };
 
   const totalIssues =
@@ -1530,7 +1758,9 @@ function WorkflowIssuesDialog({
                       </div>
                       <Button
                         className="shrink-0"
-                        onClick={handleAddIntegrations}
+                        onClick={() =>
+                          handleAddIntegration(missing.integrationType)
+                        }
                         size="sm"
                         variant="outline"
                       >
@@ -1552,9 +1782,16 @@ function WorkflowIssuesDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <IntegrationsDialog
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
+      <IntegrationFormDialog
+        mode="create"
+        onClose={() => setAddingIntegrationType(null)}
+        onSuccess={() => {
+          setAddingIntegrationType(null);
+          // Increment version to trigger auto-fix for nodes
+          setIntegrationsVersion((v) => v + 1);
+        }}
+        open={addingIntegrationType !== null}
+        preselectedType={addingIntegrationType ?? undefined}
       />
     </>
   );
@@ -1793,6 +2030,46 @@ function WorkflowDialogsComponent({
       </Dialog>
 
       <WorkflowIssuesDialog actions={actions} state={state} />
+
+      {/* Make Public Confirmation Dialog */}
+      <AlertDialog
+        onOpenChange={state.setShowMakePublicDialog}
+        open={state.showMakePublicDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Globe className="size-5" />
+              Make Workflow Public?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Making this workflow public means anyone with the link can:
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                  <li>View the workflow structure and steps</li>
+                  <li>See action types and configurations</li>
+                  <li>Duplicate the workflow to their own account</li>
+                </ul>
+                <p className="font-medium text-foreground">
+                  The following will remain private:
+                </p>
+                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
+                  <li>Your integration credentials (API keys, tokens)</li>
+                  <li>Execution logs and run history</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={actions.handleConfirmMakePublic}>
+              Make Public
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

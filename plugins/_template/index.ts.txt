@@ -1,0 +1,122 @@
+/**
+ * PLUGIN INDEX TEMPLATE
+ *
+ * This is the main plugin definition file. It registers your integration
+ * and defines all actions, configuration fields, and metadata.
+ *
+ * Instructions:
+ * 1. Replace all [PLACEHOLDERS] with your integration's values
+ * 2. Run `pnpm discover-plugins` after creating your plugin
+ */
+
+import type { IntegrationPlugin } from "../registry";
+import { registerIntegration } from "../registry";
+import { [IntegrationName]Icon } from "./icon";
+
+const [integrationName]Plugin: IntegrationPlugin = {
+  // Must be unique and match your folder name (e.g., "my-integration")
+  type: "[integration-type]",
+
+  // Display name shown in the UI
+  label: "[Integration Name]",
+
+  // Brief description of what this integration does
+  description: "[Integration Description]",
+
+  // Icon component - imported from ./icon.tsx
+  // Can be a custom SVG component or use a Lucide icon directly
+  icon: [IntegrationName]Icon,
+
+  // Form fields for the integration settings dialog
+  // These define what credentials/config users need to provide
+  formFields: [
+    {
+      id: "apiKey",
+      label: "API Key",
+      type: "password", // "password" | "text" | "url"
+      placeholder: "[api-key-prefix]...",
+      configKey: "apiKey", // Key stored in database
+      envVar: "[INTEGRATION_NAME]_API_KEY", // Environment variable name
+      helpText: "Get your API key from ",
+      helpLink: {
+        text: "[integration-name].com/api-keys",
+        url: "https://[integration-name].com/api-keys",
+      },
+    },
+    // Add more fields as needed (e.g., workspace ID, region, etc.)
+  ],
+
+  // Test function for validating credentials
+  // Lazy-loaded to avoid bundling server code in client
+  testConfig: {
+    getTestFunction: async () => {
+      const { test[IntegrationName] } = await import("./test");
+      return test[IntegrationName];
+    },
+  },
+
+  // Actions provided by this integration
+  actions: [
+    {
+      // Unique slug for this action (used in URLs and IDs)
+      // Full action ID will be: "[integration-type]/[slug]"
+      slug: "[action-slug]",
+
+      // Display name and description
+      label: "[Action Label]",
+      description: "[Action Description]",
+
+      // Category for grouping in the action picker (usually integration name)
+      category: "[Integration Name]",
+
+      // Step function name and import path
+      // The function must be exported from plugins/[integration]/steps/[stepImportPath].ts
+      stepFunction: "[actionName]Step",
+      stepImportPath: "[action-slug]",
+
+      // Declarative config fields for the action
+      // Supported types: "template-input", "template-textarea", "text", "number", "select", "schema-builder"
+      configFields: [
+        {
+          key: "fieldA",
+          label: "Field A",
+          type: "template-input", // Supports {{NodeName.field}} syntax
+          placeholder: "Enter value or use {{NodeName.field}}",
+          example: "example value", // Used in AI prompt generation
+          required: true,
+        },
+        {
+          key: "fieldB",
+          label: "Field B",
+          type: "template-textarea",
+          placeholder: "Multi-line content...",
+          rows: 5,
+        },
+        // For select fields:
+        // {
+        //   key: "option",
+        //   label: "Option",
+        //   type: "select",
+        //   options: [
+        //     { value: "a", label: "Option A" },
+        //     { value: "b", label: "Option B" },
+        //   ],
+        //   defaultValue: "a",
+        // },
+        // For conditional fields:
+        // {
+        //   key: "conditionalField",
+        //   label: "Conditional Field",
+        //   type: "text",
+        //   showWhen: { field: "option", equals: "b" },
+        // },
+      ],
+    },
+    // Add more actions as needed
+  ],
+};
+
+// Auto-register on import
+registerIntegration([integrationName]Plugin);
+
+export default [integrationName]Plugin;

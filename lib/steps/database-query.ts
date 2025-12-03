@@ -139,3 +139,4 @@ export async function databaseQueryStep(
   "use step";
   return withStepLogging(input, () => databaseQuery(input));
 }
+databaseQueryStep.maxRetries = 0;

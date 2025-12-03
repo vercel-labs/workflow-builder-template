@@ -54,3 +54,4 @@ export async function triggerStep(input: TriggerInput): Promise<TriggerResult> {
   // Normal trigger execution with logging
   return withStepLogging(input, () => Promise.resolve(executeTrigger(input)));
 }
+triggerStep.maxRetries = 0;

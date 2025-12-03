@@ -1,7 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { generateImageCodegenTemplate } from "./codegen/generate-image";
-import { generateTextCodegenTemplate } from "./codegen/generate-text";
 import { AiGatewayIcon } from "./icon";
 
 const aiGatewayPlugin: IntegrationPlugin = {
@@ -106,7 +104,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
           showWhen: { field: "aiFormat", equals: "object" },
         },
       ],
-      codegenTemplate: generateTextCodegenTemplate,
     },
     {
       slug: "generate-image",
@@ -115,6 +112,8 @@ const aiGatewayPlugin: IntegrationPlugin = {
       category: "AI Gateway",
       stepFunction: "generateImageStep",
       stepImportPath: "generate-image",
+      outputFields: [{ field: "base64", description: "Base64-encoded image data" }],
+      outputConfig: { type: "image", field: "base64" },
       configFields: [
         {
           key: "imageModel",
@@ -141,7 +140,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
           required: true,
         },
       ],
-      codegenTemplate: generateImageCodegenTemplate,
     },
   ],
 };

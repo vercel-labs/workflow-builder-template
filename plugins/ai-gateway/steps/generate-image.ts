@@ -8,27 +8,29 @@ import {
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessageAsync } from "@/lib/utils";
+import type { AiGatewayCredentials } from "../credentials";
 
 type GenerateImageResult =
   | { success: true; base64: string }
   | { success: false; error: string };
 
-export type GenerateImageInput = StepInput & {
-  integrationId?: string;
+export type GenerateImageCoreInput = {
   imageModel: ImageModelV2;
   imagePrompt: string;
 };
 
-/**
- * Generate image logic
- */
-async function generateImageLogic(
-  input: GenerateImageInput
-): Promise<GenerateImageResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type GenerateImageInput = StepInput &
+  GenerateImageCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: GenerateImageCoreInput,
+  credentials: AiGatewayCredentials
+): Promise<GenerateImageResult> {
   const apiKey = credentials.AI_GATEWAY_API_KEY;
 
   if (!apiKey) {
@@ -72,12 +74,19 @@ async function generateImageLogic(
 }
 
 /**
- * Generate Image Step
- * Uses AI Gateway to generate images
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function generateImageStep(
   input: GenerateImageInput
 ): Promise<GenerateImageResult> {
   "use step";
-  return withStepLogging(input, () => generateImageLogic(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+generateImageStep.maxRetries = 0;
+
+export const _integrationType = "ai-gateway";

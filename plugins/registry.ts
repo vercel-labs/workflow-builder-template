@@ -11,10 +11,10 @@ export type SelectOption = {
 };
 
 /**
- * Action Config Field
+ * Base Action Config Field
  * Declarative definition of a config field for an action
  */
-export type ActionConfigField = {
+export type ActionConfigFieldBase = {
   // Unique key for this field in the config object
   key: string;
 
@@ -59,6 +59,50 @@ export type ActionConfigField = {
 };
 
 /**
+ * Config Field Group
+ * Groups related fields together in a collapsible section
+ */
+export type ActionConfigFieldGroup = {
+  // Human-readable label for the group
+  label: string;
+
+  // Field type (always "group" for groups)
+  type: "group";
+
+  // Nested fields within this group
+  fields: ActionConfigFieldBase[];
+
+  // Whether the group is expanded by default (defaults to false)
+  defaultExpanded?: boolean;
+};
+
+/**
+ * Action Config Field
+ * Can be either a regular field or a group of fields
+ */
+export type ActionConfigField = ActionConfigFieldBase | ActionConfigFieldGroup;
+
+/**
+ * Output Field Definition
+ * Describes an output field available for template autocomplete
+ */
+export type OutputField = {
+  field: string;
+  description: string;
+};
+
+/**
+ * Output Display Config
+ * Specifies how to render step output in the workflow runs panel
+ */
+export type OutputDisplayConfig = {
+  // Type of display: image renders as img, video renders as video element, url renders in iframe
+  type: "image" | "video" | "url";
+  // Field name in the step output that contains the displayable value
+  field: string;
+};
+
+/**
  * Action Definition
  * Describes a single action provided by a plugin
  */
@@ -83,8 +127,16 @@ export type PluginAction = {
   // Config fields for the action (declarative definition)
   configFields: ActionConfigField[];
 
+  // Output fields for template autocomplete (what this action returns)
+  outputFields?: OutputField[];
+
+  // Output display configuration (how to render output in workflow runs panel)
+  outputConfig?: OutputDisplayConfig;
+
   // Code generation template (the actual template string, not a path)
-  codegenTemplate: string;
+  // Optional - if not provided, will fall back to auto-generated template
+  // from steps that export _exportCore
+  codegenTemplate?: string;
 };
 
 /**
@@ -123,7 +175,8 @@ export type IntegrationPlugin = {
     >;
   };
 
-  // NPM dependencies required by this plugin (package name -> version)
+  // Avoid using this field. Plugins should use fetch instead of SDK dependencies
+  // to reduce supply chain attack surface. Only use for codegen if absolutely necessary.
   dependencies?: Record<string, string>;
 
   // Actions provided by this integration
@@ -406,6 +459,35 @@ export function getCredentialMapping(
 }
 
 /**
+ * Type guard to check if a field is a group
+ */
+export function isFieldGroup(
+  field: ActionConfigField
+): field is ActionConfigFieldGroup {
+  return field.type === "group";
+}
+
+/**
+ * Flatten config fields, extracting fields from groups
+ * Useful for validation and AI prompt generation
+ */
+export function flattenConfigFields(
+  fields: ActionConfigField[]
+): ActionConfigFieldBase[] {
+  const result: ActionConfigFieldBase[] = [];
+
+  for (const field of fields) {
+    if (isFieldGroup(field)) {
+      result.push(...field.fields);
+    } else {
+      result.push(field);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Generate AI prompt section for all available actions
  * This dynamically builds the action types documentation for the AI
  */
@@ -416,12 +498,14 @@ export function generateAIActionPrompts(): string {
     for (const action of plugin.actions) {
       const fullId = computeActionId(plugin.type, action.slug);
 
-      // Build example config from configFields
+      // Build example config from configFields (flatten groups)
       const exampleConfig: Record<string, string | number> = {
         actionType: fullId,
       };
 
-      for (const field of action.configFields) {
+      const flatFields = flattenConfigFields(action.configFields);
+
+      for (const field of flatFields) {
         // Skip conditional fields in the example
         if (field.showWhen) continue;
 

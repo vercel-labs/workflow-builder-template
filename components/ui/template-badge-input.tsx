@@ -4,6 +4,7 @@ import { useAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { nodesAtom, selectedNodeAtom } from "@/lib/workflow-store";
+import { findActionById } from "@/plugins";
 import { TemplateAutocomplete } from "./template-autocomplete";
 
 export interface TemplateBadgeInputProps {
@@ -40,24 +41,32 @@ function getDisplayTextForTemplate(template: string, nodes: ReturnType<typeof us
     return rest;
   }
   
-  // Replace old label with current label
-  const currentLabel = node.data.label || "";
+  // Get display label: custom label > human-readable action label > fallback
+  let displayLabel: string | undefined = node.data.label;
+  if (!displayLabel && node.data.type === "action") {
+    const actionType = node.data.config?.actionType as string | undefined;
+    if (actionType) {
+      const action = findActionById(actionType);
+      displayLabel = action?.label;
+    }
+  }
+  
   const dotIndex = rest.indexOf(".");
   
   if (dotIndex === -1) {
     // No field, just the node: {{@nodeId:Label}}
-    return currentLabel || rest;
+    return displayLabel ?? rest;
   }
   
   // Has field: {{@nodeId:Label.field}}
   const field = rest.substring(dotIndex + 1);
   
-  // If currentLabel is empty, fall back to the original label from the template
-  if (!currentLabel) {
+  // If no display label, fall back to the original label from the template
+  if (!displayLabel) {
     return rest;
   }
   
-  return `${currentLabel}.${field}`;
+  return `${displayLabel}.${field}`;
 }
 
 /**

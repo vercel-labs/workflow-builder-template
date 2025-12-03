@@ -1,9 +1,31 @@
 import "server-only";
 
-import { LinearClient } from "@linear/sdk";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { LinearCredentials } from "../credentials";
+
+const LINEAR_API_URL = "https://api.linear.app/graphql";
+
+type LinearGraphQLResponse<T> = {
+  data?: T;
+  errors?: Array<{ message: string }>;
+};
+
+type IssuesQueryResponse = {
+  issues: {
+    nodes: Array<{
+      id: string;
+      title: string;
+      url: string;
+      priority: number;
+      assigneeId?: string;
+      state: {
+        name: string;
+      } | null;
+    }>;
+  };
+};
 
 type LinearIssue = {
   id: string;
@@ -18,22 +40,46 @@ type FindIssuesResult =
   | { success: true; issues: LinearIssue[]; count: number }
   | { success: false; error: string };
 
-export type FindIssuesInput = StepInput & {
-  integrationId?: string;
+export type FindIssuesCoreInput = {
   linearAssigneeId?: string;
   linearTeamId?: string;
   linearStatus?: string;
   linearLabel?: string;
 };
 
-/**
- * Find issues logic
- */
-async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type FindIssuesInput = StepInput &
+  FindIssuesCoreInput & {
+    integrationId?: string;
+  };
 
+async function linearQuery<T>(
+  apiKey: string,
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<LinearGraphQLResponse<T>> {
+  const response = await fetch(LINEAR_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: apiKey,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Linear API error: HTTP ${response.status}`);
+  }
+
+  return response.json() as Promise<LinearGraphQLResponse<T>>;
+}
+
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: FindIssuesCoreInput,
+  credentials: LinearCredentials
+): Promise<FindIssuesResult> {
   const apiKey = credentials.LINEAR_API_KEY;
 
   if (!apiKey) {
@@ -45,9 +91,7 @@ async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
   }
 
   try {
-    const linear = new LinearClient({ apiKey });
-
-    // Build filter object
+    // Build filter object for Linear's GraphQL API
     const filter: Record<string, unknown> = {};
 
     if (input.linearAssigneeId) {
@@ -66,19 +110,40 @@ async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
       filter.labels = { name: { eqIgnoreCase: input.linearLabel } };
     }
 
-    const issues = await linear.issues({ filter });
+    const result = await linearQuery<IssuesQueryResponse>(
+      apiKey,
+      `query FindIssues($filter: IssueFilter) {
+        issues(filter: $filter) {
+          nodes {
+            id
+            title
+            url
+            priority
+            assigneeId
+            state {
+              name
+            }
+          }
+        }
+      }`,
+      { filter: Object.keys(filter).length > 0 ? filter : undefined }
+    );
 
-    const mappedIssues: LinearIssue[] = await Promise.all(
-      issues.nodes.map(async (issue) => {
-        const state = await issue.state;
-        return {
-          id: issue.id,
-          title: issue.title,
-          url: issue.url,
-          state: state?.name || "Unknown",
-          priority: issue.priority,
-          assigneeId: issue.assigneeId || undefined,
-        };
+    if (result.errors?.length) {
+      return {
+        success: false,
+        error: result.errors[0].message,
+      };
+    }
+
+    const mappedIssues: LinearIssue[] = (result.data?.issues.nodes || []).map(
+      (issue) => ({
+        id: issue.id,
+        title: issue.title,
+        url: issue.url,
+        state: issue.state?.name || "Unknown",
+        priority: issue.priority,
+        assigneeId: issue.assigneeId || undefined,
       })
     );
 
@@ -96,12 +161,19 @@ async function findIssues(input: FindIssuesInput): Promise<FindIssuesResult> {
 }
 
 /**
- * Find Issues Step
- * Searches for issues in Linear based on filters
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function findIssuesStep(
   input: FindIssuesInput
 ): Promise<FindIssuesResult> {
   "use step";
-  return withStepLogging(input, () => findIssues(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+findIssuesStep.maxRetries = 0;
+
+export const _integrationType = "linear";

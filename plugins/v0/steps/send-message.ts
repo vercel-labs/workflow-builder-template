@@ -4,25 +4,29 @@ import { createClient, type ChatsSendMessageResponse } from "v0-sdk";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { V0Credentials } from "../credentials";
 
 type SendMessageResult =
   | { success: true; chatId: string; demoUrl?: string }
   | { success: false; error: string };
 
-export type SendMessageInput = StepInput & {
-  integrationId?: string;
+export type SendMessageCoreInput = {
   chatId: string;
   message: string;
 };
 
-/**
- * Send message logic
- */
-async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type SendMessageInput = StepInput &
+  SendMessageCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: SendMessageCoreInput,
+  credentials: V0Credentials
+): Promise<SendMessageResult> {
   const apiKey = credentials.V0_API_KEY;
 
   if (!apiKey) {
@@ -55,12 +59,19 @@ async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> 
 }
 
 /**
- * Send Message Step
- * Sends a message to an existing v0 chat
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function sendMessageStep(
   input: SendMessageInput
 ): Promise<SendMessageResult> {
   "use step";
-  return withStepLogging(input, () => sendMessage(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+sendMessageStep.maxRetries = 0;
+
+export const _integrationType = "v0";

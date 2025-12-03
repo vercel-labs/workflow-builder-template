@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  ExternalLink,
   Loader2,
   Play,
   X,
@@ -15,6 +16,10 @@ import Image from "next/image";
 import type { JSX } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
+import {
+  OUTPUT_DISPLAY_CONFIGS,
+  type OutputDisplayConfig,
+} from "@/lib/output-display-configs";
 import { cn } from "@/lib/utils";
 import { getRelativeTime } from "@/lib/utils/time";
 import {
@@ -57,7 +62,27 @@ type WorkflowRunsProps = {
   connectionNodeIds?: string[];
 };
 
-// Helper to detect if output is a base64 image from generateImage step
+// Helper to get the output display config for a node type
+function getOutputConfig(nodeType: string): OutputDisplayConfig | undefined {
+  return OUTPUT_DISPLAY_CONFIGS[nodeType];
+}
+
+// Helper to extract the displayable value from output based on config
+function getOutputDisplayValue(
+  output: unknown,
+  config: OutputDisplayConfig
+): string | undefined {
+  if (typeof output !== "object" || output === null) {
+    return;
+  }
+  const value = (output as Record<string, unknown>)[config.field];
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  return;
+}
+
+// Fallback: detect if output is a base64 image (for legacy support)
 function isBase64ImageOutput(output: unknown): output is { base64: string } {
   return (
     typeof output === "object" &&
@@ -101,6 +126,51 @@ function createExecutionLogsMap(logs: ExecutionLog[]): Record<
   return logsMap;
 }
 
+// Helper to check if a string is a URL
+function isUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+// Component to render JSON with clickable links
+function JsonWithLinks({ data }: { data: unknown }) {
+  // Use regex to find and replace URLs in the JSON string
+  const jsonString = JSON.stringify(data, null, 2);
+
+  // Split by quoted strings to preserve structure
+  const parts = jsonString.split(/("https?:\/\/[^"]+"|"[^"]*")/g);
+
+  return (
+    <>
+      {parts.map((part) => {
+        // Check if this part is a quoted URL string
+        if (part.startsWith('"') && part.endsWith('"')) {
+          const innerValue = part.slice(1, -1);
+          if (isUrl(innerValue)) {
+            return (
+              <a
+                className="text-blue-500 underline hover:text-blue-400"
+                href={innerValue}
+                key={innerValue}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {part}
+              </a>
+            );
+          }
+        }
+        // For non-URL parts, just render as text (no key needed for text nodes)
+        return part;
+      })}
+    </>
+  );
+}
+
 // Reusable copy button component
 function CopyButton({
   data,
@@ -137,6 +207,176 @@ function CopyButton({
         <Copy className="h-3 w-3" />
       )}
     </Button>
+  );
+}
+
+// Collapsible section component
+function CollapsibleSection({
+  title,
+  children,
+  defaultExpanded = false,
+  copyData,
+  isError = false,
+  externalLink,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultExpanded?: boolean;
+  copyData?: unknown;
+  isError?: boolean;
+  externalLink?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultExpanded);
+
+  return (
+    <div>
+      <div className="mb-2 flex w-full items-center justify-between">
+        <button
+          className="flex items-center gap-1.5"
+          onClick={() => setIsOpen(!isOpen)}
+          type="button"
+        >
+          {isOpen ? (
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          )}
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            {title}
+          </span>
+        </button>
+        <div className="flex items-center gap-1">
+          {externalLink && (
+            <Button asChild className="h-7 px-2" size="sm" variant="ghost">
+              <a href={externalLink} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </Button>
+          )}
+          {copyData !== undefined && (
+            <CopyButton data={copyData} isError={isError} />
+          )}
+        </div>
+      </div>
+      {isOpen && children}
+    </div>
+  );
+}
+
+// Component for rendering output with rich display support
+function OutputDisplay({
+  output,
+  input,
+}: {
+  output: unknown;
+  input?: unknown;
+}) {
+  // Get actionType from input to look up the output config
+  const actionType =
+    typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>).actionType
+      : undefined;
+  const config =
+    typeof actionType === "string" ? getOutputConfig(actionType) : undefined;
+  const displayValue = config
+    ? getOutputDisplayValue(output, config)
+    : undefined;
+
+  // Check for legacy base64 image
+  const isLegacyBase64 = !config && isBase64ImageOutput(output);
+
+  const renderRichResult = () => {
+    if (config && displayValue) {
+      switch (config.type) {
+        case "image": {
+          // Handle base64 images by adding data URI prefix if needed
+          const imageSrc =
+            config.field === "base64" && !displayValue.startsWith("data:")
+              ? `data:image/png;base64,${displayValue}`
+              : displayValue;
+          return (
+            <div className="overflow-hidden rounded-lg border bg-muted/50 p-3">
+              <Image
+                alt="Generated image"
+                className="max-h-96 w-auto rounded"
+                height={384}
+                src={imageSrc}
+                unoptimized
+                width={384}
+              />
+            </div>
+          );
+        }
+        case "video":
+          return (
+            <div className="overflow-hidden rounded-lg border bg-muted/50 p-3">
+              <video
+                className="max-h-96 w-auto rounded"
+                controls
+                src={displayValue}
+              >
+                <track kind="captions" />
+              </video>
+            </div>
+          );
+        case "url":
+          return (
+            <div className="overflow-hidden rounded-lg border bg-muted/50">
+              <iframe
+                className="h-96 w-full rounded"
+                sandbox="allow-scripts allow-same-origin"
+                src={displayValue}
+                title="Output preview"
+              />
+            </div>
+          );
+        default:
+          return null;
+      }
+    }
+
+    // Fallback: legacy base64 image detection
+    if (isLegacyBase64) {
+      return (
+        <div className="overflow-hidden rounded-lg border bg-muted/50 p-3">
+          <Image
+            alt="AI generated output"
+            className="max-h-96 w-auto rounded"
+            height={384}
+            src={`data:image/png;base64,${(output as { base64: string }).base64}`}
+            unoptimized
+            width={384}
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const richResult = renderRichResult();
+  const hasRichResult = richResult !== null;
+
+  return (
+    <>
+      {/* Always show JSON output */}
+      <CollapsibleSection copyData={output} title="Output">
+        <pre className="overflow-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed">
+          <JsonWithLinks data={output} />
+        </pre>
+      </CollapsibleSection>
+
+      {/* Show rich result if available */}
+      {hasRichResult && (
+        <CollapsibleSection
+          defaultExpanded
+          externalLink={config?.type === "url" ? displayValue : undefined}
+          title="Result"
+        >
+          {richResult}
+        </CollapsibleSection>
+      )}
+    </>
   );
 }
 
@@ -213,56 +453,26 @@ function ExecutionLogEntry({
         {isExpanded && (
           <div className="mt-2 mb-2 space-y-3 px-3">
             {log.input !== null && log.input !== undefined && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Input
-                  </div>
-                  <CopyButton data={log.input} />
-                </div>
+              <CollapsibleSection copyData={log.input} title="Input">
                 <pre className="overflow-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed">
-                  {JSON.stringify(log.input, null, 2)}
+                  <JsonWithLinks data={log.input} />
                 </pre>
-              </div>
+              </CollapsibleSection>
             )}
             {log.output !== null && log.output !== undefined && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Output
-                  </div>
-                  <CopyButton data={log.output} />
-                </div>
-                {isBase64ImageOutput(log.output) ? (
-                  <div className="overflow-hidden rounded-lg border bg-muted/50 p-3">
-                    <Image
-                      alt="AI generated output"
-                      className="max-h-96 w-auto rounded"
-                      height={384}
-                      src={`data:image/png;base64,${(log.output as { base64: string }).base64}`}
-                      unoptimized
-                      width={384}
-                    />
-                  </div>
-                ) : (
-                  <pre className="overflow-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed">
-                    {JSON.stringify(log.output, null, 2)}
-                  </pre>
-                )}
-              </div>
+              <OutputDisplay input={log.input} output={log.output} />
             )}
             {log.error && (
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Error
-                  </div>
-                  <CopyButton data={log.error} isError />
-                </div>
+              <CollapsibleSection
+                copyData={log.error}
+                defaultExpanded
+                isError
+                title="Error"
+              >
                 <pre className="overflow-auto rounded-lg border border-red-500/20 bg-red-500/5 p-3 font-mono text-red-600 text-xs leading-relaxed">
                   {log.error}
                 </pre>
-              </div>
+              </CollapsibleSection>
             )}
             {!(log.input || log.output || log.error) && (
               <div className="rounded-lg border bg-muted/30 py-4 text-center text-muted-foreground text-xs">

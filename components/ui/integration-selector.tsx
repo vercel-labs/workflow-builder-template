@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -11,6 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { api, type Integration } from "@/lib/api-client";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 
@@ -34,11 +39,16 @@ export function IntegrationSelector({
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  const integrationsVersion = useAtomValue(integrationsVersionAtom);
+  const setGlobalIntegrations = useSetAtom(integrationsAtom);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
 
   const loadIntegrations = async () => {
     try {
       setLoading(true);
       const all = await api.integration.getAll();
+      // Update global store so other components can access it
+      setGlobalIntegrations(all);
       const filtered = all.filter((i) => i.type === integrationType);
       setIntegrations(filtered);
       
@@ -56,7 +66,7 @@ export function IntegrationSelector({
   useEffect(() => {
     loadIntegrations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [integrationType]);
+  }, [integrationType, integrationsVersion]);
 
   const handleValueChange = (newValue: string) => {
     if (newValue === "__new__") {
@@ -72,6 +82,8 @@ export function IntegrationSelector({
     await loadIntegrations();
     onChange(integrationId);
     setShowNewDialog(false);
+    // Increment version to trigger auto-fix for other nodes that need this integration type
+    setIntegrationsVersion((v) => v + 1);
   };
 
   if (loading) {
