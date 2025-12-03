@@ -449,6 +449,7 @@ export function WorkflowCanvas() {
   return (
     <div
       className="relative h-full bg-background"
+      data-testid="workflow-canvas"
       style={{
         opacity: isCanvasReady ? 1 : 0,
         width: rightPanelWidth ? `calc(100% - ${rightPanelWidth})` : "100%",

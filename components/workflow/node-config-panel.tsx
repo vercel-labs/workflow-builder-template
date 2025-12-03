@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
+import { integrationsAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
@@ -38,6 +39,7 @@ import {
   edgesAtom,
   isGeneratingAtom,
   isWorkflowOwnerAtom,
+  newlyCreatedNodeIdAtom,
   nodesAtom,
   pendingIntegrationNodesAtom,
   propertiesPanelActiveTabAtom,
@@ -163,6 +165,9 @@ export const PanelInner = () => {
   const setShowDeleteDialog = useSetAtom(showDeleteDialogAtom);
   const clearNodeStatuses = useSetAtom(clearNodeStatusesAtom);
   const setPendingIntegrationNodes = useSetAtom(pendingIntegrationNodesAtom);
+  const [newlyCreatedNodeId, setNewlyCreatedNodeId] = useAtom(
+    newlyCreatedNodeIdAtom
+  );
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
@@ -180,6 +185,84 @@ export const PanelInner = () => {
   const selectedNodes = nodes.filter((node) => node.selected);
   const selectedEdges = edges.filter((edge) => edge.selected);
   const hasMultipleSelections = selectedNodes.length + selectedEdges.length > 1;
+
+  // Switch to Properties tab if Code tab is hidden for the selected node
+  useEffect(() => {
+    if (!selectedNode || activeTab !== "code") {
+      return;
+    }
+
+    const isConditionAction =
+      selectedNode.data.config?.actionType === "Condition";
+    const isManualTrigger =
+      selectedNode.data.type === "trigger" &&
+      selectedNode.data.config?.triggerType === "Manual";
+
+    if (isConditionAction || isManualTrigger) {
+      setActiveTab("properties");
+    }
+  }, [selectedNode, activeTab, setActiveTab]);
+
+  // Auto-fix invalid integration references when a node is selected
+  const globalIntegrations = useAtomValue(integrationsAtom);
+  useEffect(() => {
+    if (!(selectedNode && isOwner)) {
+      return;
+    }
+
+    const actionType = selectedNode.data.config?.actionType as
+      | string
+      | undefined;
+    const currentIntegrationId = selectedNode.data.config?.integrationId as
+      | string
+      | undefined;
+
+    // Skip if no action type or no integration configured
+    if (!(actionType && currentIntegrationId)) {
+      return;
+    }
+
+    // Get the required integration type for this action
+    const action = findActionById(actionType);
+    const integrationType: IntegrationType | undefined =
+      (action?.integration as IntegrationType | undefined) ||
+      SYSTEM_ACTION_INTEGRATIONS[actionType];
+
+    if (!integrationType) {
+      return;
+    }
+
+    // Check if current integration still exists
+    const integrationExists = globalIntegrations.some(
+      (i) => i.id === currentIntegrationId
+    );
+
+    if (integrationExists) {
+      return;
+    }
+
+    // Current integration was deleted - find a replacement
+    const availableIntegrations = globalIntegrations.filter(
+      (i) => i.type === integrationType
+    );
+
+    if (availableIntegrations.length === 1) {
+      // Auto-select the only available integration
+      const newConfig = {
+        ...selectedNode.data.config,
+        integrationId: availableIntegrations[0].id,
+      };
+      updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
+    } else if (availableIntegrations.length === 0) {
+      // No integrations available - clear the invalid reference
+      const newConfig = {
+        ...selectedNode.data.config,
+        integrationId: undefined,
+      };
+      updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
+    }
+    // If multiple integrations exist, let the user choose manually
+  }, [selectedNode, globalIntegrations, isOwner, updateNodeData]);
 
   // Generate workflow code
   const workflowCode = useMemo(() => {
@@ -657,6 +740,7 @@ export const PanelInner = () => {
     <>
       <Tabs
         className="size-full"
+        data-testid="properties-panel"
         defaultValue="properties"
         onValueChange={setActiveTab}
         value={activeTab}
@@ -668,8 +752,9 @@ export const PanelInner = () => {
           >
             Properties
           </TabsTrigger>
-          {selectedNode.data.type !== "trigger" ||
-          (selectedNode.data.config?.triggerType as string) !== "Manual" ? (
+          {(selectedNode.data.type !== "trigger" ||
+            (selectedNode.data.config?.triggerType as string) !== "Manual") &&
+          selectedNode.data.config?.actionType !== "Condition" ? (
             <TabsTrigger
               className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
               value="code"
@@ -705,9 +790,14 @@ export const PanelInner = () => {
               isOwner && (
                 <ActionGrid
                   disabled={isGenerating}
-                  onSelectAction={(actionType) =>
-                    handleUpdateConfig("actionType", actionType)
-                  }
+                  isNewlyCreated={selectedNode?.id === newlyCreatedNodeId}
+                  onSelectAction={(actionType) => {
+                    handleUpdateConfig("actionType", actionType);
+                    // Clear newly created tracking once action is selected
+                    if (selectedNode?.id === newlyCreatedNodeId) {
+                      setNewlyCreatedNodeId(null);
+                    }
+                  }}
                 />
               )}
 

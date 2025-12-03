@@ -57,7 +57,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
-import { integrationsAtom } from "@/lib/integrations-store";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
@@ -98,7 +101,7 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
-import { IntegrationsDialog } from "../settings/integrations-dialog";
+import { IntegrationFormDialog } from "../settings/integration-form-dialog";
 import { IntegrationIcon } from "../ui/integration-icon";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
@@ -338,9 +341,10 @@ function getMissingRequiredFields(
 // Also handles built-in actions that aren't in the plugin registry
 function getMissingIntegrations(
   nodes: WorkflowNode[],
-  userIntegrations: Array<{ type: IntegrationType }>
+  userIntegrations: Array<{ id: string; type: IntegrationType }>
 ): MissingIntegrationInfo[] {
   const userIntegrationTypes = new Set(userIntegrations.map((i) => i.type));
+  const userIntegrationIds = new Set(userIntegrations.map((i) => i.id));
   const missingByType = new Map<IntegrationType, string[]>();
   const integrationLabels = getIntegrationLabels();
 
@@ -365,9 +369,15 @@ function getMissingIntegrations(
       continue;
     }
 
-    // Check if this node has an integrationId configured
-    const hasIntegrationConfigured = Boolean(node.data.config?.integrationId);
-    if (hasIntegrationConfigured) {
+    // Check if this node has a valid integrationId configured
+    // The integration must exist (not just be configured)
+    const configuredIntegrationId = node.data.config?.integrationId as
+      | string
+      | undefined;
+    const hasValidIntegration =
+      configuredIntegrationId &&
+      userIntegrationIds.has(configuredIntegrationId);
+    if (hasValidIntegration) {
       continue;
     }
 
@@ -509,7 +519,7 @@ type WorkflowHandlerParams = {
   setEdges: (edges: WorkflowEdge[]) => void;
   setSelectedNodeId: (id: string | null) => void;
   setSelectedExecutionId: (id: string | null) => void;
-  userIntegrations: Array<{ type: IntegrationType }>;
+  userIntegrations: Array<{ id: string; type: IntegrationType }>;
 };
 
 function useWorkflowHandlers({
@@ -1074,25 +1084,10 @@ function ToolbarActions({
   const selectedEdge = edges.find((edge) => edge.id === selectedEdgeId);
   const hasSelection = selectedNode || selectedEdge;
 
-  // For non-owners viewing public workflows, only show duplicate button
+  // For non-owners viewing public workflows, don't show toolbar actions
+  // (Duplicate button is now in the main toolbar next to Sign In)
   if (workflowId && !state.isOwner) {
-    return (
-      <Button
-        className="h-9 border hover:bg-black/5 dark:hover:bg-white/5"
-        disabled={state.isDuplicating}
-        onClick={actions.handleDuplicate}
-        size="sm"
-        title="Duplicate to your workflows"
-        variant="secondary"
-      >
-        {state.isDuplicating ? (
-          <Loader2 className="mr-2 size-4 animate-spin" />
-        ) : (
-          <Copy className="mr-2 size-4" />
-        )}
-        Duplicate
-      </Button>
-    );
+    return null;
   }
 
   if (!workflowId) {
@@ -1466,6 +1461,33 @@ function RunButtonGroup({
   );
 }
 
+// Duplicate Button Component - placed next to Sign In for non-owners
+function DuplicateButton({
+  isDuplicating,
+  onDuplicate,
+}: {
+  isDuplicating: boolean;
+  onDuplicate: () => void;
+}) {
+  return (
+    <Button
+      className="h-9 border hover:bg-black/5 dark:hover:bg-white/5"
+      disabled={isDuplicating}
+      onClick={onDuplicate}
+      size="sm"
+      title="Duplicate to your workflows"
+      variant="secondary"
+    >
+      {isDuplicating ? (
+        <Loader2 className="mr-2 size-4 animate-spin" />
+      ) : (
+        <Copy className="mr-2 size-4" />
+      )}
+      Duplicate
+    </Button>
+  );
+}
+
 // Workflow Menu Component
 function WorkflowMenuComponent({
   workflowId,
@@ -1477,12 +1499,12 @@ function WorkflowMenuComponent({
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex h-9 items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground">
+    <div className="flex flex-col gap-1">
+      <div className="flex h-9 max-w-[160px] items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground sm:max-w-none">
         <DropdownMenu onOpenChange={(open) => open && actions.loadWorkflows()}>
           <DropdownMenuTrigger className="flex h-full cursor-pointer items-center gap-2 px-3 font-medium text-sm transition-all hover:bg-black/5 dark:hover:bg-white/5">
-            <WorkflowIcon className="size-4" />
-            <p className="font-medium text-sm">
+            <WorkflowIcon className="size-4 shrink-0" />
+            <p className="truncate font-medium text-sm">
               {workflowId ? (
                 state.workflowName
               ) : (
@@ -1492,7 +1514,7 @@ function WorkflowMenuComponent({
                 </>
               )}
             </p>
-            <ChevronDown className="size-3 opacity-50" />
+            <ChevronDown className="size-3 shrink-0 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <DropdownMenuItem
@@ -1529,7 +1551,7 @@ function WorkflowMenuComponent({
         </DropdownMenu>
       </div>
       {workflowId && !state.isOwner && (
-        <span className="text-muted-foreground text-xs uppercase">
+        <span className="text-muted-foreground text-xs uppercase lg:hidden">
           Read-only
         </span>
       )}
@@ -1545,7 +1567,9 @@ function WorkflowIssuesDialog({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
+  const [addingIntegrationType, setAddingIntegrationType] =
+    useState<IntegrationType | null>(null);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
   const { brokenReferences, missingRequiredFields, missingIntegrations } =
     actions.workflowIssues;
 
@@ -1555,9 +1579,9 @@ function WorkflowIssuesDialog({
     state.setActiveTab("properties");
   };
 
-  const handleAddIntegrations = () => {
+  const handleAddIntegration = (integrationType: IntegrationType) => {
     actions.setShowWorkflowIssuesDialog(false);
-    setShowIntegrationsDialog(true);
+    setAddingIntegrationType(integrationType);
   };
 
   const totalIssues =
@@ -1705,7 +1729,9 @@ function WorkflowIssuesDialog({
                       </div>
                       <Button
                         className="shrink-0"
-                        onClick={handleAddIntegrations}
+                        onClick={() =>
+                          handleAddIntegration(missing.integrationType)
+                        }
                         size="sm"
                         variant="outline"
                       >
@@ -1727,9 +1753,16 @@ function WorkflowIssuesDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <IntegrationsDialog
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
+      <IntegrationFormDialog
+        mode="create"
+        onClose={() => setAddingIntegrationType(null)}
+        onSuccess={() => {
+          setAddingIntegrationType(null);
+          // Increment version to trigger auto-fix for nodes
+          setIntegrationsVersion((v) => v + 1);
+        }}
+        open={addingIntegrationType !== null}
+        preselectedType={addingIntegrationType ?? undefined}
       />
     </>
   );
@@ -2022,11 +2055,18 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
         className="flex flex-col gap-2 rounded-none border-none bg-transparent p-0 lg:flex-row lg:items-center"
         position="top-left"
       >
-        <WorkflowMenuComponent
-          actions={actions}
-          state={state}
-          workflowId={workflowId}
-        />
+        <div className="flex items-center gap-2">
+          <WorkflowMenuComponent
+            actions={actions}
+            state={state}
+            workflowId={workflowId}
+          />
+          {workflowId && !state.isOwner && (
+            <span className="hidden text-muted-foreground text-xs uppercase lg:inline">
+              Read-only
+            </span>
+          )}
+        </div>
       </Panel>
 
       <div className="pointer-events-auto absolute top-4 right-4 z-10">
@@ -2042,6 +2082,12 @@ export const WorkflowToolbar = ({ workflowId }: WorkflowToolbarProps) => {
                 <GitHubStarsButton />
                 <DeployButton />
               </>
+            )}
+            {workflowId && !state.isOwner && (
+              <DuplicateButton
+                isDuplicating={state.isDuplicating}
+                onDuplicate={actions.handleDuplicate}
+              />
             )}
             <UserMenu />
           </div>

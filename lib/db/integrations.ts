@@ -291,9 +291,13 @@ export function extractIntegrationIds(
 }
 
 /**
- * Validate that all integration IDs in workflow nodes belong to the specified user.
+ * Validate that all integration IDs in workflow nodes either:
+ * 1. Belong to the specified user, or
+ * 2. Don't exist (deleted integrations - stale references are allowed)
+ *
  * This prevents users from accessing other users' credentials by embedding
- * foreign integration IDs in their workflows.
+ * foreign integration IDs in their workflows, while allowing workflows
+ * with references to deleted integrations to still be saved.
  *
  * @returns Object with `valid` boolean and optional `invalidIds` array
  */
@@ -307,19 +311,18 @@ export async function validateWorkflowIntegrations(
     return { valid: true };
   }
 
-  // Query for integrations that belong to this user
-  const userIntegrations = await db
-    .select({ id: integrations.id })
+  // Query for ALL integrations with these IDs (regardless of user)
+  // to check if any belong to other users
+  const existingIntegrations = await db
+    .select({ id: integrations.id, userId: integrations.userId })
     .from(integrations)
-    .where(
-      and(
-        inArray(integrations.id, integrationIds),
-        eq(integrations.userId, userId)
-      )
-    );
+    .where(inArray(integrations.id, integrationIds));
 
-  const validIds = new Set(userIntegrations.map((i) => i.id));
-  const invalidIds = integrationIds.filter((id) => !validIds.has(id));
+  // Find integrations that exist but belong to a different user
+  // (deleted integrations won't appear here, which is fine)
+  const invalidIds = existingIntegrations
+    .filter((i) => i.userId !== userId)
+    .map((i) => i.id);
 
   if (invalidIds.length > 0) {
     return { valid: false, invalidIds };

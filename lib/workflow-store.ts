@@ -49,6 +49,10 @@ export const isTransitioningFromHomepageAtom = atom<boolean>(false);
 // Don't show "missing integration" warning for these nodes
 export const pendingIntegrationNodesAtom = atom<Set<string>>(new Set<string>());
 
+// Tracks the ID of a newly created node (for auto-focusing search input)
+// Cleared when the node gets an action type or is deselected
+export const newlyCreatedNodeIdAtom = atom<string | null>(null);
+
 // Trigger execute atom - set to true to trigger workflow execution
 // This allows keyboard shortcuts to trigger the same execute flow as the button
 export const triggerExecuteAtom = atom(false);
@@ -133,6 +137,11 @@ export const onNodesChangeAtom = atom(
       set(selectedNodeAtom, selectedNode.id);
       // Clear edge selection when a node is selected
       set(selectedEdgeAtom, null);
+      // Clear newly created node tracking if a different node is selected
+      const newlyCreatedId = get(newlyCreatedNodeIdAtom);
+      if (newlyCreatedId && newlyCreatedId !== selectedNode.id) {
+        set(newlyCreatedNodeIdAtom, null);
+      }
     } else if (get(selectedNodeAtom)) {
       // If no node is selected in ReactFlow but we have a selection, clear it
       const currentSelection = get(selectedNodeAtom);
@@ -140,6 +149,8 @@ export const onNodesChangeAtom = atom(
       if (!stillExists) {
         set(selectedNodeAtom, null);
       }
+      // Clear newly created node tracking when no node is selected
+      set(newlyCreatedNodeIdAtom, null);
     }
 
     // Check if there were any deletions to trigger immediate save
@@ -207,6 +218,11 @@ export const addNodeAtom = atom(null, (get, set, node: WorkflowNode) => {
 
   // Auto-select the newly added node
   set(selectedNodeAtom, node.id);
+
+  // Track newly created action nodes (for auto-focusing search input)
+  if (node.data.type === "action" && !node.data.config?.actionType) {
+    set(newlyCreatedNodeIdAtom, node.id);
+  }
 
   // Mark as having unsaved changes
   set(hasUnsavedChangesAtom, true);
