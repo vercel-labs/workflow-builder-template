@@ -13,7 +13,7 @@ service:
 ingress:
   enabled: true
   hosts:
-    - workflows.keeperhub.com
+    - workflows-staging.keeperhub.com
   annotations:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
@@ -23,8 +23,7 @@ ingress:
 httpWwwRedirect:
   enabled: false
 httpBasicAuth:
-  enabled: true
-  usersList: techops:$apr1$5u9dBZtq$Azp1kuGz73nDUFBdisvo00
+  enabled: false
 image:
   repository: ${ECR_REGISTRY}/keeper-app-vw-staging
   tag: latest
