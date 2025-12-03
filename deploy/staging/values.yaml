@@ -43,6 +43,9 @@ resources:
     memory: 256Mi
 
 env:
+  HOSTNAME:
+    type: kv
+    value: "0.0.0.0"
   BETTER_AUTH_SECRET:
     type: kv
     value: "IuqHJdIq5mC0giIY+kriBo+QLvm2B7hGtVs3410moeQ="
