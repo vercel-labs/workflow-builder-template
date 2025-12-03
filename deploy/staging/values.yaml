@@ -1,0 +1,65 @@
+replicaCount: 1
+
+service:
+  enabled: true
+  name: vw-staging
+  port: 3000
+  type: ClusterIP
+  containerPort: 3000
+  tls:
+    enabled: true
+    issuerName: cloudflare
+
+ingress:
+  enabled: true
+  hosts:
+    - vw-staging.keeperhub.xyz
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: traefik-cloudflare-origin-pull@kubernetescrd
+
+httpWwwRedirect:
+  enabled: false
+httpBasicAuth:
+  enabled: false
+image:
+  repository: ${ECR_REGISTRY}/keeper-app-vw-staging
+  tag: latest
+  pullPolicy: Always
+
+serviceAccount:
+  create: false
+
+podAnnotations:
+  reloader.stakater.com/auto: "true"
+
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 1m
+    memory: 256Mi
+
+env:
+  SOME_ENV_VAR:
+    type: kv
+    value: "some-value"
+
+externalSecrets:
+  clusterSecretStoreName: maker-staging
+
+livenessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  tcpSocket:
+    port: 3000
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  tcpSocket:
+    port: 3000
+
+cronjob:
+  enabled: false

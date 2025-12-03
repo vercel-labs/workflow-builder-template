@@ -1,0 +1,81 @@
+on:
+  push:
+    branches:
+      - staging
+      # - main
+    paths:
+      - ".github/workflows/vw.yml"
+      - "deploy/vw/**"
+      - "vw/**"
+  workflow_dispatch:
+
+name: deploy-vw
+jobs:
+  build-and-deploy-vw:
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+    runs-on: ubuntu-latest
+    env:
+      HELM_FILE: deploy/${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}/values.yaml
+      REGION: ${{ github.ref == 'refs/heads/main' && 'us-east-1' || 'us-east-2' }}
+      CLUSTER_NAME: ${{ github.ref == 'refs/heads/main' && 'maker-prod' || 'maker-staging' }}
+      ENVIRONMENT_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+      NAMESPACE: vw
+      SERVICE_NAME: vw
+      AWS_ECR_NAME: vw-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract commit hash
+        id: vars
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        shell: bash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        env:
+          SHA_TAG: ${{ steps.vars.outputs.sha_short }}
+          LATEST_TAG: latest
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build Docker containers and push them to ECR ${{ env.AWS_ECR_NAME }}
+          docker pull $ECR_REGISTRY/$AWS_ECR_NAME:$LATEST_TAG || true
+          docker build -t $AWS_ECR_NAME \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$SHA_TAG \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$LATEST_TAG \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$ENVIRONMENT_TAG \
+                        -f ./Dockerfile \
+                        .
+
+          docker push $ECR_REGISTRY/$AWS_ECR_NAME --all-tags
+
+      - name: Deploying Service to Kubernetes with Helm
+        id: deploy
+        uses: bitovi/github-actions-deploy-eks-helm@v1.2.10
+        with:
+          values: image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.AWS_ECR_NAME }},image.tag=${{ steps.vars.outputs.sha_short }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          config-files: ${{ env.HELM_FILE }}
+          chart-path: techops-services/common
+          namespace: ${{ env.NAMESPACE }}
+          timeout: 5m0s
+          name: ${{ env.SERVICE_NAME }}
+          chart-repository: https://techops-services.github.io/helm-charts
+          version: 0.0.33
+          atomic: true
