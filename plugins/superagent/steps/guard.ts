@@ -68,7 +68,7 @@ async function stepHandler(
     const classification = content.classification;
     if (
       !classification ||
-      (classification !== "allow" && classification !== "block")
+      (classification !== "pass" && classification !== "block")
     ) {
       throw new Error(
         `Invalid Guard API response: missing or invalid classification (received: ${JSON.stringify(classification)})`
