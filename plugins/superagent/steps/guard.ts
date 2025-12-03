@@ -5,7 +5,7 @@ import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { SuperagentCredentials } from "../credentials";
 
-type GuardClassification = "allow" | "block";
+type GuardClassification = "pass" | "block";
 
 type GuardResult = {
   classification: GuardClassification;
