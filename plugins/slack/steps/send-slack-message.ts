@@ -1,30 +1,40 @@
 import "server-only";
 
-import { WebClient } from "@slack/web-api";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { SlackCredentials } from "../credentials";
+
+const SLACK_API_URL = "https://slack.com/api";
+
+type SlackPostMessageResponse = {
+  ok: boolean;
+  ts?: string;
+  channel?: string;
+  error?: string;
+};
 
 type SendSlackMessageResult =
   | { success: true; ts: string; channel: string }
   | { success: false; error: string };
 
-export type SendSlackMessageInput = StepInput & {
-  integrationId?: string;
+export type SendSlackMessageCoreInput = {
   slackChannel: string;
   slackMessage: string;
 };
 
-/**
- * Send Slack message logic
- */
-async function sendSlackMessage(
-  input: SendSlackMessageInput
-): Promise<SendSlackMessageResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type SendSlackMessageInput = StepInput &
+  SendSlackMessageCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: SendSlackMessageCoreInput,
+  credentials: SlackCredentials
+): Promise<SendSlackMessageResult> {
   const apiKey = credentials.SLACK_API_KEY;
 
   if (!apiKey) {
@@ -36,12 +46,26 @@ async function sendSlackMessage(
   }
 
   try {
-    const slack = new WebClient(apiKey);
-
-    const result = await slack.chat.postMessage({
-      channel: input.slackChannel,
-      text: input.slackMessage,
+    const response = await fetch(`${SLACK_API_URL}/chat.postMessage`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        channel: input.slackChannel,
+        text: input.slackMessage,
+      }),
     });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `HTTP ${response.status}: Failed to send Slack message`,
+      };
+    }
+
+    const result = (await response.json()) as SlackPostMessageResponse;
 
     if (!result.ok) {
       return {
@@ -64,12 +88,19 @@ async function sendSlackMessage(
 }
 
 /**
- * Send Slack Message Step
- * Sends a message to a Slack channel
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function sendSlackMessageStep(
   input: SendSlackMessageInput
 ): Promise<SendSlackMessageResult> {
   "use step";
-  return withStepLogging(input, () => sendSlackMessage(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+sendSlackMessageStep.maxRetries = 0;
+
+export const _integrationType = "slack";

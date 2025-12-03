@@ -1,6 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { sendEmailCodegenTemplate } from "./codegen/send-email";
 import { ResendIcon } from "./icon";
 
 const resendPlugin: IntegrationPlugin = {
@@ -42,10 +41,6 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    resend: "^6.4.0",
-  },
-
   actions: [
     {
       slug: "send-email",
@@ -54,6 +49,7 @@ const resendPlugin: IntegrationPlugin = {
       category: "Resend",
       stepFunction: "sendEmailStep",
       stepImportPath: "send-email",
+      outputFields: [{ field: "id", description: "Email ID" }],
       configFields: [
         {
           key: "emailFrom",
@@ -135,7 +131,6 @@ const resendPlugin: IntegrationPlugin = {
           ],
         },
       ],
-      codegenTemplate: sendEmailCodegenTemplate,
     },
   ],
 };

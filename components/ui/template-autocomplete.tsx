@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { edgesAtom, nodesAtom, type WorkflowNode } from "@/lib/workflow-store";
+import { findActionById } from "@/plugins";
 
 type TemplateAutocompleteProps = {
   isOpen: boolean;
@@ -32,6 +33,13 @@ const getNodeDisplayName = (node: WorkflowNode): string => {
 
   if (node.data.type === "action") {
     const actionType = node.data.config?.actionType as string | undefined;
+    if (actionType) {
+      // Look up human-readable label from plugin registry
+      const action = findActionById(actionType);
+      if (action?.label) {
+        return action.label;
+      }
+    }
     return actionType || "HTTP Request";
   }
 
@@ -103,35 +111,16 @@ const isActionType = (
 const getCommonFields = (node: WorkflowNode) => {
   const actionType = node.data.config?.actionType as string | undefined;
 
-  if (isActionType(actionType, "Find Issues", "linear/find-issues")) {
-    return [
-      { field: "issues", description: "Array of issues found" },
-      { field: "count", description: "Number of issues" },
-    ];
-  }
-  if (isActionType(actionType, "Send Email", "resend/send-email")) {
-    return [
-      { field: "id", description: "Email ID" },
-      { field: "status", description: "Send status" },
-    ];
-  }
-  if (isActionType(actionType, "Create Ticket", "linear/create-ticket")) {
-    return [
-      { field: "id", description: "Ticket ID" },
-      { field: "url", description: "Ticket URL" },
-      { field: "number", description: "Ticket number" },
-    ];
-  }
+  // Special handling for dynamic outputs (system actions and schema-based)
   if (actionType === "HTTP Request") {
     return [
       { field: "data", description: "Response data" },
       { field: "status", description: "HTTP status code" },
     ];
   }
+
   if (actionType === "Database Query") {
     const dbSchema = node.data.config?.dbSchema as string | undefined;
-
-    // If schema is defined, show schema fields
     if (dbSchema) {
       try {
         const schema = JSON.parse(dbSchema) as SchemaField[];
@@ -142,81 +131,43 @@ const getCommonFields = (node: WorkflowNode) => {
         // If schema parsing fails, fall through to default fields
       }
     }
-
-    // Default fields when no schema
     return [
       { field: "rows", description: "Query result rows" },
       { field: "count", description: "Number of rows" },
     ];
   }
+
+  // AI Gateway generate-text has dynamic output based on format/schema
   if (isActionType(actionType, "Generate Text", "ai-gateway/generate-text")) {
     const aiFormat = node.data.config?.aiFormat as string | undefined;
     const aiSchema = node.data.config?.aiSchema as string | undefined;
 
-    // If format is object and schema is defined, show schema fields
     if (aiFormat === "object" && aiSchema) {
       try {
         const schema = JSON.parse(aiSchema) as SchemaField[];
         if (schema.length > 0) {
-          return schemaToFields(schema);
+          return schemaToFields(schema, "object");
         }
       } catch {
         // If schema parsing fails, fall through to default fields
       }
     }
+    return [{ field: "text", description: "Generated text" }];
+  }
 
-    // Default fields for text format or when no schema
-    return [
-      { field: "text", description: "Generated text" },
-      { field: "model", description: "Model used" },
-    ];
+  // Check if the plugin defines output fields
+  if (actionType) {
+    const action = findActionById(actionType);
+    if (action?.outputFields && action.outputFields.length > 0) {
+      return action.outputFields;
+    }
   }
-  if (isActionType(actionType, "Generate Image", "ai-gateway/generate-image")) {
-    return [
-      { field: "base64", description: "Base64 image data" },
-      { field: "model", description: "Model used" },
-    ];
-  }
-  if (
-    isActionType(actionType, "Scrape", "Scrape URL", "firecrawl/scrape")
-  ) {
-    return [
-      { field: "markdown", description: "Scraped content as markdown" },
-      { field: "metadata.url", description: "Page URL" },
-      { field: "metadata.title", description: "Page title" },
-      { field: "metadata.description", description: "Page description" },
-      { field: "metadata.language", description: "Page language" },
-      { field: "metadata.favicon", description: "Favicon URL" },
-    ];
-  }
-  if (isActionType(actionType, "Search", "Search Web", "firecrawl/search")) {
-    return [{ field: "web", description: "Array of search results" }];
-  }
-  if (isActionType(actionType, "Create Chat", "v0/create-chat")) {
-    return [
-      { field: "chatId", description: "v0 chat ID" },
-      { field: "url", description: "v0 chat URL" },
-      { field: "demoUrl", description: "Demo preview URL" },
-    ];
-  }
-  if (isActionType(actionType, "Send Message", "v0/send-message")) {
-    return [
-      { field: "chatId", description: "v0 chat ID" },
-      { field: "demoUrl", description: "Demo preview URL" },
-    ];
-  }
-  if (isActionType(actionType, "Send Slack Message", "slack/send-message")) {
-    return [
-      { field: "ok", description: "Success status" },
-      { field: "ts", description: "Message timestamp" },
-      { field: "channel", description: "Channel ID" },
-    ];
-  }
+
+  // Trigger fields
   if (node.data.type === "trigger") {
     const triggerType = node.data.config?.triggerType as string | undefined;
     const webhookSchema = node.data.config?.webhookSchema as string | undefined;
 
-    // If it's a webhook trigger with a schema, show schema fields
     if (triggerType === "Webhook" && webhookSchema) {
       try {
         const schema = JSON.parse(webhookSchema) as SchemaField[];
@@ -228,7 +179,6 @@ const getCommonFields = (node: WorkflowNode) => {
       }
     }
 
-    // Default trigger fields
     return [
       { field: "triggered", description: "Trigger status" },
       { field: "timestamp", description: "Trigger timestamp" },

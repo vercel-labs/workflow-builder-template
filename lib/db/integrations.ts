@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { IntegrationConfig, IntegrationType } from "../types/integration";
 import { db } from "./index";
 import { integrations, type NewIntegration } from "./schema";
@@ -259,4 +259,74 @@ export async function deleteIntegration(
     .returning();
 
   return result.length > 0;
+}
+
+/**
+ * Workflow node structure for validation
+ */
+type WorkflowNodeForValidation = {
+  data?: {
+    config?: {
+      integrationId?: string;
+    };
+  };
+};
+
+/**
+ * Extract all integration IDs from workflow nodes
+ */
+export function extractIntegrationIds(
+  nodes: WorkflowNodeForValidation[]
+): string[] {
+  const integrationIds: string[] = [];
+
+  for (const node of nodes) {
+    const integrationId = node.data?.config?.integrationId;
+    if (integrationId && typeof integrationId === "string") {
+      integrationIds.push(integrationId);
+    }
+  }
+
+  return [...new Set(integrationIds)];
+}
+
+/**
+ * Validate that all integration IDs in workflow nodes either:
+ * 1. Belong to the specified user, or
+ * 2. Don't exist (deleted integrations - stale references are allowed)
+ *
+ * This prevents users from accessing other users' credentials by embedding
+ * foreign integration IDs in their workflows, while allowing workflows
+ * with references to deleted integrations to still be saved.
+ *
+ * @returns Object with `valid` boolean and optional `invalidIds` array
+ */
+export async function validateWorkflowIntegrations(
+  nodes: WorkflowNodeForValidation[],
+  userId: string
+): Promise<{ valid: boolean; invalidIds?: string[] }> {
+  const integrationIds = extractIntegrationIds(nodes);
+
+  if (integrationIds.length === 0) {
+    return { valid: true };
+  }
+
+  // Query for ALL integrations with these IDs (regardless of user)
+  // to check if any belong to other users
+  const existingIntegrations = await db
+    .select({ id: integrations.id, userId: integrations.userId })
+    .from(integrations)
+    .where(inArray(integrations.id, integrationIds));
+
+  // Find integrations that exist but belong to a different user
+  // (deleted integrations won't appear here, which is fine)
+  const invalidIds = existingIntegrations
+    .filter((i) => i.userId !== userId)
+    .map((i) => i.id);
+
+  if (invalidIds.length > 0) {
+    return { valid: false, invalidIds };
+  }
+
+  return { valid: true };
 }

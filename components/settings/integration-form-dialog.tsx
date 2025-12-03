@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,16 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { api, type Integration } from "@/lib/api-client";
 import type { IntegrationType } from "@/lib/types/integration";
+import { cn } from "@/lib/utils";
 import {
   getIntegration,
   getIntegrationLabels,
@@ -41,7 +36,7 @@ type IntegrationFormDialogProps = {
 
 type IntegrationFormData = {
   name: string;
-  type: IntegrationType;
+  type: IntegrationType | null;
   config: Record<string, string>;
 };
 
@@ -72,9 +67,14 @@ export function IntegrationFormDialog({
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<IntegrationFormData>({
     name: "",
-    type: preselectedType || "resend",
+    type: preselectedType || null,
     config: {},
   });
+
+  // Step: "select" for type selection grid, "configure" for form
+  const [step, setStep] = useState<"select" | "configure">(
+    preselectedType || mode === "edit" ? "configure" : "select"
+  );
 
   useEffect(() => {
     if (integration) {
@@ -83,16 +83,40 @@ export function IntegrationFormDialog({
         type: integration.type,
         config: {},
       });
+      setStep("configure");
     } else {
       setFormData({
         name: "",
-        type: preselectedType || "resend",
+        type: preselectedType || null,
         config: {},
       });
+      setStep(preselectedType ? "configure" : "select");
     }
   }, [integration, preselectedType]);
 
+  const handleSelectType = (type: IntegrationType) => {
+    setFormData({
+      name: "",
+      type,
+      config: {},
+    });
+    setStep("configure");
+  };
+
+  const handleBack = () => {
+    setStep("select");
+    setFormData({
+      name: "",
+      type: null,
+      config: {},
+    });
+  };
+
   const handleSave = async () => {
+    if (!formData.type) {
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -113,7 +137,6 @@ export function IntegrationFormDialog({
           type: formData.type,
           config: formData.config,
         });
-        toast.success("Integration created");
         onSuccess?.(newIntegration.id);
       }
       onClose();
@@ -133,6 +156,10 @@ export function IntegrationFormDialog({
   };
 
   const renderConfigFields = () => {
+    if (!formData.type) {
+      return null;
+    }
+
     // Handle system integrations with hardcoded fields
     if (formData.type === "database") {
       return (
@@ -188,78 +215,109 @@ export function IntegrationFormDialog({
     ));
   };
 
+  const integrationTypes = getIntegrationTypes();
+
+  const getDialogTitle = () => {
+    if (mode === "edit") {
+      return "Edit Integration";
+    }
+    if (step === "select") {
+      return "Choose Integration";
+    }
+    return `Add ${formData.type ? getLabel(formData.type) : ""} Integration`;
+  };
+
+  const getDialogDescription = () => {
+    if (mode === "edit") {
+      return "Update integration configuration";
+    }
+    if (step === "select") {
+      return "Select an integration type to configure";
+    }
+    return "Configure your integration";
+  };
+
   return (
     <Dialog onOpenChange={(isOpen) => !isOpen && onClose()} open={open}>
-      <DialogContent className="max-w-md">
+      <DialogContent
+        className={cn(step === "select" ? "max-w-2xl" : "max-w-md")}
+      >
         <DialogHeader>
-          <DialogTitle>
-            {mode === "edit" ? "Edit Integration" : "Add Integration"}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === "edit"
-              ? "Update integration configuration"
-              : "Configure a new integration"}
-          </DialogDescription>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
+          <DialogDescription>{getDialogDescription()}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {mode === "create" && (
-            <div className="space-y-2">
-              <Label htmlFor="type">Type</Label>
-              <Select
-                disabled={!!preselectedType}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    type: value as IntegrationType,
-                    config: {},
-                  })
-                }
-                value={formData.type}
+        {step === "select" ? (
+          <div className="grid grid-cols-3 gap-2 py-2">
+            {integrationTypes.map((type) => (
+              <button
+                className="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-muted/50"
+                key={type}
+                onClick={() => handleSelectType(type)}
+                type="button"
               >
-                <SelectTrigger className="w-full" id="type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {getIntegrationTypes().map((type) => (
-                    <SelectItem key={type} value={type}>
-                      <div className="flex items-center gap-2">
-                        <IntegrationIcon
-                          className="size-4"
-                          integration={type === "ai-gateway" ? "vercel" : type}
-                        />
-                        {getLabel(type)}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <IntegrationIcon
+                  className="size-8"
+                  integration={type === "ai-gateway" ? "vercel" : type}
+                />
+                <span className="text-center font-medium">
+                  {getLabel(type)}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {renderConfigFields()}
+
+            <div className="space-y-2">
+              <Label htmlFor="name">Name (Optional)</Label>
+              <Input
+                id="name"
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder={
+                  formData.type
+                    ? `${getLabel(formData.type)} Integration`
+                    : "Integration"
+                }
+                value={formData.name}
+              />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter
+          className={cn(
+            step === "select" ? "sm:justify-start" : "sm:justify-between"
+          )}
+        >
+          {step === "configure" && mode === "create" && !preselectedType && (
+            <Button disabled={saving} onClick={handleBack} variant="ghost">
+              <ArrowLeft className="mr-2 size-4" />
+              Back
+            </Button>
+          )}
+          {step === "select" ? (
+            <Button onClick={() => onClose()} variant="outline">
+              Cancel
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                disabled={saving}
+                onClick={() => onClose()}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button disabled={saving} onClick={handleSave}>
+                {saving ? <Spinner className="mr-2 size-4" /> : null}
+                {mode === "edit" ? "Update" : "Create"}
+              </Button>
             </div>
           )}
-
-          {renderConfigFields()}
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Name (Optional)</Label>
-            <Input
-              id="name"
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              placeholder={`${getLabel(formData.type)} Integration`}
-              value={formData.name}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button disabled={saving} onClick={() => onClose()} variant="outline">
-            Cancel
-          </Button>
-          <Button disabled={saving} onClick={handleSave}>
-            {saving ? <Spinner className="mr-2 size-4" /> : null}
-            {mode === "edit" ? "Update" : "Create"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

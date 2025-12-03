@@ -1,29 +1,43 @@
 import "server-only";
 
-import FirecrawlApp from "@mendable/firecrawl-js";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
+import type { FirecrawlCredentials } from "../credentials";
+
+const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1";
+
+type FirecrawlScrapeResponse = {
+  success: boolean;
+  data?: {
+    markdown?: string;
+    metadata?: Record<string, unknown>;
+  };
+  error?: string;
+};
 
 type ScrapeResult = {
   markdown?: string;
   metadata?: Record<string, unknown>;
 };
 
-export type FirecrawlScrapeInput = StepInput & {
-  integrationId?: string;
+export type FirecrawlScrapeCoreInput = {
   url: string;
   formats?: ("markdown" | "html" | "rawHtml" | "links" | "screenshot")[];
 };
 
-/**
- * Scrape logic
- */
-async function scrape(input: FirecrawlScrapeInput): Promise<ScrapeResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type FirecrawlScrapeInput = StepInput &
+  FirecrawlScrapeCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: FirecrawlScrapeCoreInput,
+  credentials: FirecrawlCredentials
+): Promise<ScrapeResult> {
   const apiKey = credentials.FIRECRAWL_API_KEY;
 
   if (!apiKey) {
@@ -31,14 +45,32 @@ async function scrape(input: FirecrawlScrapeInput): Promise<ScrapeResult> {
   }
 
   try {
-    const firecrawl = new FirecrawlApp({ apiKey });
-    const result = await firecrawl.scrape(input.url, {
-      formats: input.formats || ["markdown"],
+    const response = await fetch(`${FIRECRAWL_API_URL}/scrape`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url: input.url,
+        formats: input.formats || ["markdown"],
+      }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const result = (await response.json()) as FirecrawlScrapeResponse;
+
+    if (!result.success) {
+      throw new Error(result.error || "Scrape failed");
+    }
+
     return {
-      markdown: result.markdown,
-      metadata: result.metadata,
+      markdown: result.data?.markdown,
+      metadata: result.data?.metadata,
     };
   } catch (error) {
     throw new Error(`Failed to scrape: ${getErrorMessage(error)}`);
@@ -46,12 +78,19 @@ async function scrape(input: FirecrawlScrapeInput): Promise<ScrapeResult> {
 }
 
 /**
- * Firecrawl Scrape Step
- * Scrapes content from a URL using Firecrawl
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function firecrawlScrapeStep(
   input: FirecrawlScrapeInput
 ): Promise<ScrapeResult> {
   "use step";
-  return withStepLogging(input, () => scrape(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+firecrawlScrapeStep.maxRetries = 0;
+
+export const _integrationType = "firecrawl";

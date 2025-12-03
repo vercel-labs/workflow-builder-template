@@ -7,16 +7,10 @@
  * Instructions:
  * 1. Replace all [PLACEHOLDERS] with your integration's values
  * 2. Run `pnpm discover-plugins` after creating your plugin
- *
- * The plugin system auto-discovers plugins and generates:
- * - plugins/index.ts (import registry)
- * - lib/types/integration.ts (IntegrationType union)
- * - lib/step-registry.ts (step function mappings)
  */
 
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { [actionName]CodegenTemplate } from "./codegen/[action-slug]";
 import { [IntegrationName]Icon } from "./icon";
 
 const [integrationName]Plugin: IntegrationPlugin = {
@@ -42,7 +36,7 @@ const [integrationName]Plugin: IntegrationPlugin = {
       type: "password", // "password" | "text" | "url"
       placeholder: "[api-key-prefix]...",
       configKey: "apiKey", // Key stored in database
-      envVar: "[INTEGRATION_NAME]_API_KEY", // Environment variable for codegen
+      envVar: "[INTEGRATION_NAME]_API_KEY", // Environment variable name
       helpText: "Get your API key from ",
       helpLink: {
         text: "[integration-name].com/api-keys",
@@ -59,12 +53,6 @@ const [integrationName]Plugin: IntegrationPlugin = {
       const { test[IntegrationName] } = await import("./test");
       return test[IntegrationName];
     },
-  },
-
-  // NPM dependencies required by this plugin
-  // These are included when exporting workflows
-  dependencies: {
-    "[package-name]": "^[version]",
   },
 
   // Actions provided by this integration
@@ -123,9 +111,6 @@ const [integrationName]Plugin: IntegrationPlugin = {
         //   showWhen: { field: "option", equals: "b" },
         // },
       ],
-
-      // Code generation template (imported from ./codegen/[action-slug].ts)
-      codegenTemplate: [actionName]CodegenTemplate,
     },
     // Add more actions as needed
   ],

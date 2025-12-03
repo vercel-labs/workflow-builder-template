@@ -145,8 +145,8 @@ function getTemplateFiles(actionSlug: string) {
     { src: "index.ts.txt", dest: "index.ts" },
     { src: "icon.tsx.txt", dest: "icon.tsx" },
     { src: "test.ts.txt", dest: "test.ts" },
+    { src: "credentials.ts.txt", dest: "credentials.ts" },
     { src: "steps/action.ts.txt", dest: `steps/${actionSlug}.ts` },
-    { src: "codegen/action.ts.txt", dest: `codegen/${actionSlug}.ts` },
   ];
 }
 
@@ -240,7 +240,6 @@ async function main(): Promise<void> {
 
   // Create directories
   mkdirSync(join(pluginDir, "steps"), { recursive: true });
-  mkdirSync(join(pluginDir, "codegen"), { recursive: true });
 
   // Copy and process template files
   const createdFiles: string[] = [];
@@ -280,7 +279,9 @@ async function main(): Promise<void> {
   console.log("Next steps:");
   console.log(`  1. Review and customize the files in plugins/${pluginName}/`);
   console.log("  2. Update the icon in icon.tsx with your integration's SVG");
-  console.log("  3. Implement the API logic in steps/ and codegen/");
+  console.log(
+    "  3. Implement the API logic in steps/ (codegen is auto-generated)"
+  );
   console.log("  4. Test: pnpm dev\n");
 }
 

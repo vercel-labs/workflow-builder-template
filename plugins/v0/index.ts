@@ -1,7 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { createChatCodegenTemplate } from "./codegen/create-chat";
-import { sendMessageCodegenTemplate } from "./codegen/send-message";
 import { V0Icon } from "./icon";
 
 const v0Plugin: IntegrationPlugin = {
@@ -44,6 +42,12 @@ const v0Plugin: IntegrationPlugin = {
       category: "v0",
       stepFunction: "createChatStep",
       stepImportPath: "create-chat",
+      outputFields: [
+        { field: "chatId", description: "v0 chat ID" },
+        { field: "url", description: "v0 chat URL" },
+        { field: "demoUrl", description: "Demo preview URL" },
+      ],
+      outputConfig: { type: "url", field: "demoUrl" },
       configFields: [
         {
           key: "message",
@@ -62,7 +66,6 @@ const v0Plugin: IntegrationPlugin = {
           rows: 3,
         },
       ],
-      codegenTemplate: createChatCodegenTemplate,
     },
     {
       slug: "send-message",
@@ -71,6 +74,11 @@ const v0Plugin: IntegrationPlugin = {
       category: "v0",
       stepFunction: "sendMessageStep",
       stepImportPath: "send-message",
+      outputFields: [
+        { field: "chatId", description: "v0 chat ID" },
+        { field: "demoUrl", description: "Demo preview URL" },
+      ],
+      outputConfig: { type: "url", field: "demoUrl" },
       configFields: [
         {
           key: "chatId",
@@ -90,7 +98,6 @@ const v0Plugin: IntegrationPlugin = {
           required: true,
         },
       ],
-      codegenTemplate: sendMessageCodegenTemplate,
     },
   ],
 };

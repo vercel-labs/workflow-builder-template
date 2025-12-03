@@ -1,8 +1,9 @@
+const RESEND_API_URL = "https://api.resend.com";
+
 export async function testResend(credentials: Record<string, string>) {
   try {
-    // Resend doesn't have a dedicated test endpoint, so we'll validate the API key format
     const apiKey = credentials.RESEND_API_KEY;
-    
+
     if (!apiKey || !apiKey.startsWith("re_")) {
       return {
         success: false,
@@ -10,11 +11,28 @@ export async function testResend(credentials: Record<string, string>) {
       };
     }
 
-    // We could make a test call here, but Resend doesn't have a specific test endpoint
-    // and we don't want to send actual emails during testing
-    return {
-      success: true,
-    };
+    // Validate API key by fetching domains (lightweight read-only endpoint)
+    const response = await fetch(`${RESEND_API_URL}/domains`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: "Invalid API key. Please check your Resend API key.",
+        };
+      }
+      return {
+        success: false,
+        error: `API validation failed: HTTP ${response.status}`,
+      };
+    }
+
+    return { success: true };
   } catch (error) {
     return {
       success: false,

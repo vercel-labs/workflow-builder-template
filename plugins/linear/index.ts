@@ -1,7 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { createTicketCodegenTemplate } from "./codegen/create-ticket";
-import { findIssuesCodegenTemplate } from "./codegen/find-issues";
 import { LinearIcon } from "./icon";
 
 const linearPlugin: IntegrationPlugin = {
@@ -44,10 +42,6 @@ const linearPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    "@linear/sdk": "^63.2.0",
-  },
-
   actions: [
     {
       slug: "create-ticket",
@@ -56,6 +50,11 @@ const linearPlugin: IntegrationPlugin = {
       category: "Linear",
       stepFunction: "createTicketStep",
       stepImportPath: "create-ticket",
+      outputFields: [
+        { field: "id", description: "Ticket ID" },
+        { field: "url", description: "Ticket URL" },
+        { field: "title", description: "Ticket title" },
+      ],
       configFields: [
         {
           key: "ticketTitle",
@@ -88,7 +87,6 @@ const linearPlugin: IntegrationPlugin = {
           ],
         },
       ],
-      codegenTemplate: createTicketCodegenTemplate,
     },
     {
       slug: "find-issues",
@@ -97,6 +95,10 @@ const linearPlugin: IntegrationPlugin = {
       category: "Linear",
       stepFunction: "findIssuesStep",
       stepImportPath: "find-issues",
+      outputFields: [
+        { field: "issues", description: "Array of issues found" },
+        { field: "count", description: "Number of issues" },
+      ],
       configFields: [
         {
           key: "linearAssigneeId",
@@ -132,7 +134,6 @@ const linearPlugin: IntegrationPlugin = {
           placeholder: "bug, feature, etc. or {{NodeName.label}}",
         },
       ],
-      codegenTemplate: findIssuesCodegenTemplate,
     },
   ],
 };
