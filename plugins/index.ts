@@ -12,13 +12,11 @@
  * To remove an integration:
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
- *
- * Discovered plugins: ai-gateway, exa, firecrawl, linear, resend, slack, v0
  */
 
-import "./exa";
 import "./ai-gateway";
 import "./blob";
+import "./exa";
 import "./fal";
 import "./firecrawl";
 import "./github";

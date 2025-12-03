@@ -1,6 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { searchCodegenTemplate } from "./codegen/search";
 import { ExaIcon } from "./icon";
 
 const exaPlugin: IntegrationPlugin = {
@@ -34,10 +33,6 @@ const exaPlugin: IntegrationPlugin = {
     },
   },
 
-  dependencies: {
-    "exa-js": "^1.5.12",
-  },
-
   actions: [
     {
       slug: "search",
@@ -47,6 +42,9 @@ const exaPlugin: IntegrationPlugin = {
       category: "Exa",
       stepFunction: "exaSearchStep",
       stepImportPath: "search",
+      outputFields: [
+        { field: "results", description: "Array of search results" },
+      ],
       configFields: [
         {
           key: "query",
@@ -71,13 +69,11 @@ const exaPlugin: IntegrationPlugin = {
           options: [
             { value: "auto", label: "Auto" },
             { value: "neural", label: "Neural" },
-            { value: "fast", label: "Fast" },
-            { value: "deep", label: "Deep" },
+            { value: "keyword", label: "Keyword" },
           ],
           defaultValue: "auto",
         },
       ],
-      codegenTemplate: searchCodegenTemplate,
     },
   ],
 };

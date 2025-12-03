@@ -1,51 +1,99 @@
 import "server-only";
 
-import Exa from "exa-js";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
-import { getErrorMessage } from "@/lib/utils";
+import type { ExaCredentials } from "../credentials";
 
-type ExaSearchResult = {
+const EXA_API_URL = "https://api.exa.ai";
+
+type ExaSearchResponse = {
   results: Array<{
     url: string;
+    id: string;
     title: string | null;
     publishedDate?: string;
     author?: string;
     text?: string;
   }>;
+  autopromptString?: string;
 };
 
-export type ExaSearchInput = StepInput & {
-  integrationId?: string;
+type ExaErrorResponse = {
+  error?: string;
+  message?: string;
+};
+
+type SearchResult =
+  | {
+      success: true;
+      results: Array<{
+        url: string;
+        title: string | null;
+        publishedDate?: string;
+        author?: string;
+        text?: string;
+      }>;
+    }
+  | { success: false; error: string };
+
+export type SearchCoreInput = {
   query: string;
   numResults?: number;
-  type?: "auto" | "neural" | "fast" | "deep";
+  type?: "auto" | "neural" | "keyword";
 };
 
-/**
- * Search logic using Exa SDK
- */
-async function search(input: ExaSearchInput): Promise<ExaSearchResult> {
-  const credentials = input.integrationId
-    ? await fetchCredentials(input.integrationId)
-    : {};
+export type ExaSearchInput = StepInput &
+  SearchCoreInput & {
+    integrationId?: string;
+  };
 
+/**
+ * Core logic - portable between app and export
+ */
+async function stepHandler(
+  input: SearchCoreInput,
+  credentials: ExaCredentials
+): Promise<SearchResult> {
   const apiKey = credentials.EXA_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Exa API Key is not configured.");
+    return {
+      success: false,
+      error:
+        "EXA_API_KEY is not configured. Please add it in Project Integrations.",
+    };
   }
 
   try {
-    const exa = new Exa(apiKey);
-
-    const result = await exa.search(input.query, {
-      numResults: input.numResults ? Number(input.numResults) : 10,
-      type: input.type || "auto",
+    const response = await fetch(`${EXA_API_URL}/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        query: input.query,
+        numResults: input.numResults ? Number(input.numResults) : 10,
+        type: input.type || "auto",
+      }),
     });
 
+    if (!response.ok) {
+      const errorData = (await response.json()) as ExaErrorResponse;
+      return {
+        success: false,
+        error:
+          errorData.error ||
+          errorData.message ||
+          `HTTP ${response.status}: Search failed`,
+      };
+    }
+
+    const data = (await response.json()) as ExaSearchResponse;
+
     return {
-      results: result.results.map((r) => ({
+      success: true,
+      results: data.results.map((r) => ({
         url: r.url,
         title: r.title,
         publishedDate: r.publishedDate,
@@ -54,17 +102,28 @@ async function search(input: ExaSearchInput): Promise<ExaSearchResult> {
       })),
     };
   } catch (error) {
-    throw new Error(`Failed to search: ${getErrorMessage(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: `Failed to search: ${message}`,
+    };
   }
 }
 
 /**
- * Exa Search Step
- * Performs semantic web search using Exa
+ * App entry point - fetches credentials and wraps with logging
  */
 export async function exaSearchStep(
   input: ExaSearchInput
-): Promise<ExaSearchResult> {
+): Promise<SearchResult> {
   "use step";
-  return withStepLogging(input, () => search(input));
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
 }
+
+// Export marker for codegen auto-generation
+export const _integrationType = "exa";

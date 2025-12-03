@@ -27,8 +27,12 @@ export async function testExa(credentials: Record<string, string>) {
       return { success: true };
     }
 
+    if (response.status === 401) {
+      return { success: false, error: "Invalid API key" };
+    }
+
     const error = await response.text();
-    return { success: false, error: error || "Invalid API key" };
+    return { success: false, error: error || `API error: HTTP ${response.status}` };
   } catch (error) {
     return {
       success: false,
