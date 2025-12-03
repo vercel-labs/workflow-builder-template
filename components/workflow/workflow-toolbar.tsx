@@ -338,9 +338,10 @@ function getMissingRequiredFields(
 // Also handles built-in actions that aren't in the plugin registry
 function getMissingIntegrations(
   nodes: WorkflowNode[],
-  userIntegrations: Array<{ type: IntegrationType }>
+  userIntegrations: Array<{ id: string; type: IntegrationType }>
 ): MissingIntegrationInfo[] {
   const userIntegrationTypes = new Set(userIntegrations.map((i) => i.type));
+  const userIntegrationIds = new Set(userIntegrations.map((i) => i.id));
   const missingByType = new Map<IntegrationType, string[]>();
   const integrationLabels = getIntegrationLabels();
 
@@ -365,9 +366,15 @@ function getMissingIntegrations(
       continue;
     }
 
-    // Check if this node has an integrationId configured
-    const hasIntegrationConfigured = Boolean(node.data.config?.integrationId);
-    if (hasIntegrationConfigured) {
+    // Check if this node has a valid integrationId configured
+    // The integration must exist (not just be configured)
+    const configuredIntegrationId = node.data.config?.integrationId as
+      | string
+      | undefined;
+    const hasValidIntegration =
+      configuredIntegrationId &&
+      userIntegrationIds.has(configuredIntegrationId);
+    if (hasValidIntegration) {
       continue;
     }
 
@@ -509,7 +516,7 @@ type WorkflowHandlerParams = {
   setEdges: (edges: WorkflowEdge[]) => void;
   setSelectedNodeId: (id: string | null) => void;
   setSelectedExecutionId: (id: string | null) => void;
-  userIntegrations: Array<{ type: IntegrationType }>;
+  userIntegrations: Array<{ id: string; type: IntegrationType }>;
 };
 
 function useWorkflowHandlers({

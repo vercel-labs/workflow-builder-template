@@ -1,6 +1,6 @@
 "use client";
 
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button";
 import { NodeConfigPanel } from "@/components/workflow/node-config-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
+import {
+  integrationsAtom,
+  integrationsVersionAtom,
+} from "@/lib/integrations-store";
+import type { IntegrationType } from "@/lib/types/integration";
 import {
   currentWorkflowIdAtom,
   currentWorkflowNameAtom,
@@ -32,10 +37,70 @@ import {
   type WorkflowVisibility,
   workflowNotFoundAtom,
 } from "@/lib/workflow-store";
+import { findActionById } from "@/plugins";
 
 type WorkflowPageProps = {
   params: Promise<{ workflowId: string }>;
 };
+
+// System actions that need integrations (not in plugin registry)
+const SYSTEM_ACTION_INTEGRATIONS: Record<string, IntegrationType> = {
+  "Database Query": "database",
+};
+
+// Helper to get required integration type for an action
+function getRequiredIntegrationType(
+  actionType: string
+): IntegrationType | undefined {
+  const action = findActionById(actionType);
+  return (
+    (action?.integration as IntegrationType | undefined) ||
+    SYSTEM_ACTION_INTEGRATIONS[actionType]
+  );
+}
+
+// Helper to check and fix a single node's integration
+type IntegrationFixResult = {
+  nodeId: string;
+  newIntegrationId: string | undefined;
+};
+
+function checkNodeIntegration(
+  node: WorkflowNode,
+  allIntegrations: { id: string; type: string }[],
+  validIntegrationIds: Set<string>
+): IntegrationFixResult | null {
+  const actionType = node.data.config?.actionType as string | undefined;
+  if (!actionType) {
+    return null;
+  }
+
+  const integrationType = getRequiredIntegrationType(actionType);
+  if (!integrationType) {
+    return null;
+  }
+
+  const currentIntegrationId = node.data.config?.integrationId as
+    | string
+    | undefined;
+  const hasValidIntegration =
+    currentIntegrationId && validIntegrationIds.has(currentIntegrationId);
+
+  if (hasValidIntegration) {
+    return null;
+  }
+
+  // Find available integrations of this type
+  const available = allIntegrations.filter((i) => i.type === integrationType);
+
+  if (available.length === 1) {
+    return { nodeId: node.id, newIntegrationId: available[0].id };
+  }
+  if (available.length === 0 && currentIntegrationId) {
+    return { nodeId: node.id, newIntegrationId: undefined };
+  }
+  return null;
+}
 
 const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const { workflowId } = use(params);
@@ -66,6 +131,8 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     currentWorkflowVisibilityAtom
   );
   const setIsWorkflowOwner = useSetAtom(isWorkflowOwnerAtom);
+  const setGlobalIntegrations = useSetAtom(integrationsAtom);
+  const integrationsVersion = useAtomValue(integrationsVersionAtom);
 
   // Panel width state for resizing
   const [panelWidth, setPanelWidth] = useState(30); // default percentage
@@ -322,6 +389,11 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     setSelectedNodeId,
   ]);
 
+  // Track if we've already auto-fixed integrations for this workflow+version
+  const lastAutoFixRef = useRef<{ workflowId: string; version: number } | null>(
+    null
+  );
+
   useEffect(() => {
     const loadWorkflowData = async () => {
       const isGeneratingParam = searchParams?.get("generating") === "true";
@@ -355,6 +427,70 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     nodes.length,
     generateWorkflowFromAI,
     loadExistingWorkflow,
+  ]);
+
+  // Auto-fix invalid/missing integrations on workflow load or when integrations change
+  useEffect(() => {
+    // Skip if no nodes or no workflow
+    if (nodes.length === 0 || !currentWorkflowId) {
+      return;
+    }
+
+    // Skip if already checked for this workflow+version combination
+    const lastFix = lastAutoFixRef.current;
+    if (
+      lastFix &&
+      lastFix.workflowId === currentWorkflowId &&
+      lastFix.version === integrationsVersion
+    ) {
+      return;
+    }
+
+    const autoFixIntegrations = async () => {
+      try {
+        const allIntegrations = await api.integration.getAll();
+        setGlobalIntegrations(allIntegrations);
+
+        const validIds = new Set(allIntegrations.map((i) => i.id));
+        const fixes = nodes
+          .map((node) => checkNodeIntegration(node, allIntegrations, validIds))
+          .filter((fix): fix is IntegrationFixResult => fix !== null);
+
+        for (const fix of fixes) {
+          const node = nodes.find((n) => n.id === fix.nodeId);
+          if (node) {
+            updateNodeData({
+              id: fix.nodeId,
+              data: {
+                config: {
+                  ...node.data.config,
+                  integrationId: fix.newIntegrationId,
+                },
+              },
+            });
+          }
+        }
+
+        lastAutoFixRef.current = {
+          workflowId: currentWorkflowId,
+          version: integrationsVersion,
+        };
+        if (fixes.length > 0) {
+          setHasUnsavedChanges(true);
+        }
+      } catch (error) {
+        console.error("Failed to auto-fix integrations:", error);
+      }
+    };
+
+    autoFixIntegrations();
+  }, [
+    nodes,
+    currentWorkflowId,
+    integrationsVersion,
+    updateNodeData,
+    setGlobalIntegrations,
+    setHasUnsavedChanges,
   ]);
 
   // Keyboard shortcuts

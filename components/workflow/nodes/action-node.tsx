@@ -20,6 +20,7 @@ import {
   NodeTitle,
 } from "@/components/ai-elements/node";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { integrationIdsAtom } from "@/lib/integrations-store";
 import { cn } from "@/lib/utils";
 import {
   executionLogsAtom,
@@ -114,11 +115,6 @@ const requiresIntegration = (actionType: string): boolean => {
   const action = findActionById(actionType);
   return action !== undefined;
 };
-
-// Helper to check if integration is configured
-// Now checks for integrationId in node config
-const hasIntegrationConfigured = (config: Record<string, unknown>): boolean =>
-  Boolean(config?.integrationId);
 
 // Helper to get provider logo for action type
 const getProviderLogo = (actionType: string) => {
@@ -246,6 +242,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const selectedExecutionId = useAtomValue(selectedExecutionIdAtom);
   const executionLogs = useAtomValue(executionLogsAtom);
   const pendingIntegrationNodes = useAtomValue(pendingIntegrationNodesAtom);
+  const availableIntegrationIds = useAtomValue(integrationIdsAtom);
 
   if (!data) {
     return null;
@@ -304,10 +301,15 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const needsIntegration = requiresIntegration(actionType);
   // Don't show missing indicator if we're still checking for auto-select
   const isPendingIntegrationCheck = pendingIntegrationNodes.has(id);
+  // Check both that integrationId is set AND that it exists in available integrations
+  const configuredIntegrationId = data.config?.integrationId as
+    | string
+    | undefined;
+  const hasValidIntegration =
+    configuredIntegrationId &&
+    availableIntegrationIds.has(configuredIntegrationId);
   const integrationMissing =
-    needsIntegration &&
-    !hasIntegrationConfigured(data.config || {}) &&
-    !isPendingIntegrationCheck;
+    needsIntegration && !hasValidIntegration && !isPendingIntegrationCheck;
 
   // Get model for AI nodes
   const getAiModel = (): string | null => {
