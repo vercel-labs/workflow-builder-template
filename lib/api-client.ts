@@ -7,19 +7,24 @@ import type { IntegrationConfig, IntegrationType } from "./types/integration";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 // Workflow data types
+export type WorkflowVisibility = "private" | "public";
+
 export type WorkflowData = {
   id?: string;
   name?: string;
   description?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
+  visibility?: WorkflowVisibility;
 };
 
 export type SavedWorkflow = WorkflowData & {
   id: string;
   name: string;
+  visibility: WorkflowVisibility;
   createdAt: string;
   updatedAt: string;
+  isOwner?: boolean;
 };
 
 // API error class
@@ -412,6 +417,12 @@ export const workflowApi = {
   delete: (id: string) =>
     apiCall<{ success: boolean }>(`/api/workflows/${id}`, {
       method: "DELETE",
+    }),
+
+  // Duplicate a workflow
+  duplicate: (id: string) =>
+    apiCall<SavedWorkflow>(`/api/workflows/${id}/duplicate`, {
+      method: "POST",
     }),
 
   // Get current workflow state

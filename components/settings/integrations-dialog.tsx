@@ -1,7 +1,8 @@
 "use client";
 
+import { useSetAtom } from "jotai";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
+import { integrationsVersionAtom } from "@/lib/integrations-store";
 import { IntegrationsManager } from "./integrations-manager";
 
 type IntegrationsDialogProps = {
@@ -25,6 +27,9 @@ export function IntegrationsDialog({
 }: IntegrationsDialogProps) {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+  // Track if any changes were made during this dialog session
+  const hasChangesRef = useRef(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -39,11 +44,30 @@ export function IntegrationsDialog({
   useEffect(() => {
     if (open) {
       loadAll();
+      // Reset changes tracking when dialog opens
+      hasChangesRef.current = false;
+      // Reset create dialog state when opening
+      setShowCreateDialog(false);
     }
   }, [open, loadAll]);
 
+  const handleClose = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen && hasChangesRef.current) {
+        // Increment version to trigger re-fetch in all IntegrationSelectors
+        setIntegrationsVersion((v) => v + 1);
+      }
+      onOpenChange(isOpen);
+    },
+    [onOpenChange, setIntegrationsVersion]
+  );
+
+  const handleIntegrationChange = useCallback(() => {
+    hasChangesRef.current = true;
+  }, []);
+
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog onOpenChange={handleClose} open={open}>
       <DialogContent
         className="max-h-[90vh] max-w-4xl overflow-y-auto"
         showCloseButton={false}
@@ -61,7 +85,10 @@ export function IntegrationsDialog({
           </div>
         ) : (
           <div className="mt-4">
-            <IntegrationsManager showCreateDialog={showCreateDialog} />
+            <IntegrationsManager
+              onIntegrationChange={handleIntegrationChange}
+              showCreateDialog={showCreateDialog}
+            />
           </div>
         )}
 
@@ -70,7 +97,7 @@ export function IntegrationsDialog({
             <Plus className="mr-2 size-4" />
             Add Integration
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Done</Button>
+          <Button onClick={() => handleClose(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
