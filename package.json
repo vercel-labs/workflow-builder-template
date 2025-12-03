@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "^2.0.0",
+    "@getpara/ethers-v6-integration": "2.0.0-alpha.69",
+    "@getpara/server-sdk": "2.0.0-alpha.69",
     "@linear/sdk": "^63.2.0",
     "@mendable/firecrawl-js": "^4.6.2",
     "@monaco-editor/react": "^4.7.0",
@@ -36,6 +38,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
+    "ethers": "^6.15.0",
     "jotai": "^2.15.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.552.0",
