@@ -13,7 +13,7 @@ service:
 ingress:
   enabled: true
   hosts:
-    - vw-staging.keeperhub.xyz
+    - vw-staging.keeperhub.com
   annotations:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
