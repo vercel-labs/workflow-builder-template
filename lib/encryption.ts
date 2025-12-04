@@ -1,13 +1,16 @@
 import crypto from "node:crypto";
 
-const ENCRYPTION_KEY = process.env.WALLET_ENCRYPTION_KEY;
+const ENCRYPTION_KEY_ENV = process.env.WALLET_ENCRYPTION_KEY;
 const ALGORITHM = "aes-256-gcm";
 
-if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length !== 64) {
+if (!ENCRYPTION_KEY_ENV || ENCRYPTION_KEY_ENV.length !== 64) {
   throw new Error(
     "WALLET_ENCRYPTION_KEY must be a 32-byte hex string (64 characters)"
   );
 }
+
+// TypeScript now knows ENCRYPTION_KEY is definitely a string
+const ENCRYPTION_KEY: string = ENCRYPTION_KEY_ENV;
 
 /**
  * Encrypt sensitive userShare before storing in database

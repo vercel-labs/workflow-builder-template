@@ -208,6 +208,14 @@ export const auth = betterAuth({
             // Get user's cryptographic share
             const userShare = await paraClient.getUserShare();
 
+            if (!userShare) {
+              throw new Error("Failed to get user share from Para");
+            }
+
+            if (!(wallet.id && wallet.address)) {
+              throw new Error("Invalid wallet data from Para");
+            }
+
             // Store encrypted wallet in database
             await db.insert(paraWallets).values({
               userId: user.id,

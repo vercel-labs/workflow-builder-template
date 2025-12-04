@@ -130,11 +130,7 @@ export function IntegrationsManager({
               <div className="flex items-center gap-3">
                 <IntegrationIcon
                   className="size-8"
-                  integration={
-                    integration.type === "ai-gateway"
-                      ? "vercel"
-                      : integration.type
-                  }
+                  integration={integration.type}
                 />
                 <div>
                   <p className="font-medium text-sm">{integration.name}</p>
