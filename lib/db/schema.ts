@@ -139,6 +139,22 @@ export const workflowExecutionLogs = pgTable("workflow_execution_logs", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
+// Para Wallets table to store user wallet information
+export const paraWallets = pgTable("para_wallets", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => generateId()),
+  userId: text("user_id")
+    .notNull()
+    .unique() // One wallet per user
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  walletId: text("wallet_id").notNull(), // Para wallet ID
+  walletAddress: text("wallet_address").notNull(), // EVM address (0x...)
+  userShare: text("user_share").notNull(), // Encrypted keyshare for signing
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const workflowExecutionsRelations = relations(
   workflowExecutions,
@@ -160,3 +176,5 @@ export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
 export type NewWorkflowExecution = typeof workflowExecutions.$inferInsert;
 export type WorkflowExecutionLog = typeof workflowExecutionLogs.$inferSelect;
 export type NewWorkflowExecutionLog = typeof workflowExecutionLogs.$inferInsert;
+export type ParaWallet = typeof paraWallets.$inferSelect;
+export type NewParaWallet = typeof paraWallets.$inferInsert;

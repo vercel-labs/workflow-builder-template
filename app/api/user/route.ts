@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { accounts, users } from "@/lib/db/schema";
+import { getUserWallet } from "@/lib/para/wallet-helpers";
 
 export async function GET(request: Request) {
   try {
@@ -37,9 +38,20 @@ export async function GET(request: Request) {
       },
     });
 
+    // Get the user's wallet address (if exists)
+    let walletAddress: string | null = null;
+    try {
+      const wallet = await getUserWallet(session.user.id);
+      walletAddress = wallet.walletAddress;
+    } catch (_error) {
+      // User doesn't have a wallet yet, that's ok
+      walletAddress = null;
+    }
+
     return NextResponse.json({
       ...userData,
       providerId: userAccount?.providerId ?? null,
+      walletAddress,
     });
   } catch (error) {
     console.error("Failed to get user:", error);

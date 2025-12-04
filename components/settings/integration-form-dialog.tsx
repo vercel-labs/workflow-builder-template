@@ -226,7 +226,7 @@ export function IntegrationFormDialog({
                       <div className="flex items-center gap-2">
                         <IntegrationIcon
                           className="size-4"
-                          integration={type === "ai-gateway" ? "vercel" : type}
+                          integration={type}
                         />
                         {getLabel(type)}
                       </div>

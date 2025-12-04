@@ -12,20 +12,14 @@
  * To remove an integration:
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
+ *
+ * Discovered plugins: resend, slack, v0, web3
  */
 
-import "./ai-gateway";
-import "./blob";
-import "./fal";
-import "./firecrawl";
-import "./github";
-import "./linear";
-import "./perplexity";
 import "./resend";
 import "./slack";
-import "./stripe";
-import "./superagent";
 import "./v0";
+import "./web3";
 
 export type {
   ActionConfigField,

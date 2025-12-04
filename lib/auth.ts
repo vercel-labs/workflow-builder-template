@@ -1,3 +1,4 @@
+import { Environment, Para as ParaServer } from "@getpara/server-sdk";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { anonymous, genericOAuth } from "better-auth/plugins";
@@ -6,6 +7,7 @@ import { db } from "./db";
 import {
   accounts,
   integrations,
+  paraWallets,
   sessions,
   users,
   verifications,
@@ -14,6 +16,7 @@ import {
   workflowExecutionsRelations,
   workflows,
 } from "./db/schema";
+import { encryptUserShare } from "./encryption";
 
 // Construct schema object for drizzle adapter
 const schema = {
@@ -157,4 +160,80 @@ export const auth = betterAuth({
     },
   },
   plugins,
+
+  // Database hooks for automatic Para wallet creation
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Skip wallet creation if no email
+          if (!user.email) {
+            console.log("[Para] Skipping wallet creation - no email");
+            return;
+          }
+
+          console.log(`[Para] Creating wallet for user: ${user.email}`);
+
+          try {
+            const PARA_API_KEY = process.env.PARA_API_KEY;
+            const PARA_ENV = process.env.PARA_ENVIRONMENT || "beta";
+
+            if (!PARA_API_KEY) {
+              console.warn("[Para] PARA_API_KEY not configured");
+              return;
+            }
+
+            // Initialize Para SDK
+            const paraClient = new ParaServer(
+              PARA_ENV === "prod" ? Environment.PROD : Environment.BETA,
+              PARA_API_KEY
+            );
+
+            // Check if wallet already exists
+            const hasWallet = await paraClient.hasPregenWallet({
+              pregenId: { email: user.email },
+            });
+
+            if (hasWallet) {
+              console.log(`[Para] Wallet already exists for ${user.email}`);
+              return;
+            }
+
+            // Create pregenerated wallet
+            const wallet = await paraClient.createPregenWallet({
+              type: "EVM",
+              pregenId: { email: user.email },
+            });
+
+            // Get user's cryptographic share
+            const userShare = await paraClient.getUserShare();
+
+            if (!userShare) {
+              throw new Error("Failed to get user share from Para");
+            }
+
+            if (!(wallet.id && wallet.address)) {
+              throw new Error("Invalid wallet data from Para");
+            }
+
+            // Store encrypted wallet in database
+            await db.insert(paraWallets).values({
+              userId: user.id,
+              email: user.email,
+              walletId: wallet.id, // v2 API uses wallet.id instead of wallet.walletId
+              walletAddress: wallet.address,
+              userShare: encryptUserShare(userShare), // Encrypted!
+            });
+
+            console.log(
+              `[Para] ✓ Wallet created successfully: ${wallet.address}`
+            );
+          } catch (error) {
+            console.error("[Para] Failed to create wallet:", error);
+            // Don't throw - let signup succeed even if wallet creation fails
+          }
+        },
+      },
+    },
+  },
 });
