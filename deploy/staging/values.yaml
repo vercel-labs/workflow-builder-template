@@ -33,7 +33,7 @@ httpBasicAuth:
 
 image:
   repository: ${ECR_REGISTRY}/keeperhub-staging
-  tag: latest
+  tag: ${IMAGE_TAG}
   pullPolicy: Always
 
 deployment:
