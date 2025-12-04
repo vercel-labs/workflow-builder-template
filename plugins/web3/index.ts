@@ -5,20 +5,20 @@ import { Web3Icon } from "./icon";
 const web3Plugin: IntegrationPlugin = {
   type: "web3",
   label: "Web3",
-  description: "Interact with blockchain networks - transfer funds, read/write smart contracts, and more",
+  description: "Interact with blockchain networks using your Para wallet",
 
   icon: Web3Icon,
 
-  // Minimal form field - Web3 uses PARA wallet (auto-created for users)
+  // Minimal form field - Web3 uses PARA wallet (user must create manually)
   // This field is informational only and not used
   formFields: [
     {
       id: "info",
-      label: "Note",
+      label: "Para Wallet",
       type: "text",
-      placeholder: "Web3 uses your PARA wallet (auto-created on signup)",
+      placeholder: "Create a wallet to use Web3 actions",
       configKey: "info",
-      helpText: "No configuration needed. Your PARA wallet is automatically available.",
+      helpText: "You'll need to create a Para wallet to use Web3 actions in your workflows.",
     },
   ],
 

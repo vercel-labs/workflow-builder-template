@@ -29,6 +29,7 @@ import {
   getIntegrationLabels,
   getSortedIntegrationTypes,
 } from "@/plugins";
+import { Web3WalletSection } from "./web3-wallet-section";
 
 type IntegrationFormDialogProps = {
   open: boolean;
@@ -153,6 +154,11 @@ export function IntegrationFormDialog({
       );
     }
 
+    // Handle Web3 wallet creation
+    if (formData.type === "web3") {
+      return <Web3WalletSection />;
+    }
+
     // Get plugin form fields from registry
     const plugin = getIntegration(formData.type);
     if (!plugin?.formFields) {
@@ -193,12 +199,26 @@ export function IntegrationFormDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {mode === "edit" ? "Edit Integration" : "Add Integration"}
+            {(() => {
+              if (formData.type === "web3" && mode === "create") {
+                return "Web3 Wallet Setup";
+              }
+              if (mode === "edit") {
+                return "Edit Integration";
+              }
+              return "Add Integration";
+            })()}
           </DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? "Update integration configuration"
-              : "Configure a new integration"}
+            {(() => {
+              if (formData.type === "web3" && mode === "create") {
+                return "Create your Para wallet to use Web3 actions in workflows";
+              }
+              if (mode === "edit") {
+                return "Update integration configuration";
+              }
+              return "Configure a new integration";
+            })()}
           </DialogDescription>
         </DialogHeader>
 
@@ -253,13 +273,24 @@ export function IntegrationFormDialog({
         </div>
 
         <DialogFooter>
-          <Button disabled={saving} onClick={() => onClose()} variant="outline">
-            Cancel
-          </Button>
-          <Button disabled={saving} onClick={handleSave}>
-            {saving ? <Spinner className="mr-2 size-4" /> : null}
-            {mode === "edit" ? "Update" : "Create"}
-          </Button>
+          {formData.type === "web3" ? (
+            // Web3 wallet creation happens in the component, just show Close
+            <Button onClick={() => onClose()}>Close</Button>
+          ) : (
+            <>
+              <Button
+                disabled={saving}
+                onClick={() => onClose()}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button disabled={saving} onClick={handleSave}>
+                {saving ? <Spinner className="mr-2 size-4" /> : null}
+                {mode === "edit" ? "Update" : "Create"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
