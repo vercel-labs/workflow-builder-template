@@ -2,7 +2,7 @@ replicaCount: 1
 
 service:
   enabled: true
-  name: vw-staging
+  name: keeperhub-staging
   port: 3000
   type: ClusterIP
   containerPort: 3000
@@ -25,7 +25,7 @@ httpWwwRedirect:
 httpBasicAuth:
   enabled: false
 image:
-  repository: ${ECR_REGISTRY}/keeper-app-vw-staging
+  repository: ${ECR_REGISTRY}/keeperhub-staging
   tag: latest
   pullPolicy: Always
 
@@ -80,10 +80,10 @@ env:
     type: parameterStore
     name: etherscan-api-key
     parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
-  # DATABASE_URL:
-  #   type: parameterStore
-  #   name: database-url
-  #   parameter_name: /eks/maker-staging/keeperhub/database-url
+  DATABASE_URL:
+    type: parameterStore
+    name: db-url
+    parameter_name: /eks/maker-staging/keeperhub/db-url
 externalSecrets:
   clusterSecretStoreName: maker-staging
 

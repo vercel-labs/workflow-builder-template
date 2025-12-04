@@ -5,9 +5,9 @@ on:
       # - main
   workflow_dispatch:
 
-name: deploy-vw
+name: deploy-keeperhub
 jobs:
-  build-and-deploy-vw:
+  build-and-deploy-keeperhub:
     environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
     runs-on: ubuntu-latest
     env:
@@ -15,9 +15,9 @@ jobs:
       REGION: ${{ github.ref == 'refs/heads/main' && 'us-east-1' || 'us-east-2' }}
       CLUSTER_NAME: ${{ github.ref == 'refs/heads/main' && 'maker-prod' || 'maker-staging' }}
       ENVIRONMENT_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-      NAMESPACE: vw
-      SERVICE_NAME: vw
-      AWS_ECR_NAME: keeper-app-vw-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+      NAMESPACE: keeperhub
+      SERVICE_NAME: keeperhub
+      AWS_ECR_NAME: keeperhub-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
