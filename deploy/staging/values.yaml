@@ -46,10 +46,44 @@ env:
   HOSTNAME:
     type: kv
     value: "0.0.0.0"
-  BETTER_AUTH_SECRET:
+  PARA_ENVIRONMENT:
     type: kv
-    value: "IuqHJdIq5mC0giIY+kriBo+QLvm2B7hGtVs3410moeQ="
-
+    value: "beta"
+  NEXT_PUBLIC_API_URL:
+    type: kv
+    value: "http://localhost:3000"
+  BETTER_AUTH_URL:
+    type: kv
+    value: "http://localhost:3000"
+  BETTER_AUTH_SECRET:
+    type: parameterStore
+    name: better-auth-secret
+    parameter_name: /eks/maker-staging/keeperhub/better-auth-secret
+  AI_GATEWAY_API_KEY:
+    type: parameterStore
+    name: ai-gateway-api-key
+    parameter_name: /eks/maker-staging/keeperhub/ai-gateway-api-key
+  PARA_API_KEY:
+    type: parameterStore
+    name: para-api-key
+    parameter_name: /eks/maker-staging/keeperhub/para-api-key
+  WALLET_ENCRYPTION_KEY:
+    type: parameterStore
+    name: wallet-encryption-key
+    parameter_name: /eks/maker-staging/keeperhub/wallet-encryption-key
+  INTEGRATION_ENCRYPTION_KEY:
+    type: parameterStore
+    name: integration-encryption-key
+    parameter_name: /eks/maker-staging/keeperhub/integration-encryption-key
+  # TODO rename the path
+  ETHERSCAN_API_KEY:
+    type: parameterStore
+    name: etherscan-api-key
+    parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
+  # DATABASE_URL:
+  #   type: parameterStore
+  #   name: database-url
+  #   parameter_name: /eks/maker-staging/keeperhub/database-url
 externalSecrets:
   clusterSecretStoreName: maker-staging
 
