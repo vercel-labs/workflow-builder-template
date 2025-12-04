@@ -20,6 +20,7 @@ import "./fal";
 import "./firecrawl";
 import "./github";
 import "./linear";
+import "./olostep";
 import "./perplexity";
 import "./resend";
 import "./slack";
