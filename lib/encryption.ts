@@ -3,14 +3,15 @@ import crypto from "node:crypto";
 const ENCRYPTION_KEY_ENV = process.env.WALLET_ENCRYPTION_KEY;
 const ALGORITHM = "aes-256-gcm";
 
-if (!ENCRYPTION_KEY_ENV || ENCRYPTION_KEY_ENV.length !== 64) {
-  throw new Error(
-    "WALLET_ENCRYPTION_KEY must be a 32-byte hex string (64 characters)"
-  );
+// Lazy initialization - only validate when actually used (not at build time)
+function getEncryptionKey(): string {
+  if (!ENCRYPTION_KEY_ENV || ENCRYPTION_KEY_ENV.length !== 64) {
+    throw new Error(
+      "WALLET_ENCRYPTION_KEY must be a 32-byte hex string (64 characters)"
+    );
+  }
+  return ENCRYPTION_KEY_ENV;
 }
-
-// TypeScript now knows ENCRYPTION_KEY is definitely a string
-const ENCRYPTION_KEY: string = ENCRYPTION_KEY_ENV;
 
 /**
  * Encrypt sensitive userShare before storing in database
@@ -20,10 +21,11 @@ const ENCRYPTION_KEY: string = ENCRYPTION_KEY_ENV;
  * @returns Encrypted string in format: iv:authTag:encryptedData
  */
 export function encryptUserShare(userShare: string): string {
+  const encryptionKey = getEncryptionKey();
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY, "hex"),
+    Buffer.from(encryptionKey, "hex"),
     iv
   );
 
@@ -43,6 +45,7 @@ export function encryptUserShare(userShare: string): string {
  * @returns Decrypted userShare for Para SDK
  */
 export function decryptUserShare(encryptedData: string): string {
+  const encryptionKey = getEncryptionKey();
   const parts = encryptedData.split(":");
   if (parts.length !== 3) {
     throw new Error("Invalid encrypted data format");
@@ -54,7 +57,7 @@ export function decryptUserShare(encryptedData: string): string {
 
   const decipher = crypto.createDecipheriv(
     ALGORITHM,
-    Buffer.from(ENCRYPTION_KEY, "hex"),
+    Buffer.from(encryptionKey, "hex"),
     iv
   );
   decipher.setAuthTag(authTag);
