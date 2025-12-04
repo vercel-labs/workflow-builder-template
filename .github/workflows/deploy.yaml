@@ -42,8 +42,8 @@ jobs:
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      - name: Build, tag, and push image to ECR
-        id: build-image
+      - name: Build, tag, and push app image to ECR
+        id: build-app-image
         if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
         env:
           SHA_TAG: ${{ steps.vars.outputs.sha_short }}
@@ -60,6 +60,22 @@ jobs:
                         .
 
           docker push $ECR_REGISTRY/$AWS_ECR_NAME --all-tags
+
+      - name: Build, tag, and push migrator image to ECR
+        id: build-migrator
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        env:
+          SHA_TAG: ${{ steps.vars.outputs.sha_short }}
+          LATEST_TAG: latest
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build image for database migrations
+          docker build --target migrator \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:migrator \
+                        -f ./Dockerfile \
+                        .
+
+          docker push $ECR_REGISTRY/$AWS_ECR_NAME:migrator
 
       - name: Deploying Service to Kubernetes with Helm
         id: deploy
