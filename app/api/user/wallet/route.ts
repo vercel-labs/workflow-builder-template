@@ -1,15 +1,163 @@
-import { NextResponse } from "next/server";
 import { Environment, Para as ParaServer } from "@getpara/server-sdk";
-import { eq, and } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { paraWallets, integrations } from "@/lib/db/schema";
+import { createIntegration } from "@/lib/db/integrations";
+import { integrations, paraWallets } from "@/lib/db/schema";
 import { encryptUserShare } from "@/lib/encryption";
 import { getUserWallet, userHasWallet } from "@/lib/para/wallet-helpers";
-import { createIntegration } from "@/lib/db/integrations";
 
-const PARA_API_KEY = process.env.PARA_API_KEY!;
+const PARA_API_KEY = process.env.PARA_API_KEY || "";
 const PARA_ENV = process.env.PARA_ENVIRONMENT || "beta";
+
+// Helper: Validate user authentication and email
+async function validateUser(request: Request) {
+  const session = await auth.api.getSession({
+    headers: request.headers,
+  });
+
+  if (!session?.user) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  const user = session.user;
+
+  if (!user.email) {
+    return { error: "Email required to create wallet", status: 400 };
+  }
+
+  // Check if user is anonymous
+  if (
+    user.email.includes("@http://") ||
+    user.email.includes("@https://") ||
+    user.email.startsWith("temp-")
+  ) {
+    return {
+      error:
+        "Anonymous users cannot create wallets. Please sign in with a real account.",
+      status: 400,
+    };
+  }
+
+  return { user };
+}
+
+// Helper: Check if wallet or integration already exists
+async function checkExistingWallet(userId: string) {
+  const hasWallet = await userHasWallet(userId);
+  if (hasWallet) {
+    return { error: "Wallet already exists for this user", status: 400 };
+  }
+
+  const existingIntegration = await db
+    .select()
+    .from(integrations)
+    .where(and(eq(integrations.userId, userId), eq(integrations.type, "web3")))
+    .limit(1);
+
+  if (existingIntegration.length > 0) {
+    return {
+      error: "Web3 integration already exists for this user",
+      status: 400,
+    };
+  }
+
+  return { valid: true };
+}
+
+// Helper: Create wallet via Para SDK
+async function createParaWallet(email: string) {
+  if (!PARA_API_KEY) {
+    console.error("[Para] PARA_API_KEY not configured");
+    throw new Error("Para API key not configured");
+  }
+
+  const environment = PARA_ENV === "prod" ? Environment.PROD : Environment.BETA;
+  console.log(
+    `[Para] Initializing SDK with environment: ${PARA_ENV} (${environment})`
+  );
+  console.log(`[Para] API key: ${PARA_API_KEY.slice(0, 8)}...`);
+
+  const paraClient = new ParaServer(environment, PARA_API_KEY);
+
+  console.log(`[Para] Creating wallet for email: ${email}`);
+
+  const wallet = await paraClient.createPregenWallet({
+    type: "EVM",
+    pregenId: { email },
+  });
+
+  const userShare = await paraClient.getUserShare();
+
+  if (!userShare) {
+    throw new Error("Failed to get user share from Para");
+  }
+
+  if (!(wallet.id && wallet.address)) {
+    throw new Error("Invalid wallet data from Para");
+  }
+
+  return { wallet, userShare };
+}
+
+// Helper: Get user-friendly error response for wallet creation failures
+function getErrorResponse(error: unknown) {
+  console.error("[Para] Wallet creation failed:", error);
+
+  let errorMessage = "Failed to create wallet";
+  let statusCode = 500;
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+
+    if (message.includes("already exists")) {
+      errorMessage = "A wallet already exists for this email address";
+      statusCode = 409;
+    } else if (message.includes("invalid email")) {
+      errorMessage = "Invalid email format";
+      statusCode = 400;
+    } else if (message.includes("forbidden") || message.includes("403")) {
+      errorMessage = "API key authentication failed. Please contact support.";
+      statusCode = 403;
+    } else {
+      errorMessage = error.message;
+    }
+  }
+
+  return NextResponse.json({ error: errorMessage }, { status: statusCode });
+}
+
+// Helper: Store wallet in database and create integration
+async function storeWalletAndIntegration(options: {
+  userId: string;
+  email: string;
+  walletId: string;
+  walletAddress: string;
+  userShare: string;
+}) {
+  const { userId, email, walletId, walletAddress, userShare } = options;
+
+  // Store wallet in para_wallets table
+  await db.insert(paraWallets).values({
+    userId,
+    email,
+    walletId,
+    walletAddress,
+    userShare: encryptUserShare(userShare),
+  });
+
+  console.log(`[Para] ✓ Wallet created: ${walletAddress}`);
+
+  // Create Web3 integration record with truncated address as name
+  const truncatedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+
+  await createIntegration(userId, truncatedAddress, "web3", {});
+
+  console.log(`[Para] ✓ Web3 integration created: ${truncatedAddress}`);
+
+  return { walletAddress, walletId, truncatedAddress };
+}
 
 export async function GET(request: Request) {
   try {
@@ -52,123 +200,38 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // 1. Authenticate user
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user;
-
-    // 2. Check user has valid email (not anonymous)
-    if (!user.email) {
+    // 1. Validate user
+    const userValidation = await validateUser(request);
+    if ("error" in userValidation) {
       return NextResponse.json(
-        { error: "Email required to create wallet" },
-        { status: 400 }
+        { error: userValidation.error },
+        { status: userValidation.status }
+      );
+    }
+    const { user } = userValidation;
+
+    // 2. Check if wallet/integration already exists
+    const existingCheck = await checkExistingWallet(user.id);
+    if ("error" in existingCheck) {
+      return NextResponse.json(
+        { error: existingCheck.error },
+        { status: existingCheck.status }
       );
     }
 
-    // Check if user is anonymous (has email like temp-xxx@http://localhost:3000)
-    if (user.email.includes("@http://") || user.email.includes("@https://") || user.email.startsWith("temp-")) {
-      return NextResponse.json(
-        { error: "Anonymous users cannot create wallets. Please sign in with a real account." },
-        { status: 400 }
-      );
-    }
+    // 3. Create wallet via Para SDK
+    const { wallet, userShare } = await createParaWallet(user.email);
 
-    // 3. Check if wallet already exists
-    const hasWallet = await userHasWallet(user.id);
-    if (hasWallet) {
-      return NextResponse.json(
-        { error: "Wallet already exists for this user" },
-        { status: 400 }
-      );
-    }
-
-    // 4. Check if Web3 integration already exists (additional safety check)
-    const existingIntegration = await db
-      .select()
-      .from(integrations)
-      .where(
-        and(
-          eq(integrations.userId, user.id),
-          eq(integrations.type, "web3")
-        )
-      )
-      .limit(1);
-
-    if (existingIntegration.length > 0) {
-      return NextResponse.json(
-        { error: "Web3 integration already exists for this user" },
-        { status: 400 }
-      );
-    }
-
-    // 5. Validate Para API key
-    if (!PARA_API_KEY) {
-      console.error("[Para] PARA_API_KEY not configured");
-      return NextResponse.json(
-        { error: "Para API key not configured" },
-        { status: 500 }
-      );
-    }
-
-    // 6. Initialize Para SDK
-    const environment = PARA_ENV === "prod" ? Environment.PROD : Environment.BETA;
-    console.log(`[Para] Initializing SDK with environment: ${PARA_ENV} (${environment})`);
-    console.log(`[Para] API key: ${PARA_API_KEY.slice(0, 8)}...`);
-
-    const paraClient = new ParaServer(environment, PARA_API_KEY);
-
-    // 7. Skip wallet existence check - might be causing 403
-    // Note: createPregenWallet should be idempotent anyway
-
-    // 8. Create wallet via Para SDK
-    console.log(`[Para] Creating wallet for user ${user.id} (${user.email})`);
-
-    const wallet = await paraClient.createPregenWallet({
-      type: "EVM",
-      pregenId: { email: user.email },
-    });
-
-    // 9. Get user share (cryptographic key for signing)
-    const userShare = await paraClient.getUserShare();
-
-    if (!userShare) {
-      throw new Error("Failed to get user share from Para");
-    }
-
-    if (!(wallet.id && wallet.address)) {
-      throw new Error("Invalid wallet data from Para");
-    }
-
-    // 10. Store wallet in para_wallets table
-    await db.insert(paraWallets).values({
+    // 4. Store wallet and create integration
+    await storeWalletAndIntegration({
       userId: user.id,
       email: user.email,
       walletId: wallet.id,
       walletAddress: wallet.address,
-      userShare: encryptUserShare(userShare), // Encrypted!
+      userShare,
     });
 
-    console.log(`[Para] ✓ Wallet created: ${wallet.address}`);
-
-    // 11. Create Web3 integration record with truncated address as name
-    const truncatedAddress = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
-
-    await createIntegration(
-      user.id,
-      truncatedAddress,
-      "web3",
-      {} // Empty config for web3
-    );
-
-    console.log(`[Para] ✓ Web3 integration created: ${truncatedAddress}`);
-
-    // 12. Return success
+    // 5. Return success
     return NextResponse.json({
       success: true,
       wallet: {
@@ -178,37 +241,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[Para] Wallet creation failed:", error);
-
-    // Extract user-friendly error message
-    let errorMessage = "Failed to create wallet";
-    let statusCode = 500;
-
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-
-      // Check for specific Para API errors
-      if (message.includes("already exists")) {
-        errorMessage = "A wallet already exists for this email address";
-        statusCode = 409;
-      } else if (message.includes("invalid email")) {
-        errorMessage = "Invalid email format";
-        statusCode = 400;
-      } else if (message.includes("forbidden") || message.includes("403")) {
-        errorMessage = "API key authentication failed. Please contact support.";
-        statusCode = 403;
-      } else {
-        // Include the actual error message for other errors
-        errorMessage = error.message;
-      }
-    }
-
-    return NextResponse.json(
-      {
-        error: errorMessage,
-      },
-      { status: statusCode }
-    );
+    return getErrorResponse(error);
   }
 }
 
@@ -246,10 +279,7 @@ export async function DELETE(request: Request) {
     await db
       .delete(integrations)
       .where(
-        and(
-          eq(integrations.userId, user.id),
-          eq(integrations.type, "web3")
-        )
+        and(eq(integrations.userId, user.id), eq(integrations.type, "web3"))
       );
 
     console.log(`[Para] Web3 integration deleted for user ${user.id}`);

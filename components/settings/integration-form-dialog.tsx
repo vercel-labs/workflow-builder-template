@@ -199,18 +199,26 @@ export function IntegrationFormDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {formData.type === "web3" && mode === "create"
-              ? "Web3 Wallet Setup"
-              : mode === "edit"
-                ? "Edit Integration"
-                : "Add Integration"}
+            {(() => {
+              if (formData.type === "web3" && mode === "create") {
+                return "Web3 Wallet Setup";
+              }
+              if (mode === "edit") {
+                return "Edit Integration";
+              }
+              return "Add Integration";
+            })()}
           </DialogTitle>
           <DialogDescription>
-            {formData.type === "web3" && mode === "create"
-              ? "Create your Para wallet to use Web3 actions in workflows"
-              : mode === "edit"
-                ? "Update integration configuration"
-                : "Configure a new integration"}
+            {(() => {
+              if (formData.type === "web3" && mode === "create") {
+                return "Create your Para wallet to use Web3 actions in workflows";
+              }
+              if (mode === "edit") {
+                return "Update integration configuration";
+              }
+              return "Configure a new integration";
+            })()}
           </DialogDescription>
         </DialogHeader>
 
@@ -267,12 +275,14 @@ export function IntegrationFormDialog({
         <DialogFooter>
           {formData.type === "web3" ? (
             // Web3 wallet creation happens in the component, just show Close
-            <Button onClick={() => onClose()}>
-              Close
-            </Button>
+            <Button onClick={() => onClose()}>Close</Button>
           ) : (
             <>
-              <Button disabled={saving} onClick={() => onClose()} variant="outline">
+              <Button
+                disabled={saving}
+                onClick={() => onClose()}
+                variant="outline"
+              >
                 Cancel
               </Button>
               <Button disabled={saving} onClick={handleSave}>

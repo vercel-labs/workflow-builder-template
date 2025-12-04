@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { toast } from "sonner";
 
 export function Web3WalletSection() {
   const [hasWallet, setHasWallet] = useState(false);
@@ -62,7 +62,9 @@ export function Web3WalletSection() {
         const errorMsg = data.error || "Failed to create wallet";
         // Show user-friendly error for anonymous users
         if (errorMsg.includes("Anonymous users")) {
-          throw new Error("Please sign in with a real account (email, GitHub, or Google) to create a wallet.");
+          throw new Error(
+            "Please sign in with a real account (email, GitHub, or Google) to create a wallet."
+          );
         }
         throw new Error(errorMsg);
       }
@@ -81,6 +83,7 @@ export function Web3WalletSection() {
   }
 
   async function handleDeleteWallet() {
+    // biome-ignore lint/suspicious/noAlert: Simple confirmation for destructive action
     if (!confirm("Are you sure? This cannot be undone.")) {
       return;
     }
@@ -97,7 +100,7 @@ export function Web3WalletSection() {
       setHasWallet(false);
       setWalletAddress(null);
       toast.success("Wallet deleted");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete wallet");
     }
   }
@@ -114,46 +117,62 @@ export function Web3WalletSection() {
     <div className="space-y-4">
       <div>
         <h3 className="font-medium text-sm">Para Wallet</h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Use your email address to pre-generate a wallet for Web3 automations.
         </p>
       </div>
 
-      {isAnonymous ? (
-        <div className="rounded-lg border p-3 bg-muted/50">
-          <p className="text-sm text-muted-foreground">
-            Please sign in with a real account to create a wallet.
-          </p>
-        </div>
-      ) : !hasWallet ? (
-        <Button onClick={handleCreateWallet} disabled={creating} className="w-full">
-          {creating ? (
-            <>
-              <Spinner className="mr-2 h-4 w-4" />
-              Creating...
-            </>
-          ) : (
-            "Create Wallet"
-          )}
-        </Button>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-lg border p-3 bg-muted/50">
-            <div className="text-xs text-muted-foreground mb-1">Wallet Address</div>
-            <code className="text-xs font-mono break-all">
-              {walletAddress}
-            </code>
-          </div>
+      {(() => {
+        if (isAnonymous) {
+          return (
+            <div className="rounded-lg border bg-muted/50 p-3">
+              <p className="text-muted-foreground text-sm">
+                Please sign in with a real account to create a wallet.
+              </p>
+            </div>
+          );
+        }
+
+        if (hasWallet) {
+          return (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <div className="mb-1 text-muted-foreground text-xs">
+                  Wallet Address
+                </div>
+                <code className="break-all font-mono text-xs">
+                  {walletAddress}
+                </code>
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleDeleteWallet}
+                size="sm"
+                variant="destructive"
+              >
+                Delete Wallet
+              </Button>
+            </div>
+          );
+        }
+
+        return (
           <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeleteWallet}
             className="w-full"
+            disabled={creating}
+            onClick={handleCreateWallet}
           >
-            Delete Wallet
+            {creating ? (
+              <>
+                <Spinner className="mr-2 h-4 w-4" />
+                Creating...
+              </>
+            ) : (
+              "Create Wallet"
+            )}
           </Button>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
