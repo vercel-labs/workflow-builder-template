@@ -1,9 +1,15 @@
 "use client";
 
-import { Clock, Copy, Play, Webhook } from "lucide-react";
+import { Clock, Copy, MoreVertical, Play, Webhook } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
+import { inferSchemaFromJSON } from "../utils/json-parser";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
 type TriggerConfigProps = {
@@ -38,6 +45,12 @@ export function TriggerConfig({
       navigator.clipboard.writeText(webhookUrl);
       toast.success("Webhook URL copied to clipboard");
     }
+  };
+
+  const handleInferSchema = (mockRequest: string) => {
+    const inferredSchema = inferSchemaFromJSON(mockRequest);
+    onUpdateConfig("webhookSchema", JSON.stringify(inferredSchema));
+    toast.success("Schema inferred from mock payload");
   };
 
   return (
@@ -118,7 +131,28 @@ export function TriggerConfig({
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="webhookMockRequest">Mock Request (Optional)</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="webhookMockRequest">
+                Mock Request (Optional)
+              </Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={disabled} size="icon" variant="outline">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={disabled || !config?.webhookMockRequest}
+                    onClick={() => {
+                      handleInferSchema(config.webhookMockRequest as string);
+                    }}
+                  >
+                    Infer Schema
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="overflow-hidden rounded-md border">
               <CodeEditor
                 defaultLanguage="json"
