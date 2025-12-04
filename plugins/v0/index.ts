@@ -47,6 +47,7 @@ const v0Plugin: IntegrationPlugin = {
         { field: "url", description: "v0 chat URL" },
         { field: "demoUrl", description: "Demo preview URL" },
       ],
+      outputConfig: { type: "url", field: "demoUrl" },
       configFields: [
         {
           key: "message",
@@ -77,6 +78,7 @@ const v0Plugin: IntegrationPlugin = {
         { field: "chatId", description: "v0 chat ID" },
         { field: "demoUrl", description: "Demo preview URL" },
       ],
+      outputConfig: { type: "url", field: "demoUrl" },
       configFields: [
         {
           key: "chatId",

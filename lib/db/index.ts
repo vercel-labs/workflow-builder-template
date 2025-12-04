@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
   accounts,
+  apiKeys,
   sessions,
   users,
   verifications,
@@ -21,6 +22,7 @@ const schema = {
   workflowExecutions,
   workflowExecutionLogs,
   workflowExecutionsRelations,
+  apiKeys,
 };
 
 const connectionString =

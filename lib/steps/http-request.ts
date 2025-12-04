@@ -101,3 +101,4 @@ export async function httpRequestStep(
   "use step";
   return withStepLogging(input, () => httpRequest(input));
 }
+httpRequestStep.maxRetries = 0;
