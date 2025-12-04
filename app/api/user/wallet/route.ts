@@ -222,12 +222,16 @@ export async function POST(request: Request) {
     // 3. Create wallet via Para SDK
     const { wallet, userShare } = await createParaWallet(user.email);
 
+    // wallet.id and wallet.address are validated in createParaWallet
+    const walletId = wallet.id as string;
+    const walletAddress = wallet.address as string;
+
     // 4. Store wallet and create integration
     await storeWalletAndIntegration({
       userId: user.id,
       email: user.email,
-      walletId: wallet.id,
-      walletAddress: wallet.address,
+      walletId,
+      walletAddress,
       userShare,
     });
 
@@ -235,8 +239,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       wallet: {
-        address: wallet.address,
-        walletId: wallet.id,
+        address: walletAddress,
+        walletId,
         email: user.email,
       },
     });
