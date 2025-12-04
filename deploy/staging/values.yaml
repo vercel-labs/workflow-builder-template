@@ -1,8 +1,14 @@
+shared_env: &shared_env
+  DATABASE_URL:
+    type: parameterStore
+    name: db-url
+    parameter_name: /eks/maker-staging/keeperhub/db-url
+
 replicaCount: 1
 
 service:
   enabled: true
-  name: vw-staging
+  name: keeperhub-staging
   port: 3000
   type: ClusterIP
   containerPort: 3000
@@ -24,10 +30,26 @@ httpWwwRedirect:
   enabled: false
 httpBasicAuth:
   enabled: false
+
 image:
-  repository: ${ECR_REGISTRY}/keeper-app-vw-staging
-  tag: latest
+  repository: ${ECR_REGISTRY}/keeperhub-staging
+  tag: ${IMAGE_TAG}
   pullPolicy: Always
+
+deployment:
+  enabled: true
+  initContainers:
+    - name: db-migration
+      image: "${ECR_REGISTRY}/keeperhub-staging:migrator"
+      command:
+        - /bin/sh
+        - -c
+      args:
+        - |
+          echo "Running database migrations..."
+          pnpm db:push
+          echo "Migrations completed successfully"
+      env: *shared_env
 
 serviceAccount:
   create: false
@@ -43,6 +65,7 @@ resources:
     memory: 256Mi
 
 env:
+  <<: *shared_env
   HOSTNAME:
     type: kv
     value: "0.0.0.0"
@@ -80,10 +103,7 @@ env:
     type: parameterStore
     name: etherscan-api-key
     parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
-  # DATABASE_URL:
-  #   type: parameterStore
-  #   name: database-url
-  #   parameter_name: /eks/maker-staging/keeperhub/database-url
+
 externalSecrets:
   clusterSecretStoreName: maker-staging
 

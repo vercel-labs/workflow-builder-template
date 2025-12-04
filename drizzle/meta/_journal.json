@@ -19,15 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1764691121867,
-      "tag": "0002_icy_otto_octavius",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1764694021611,
-      "tag": "0003_clammy_tusk",
+      "when": 1764819076191,
+      "tag": "0002_whole_molly_hayes",
       "breakpoints": true
     }
   ]

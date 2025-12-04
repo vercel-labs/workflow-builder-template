@@ -5,9 +5,9 @@ on:
       # - main
   workflow_dispatch:
 
-name: deploy-vw
+name: deploy-keeperhub
 jobs:
-  build-and-deploy-vw:
+  build-and-deploy-keeperhub:
     environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
     runs-on: ubuntu-latest
     env:
@@ -15,9 +15,9 @@ jobs:
       REGION: ${{ github.ref == 'refs/heads/main' && 'us-east-1' || 'us-east-2' }}
       CLUSTER_NAME: ${{ github.ref == 'refs/heads/main' && 'maker-prod' || 'maker-staging' }}
       ENVIRONMENT_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-      NAMESPACE: vw
-      SERVICE_NAME: vw
-      AWS_ECR_NAME: keeper-app-vw-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+      NAMESPACE: keeperhub
+      SERVICE_NAME: keeperhub
+      AWS_ECR_NAME: keeperhub-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,8 +42,8 @@ jobs:
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      - name: Build, tag, and push image to ECR
-        id: build-image
+      - name: Build, tag, and push app image to ECR
+        id: build-app-image
         if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
         env:
           SHA_TAG: ${{ steps.vars.outputs.sha_short }}
@@ -61,11 +61,36 @@ jobs:
 
           docker push $ECR_REGISTRY/$AWS_ECR_NAME --all-tags
 
+      - name: Build, tag, and push migrator image to ECR
+        id: build-migrator
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        env:
+          SHA_TAG: ${{ steps.vars.outputs.sha_short }}
+          LATEST_TAG: latest
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build image for database migrations
+          docker build --target migrator \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:migrator \
+                        -f ./Dockerfile \
+                        .
+
+          docker push $ECR_REGISTRY/$AWS_ECR_NAME:migrator
+
+      - name: Replace variables in the Helm values file
+        id: replace-vars
+        if: ${{ !contains(github.event.head_commit.message , '[skip deploy]') }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          sed -i 's|${ECR_REGISTRY}|'"$ECR_REGISTRY"'|g' $HELM_FILE
+          sed -i 's|${IMAGE_TAG}|'"$IMAGE_TAG"'|g' $HELM_FILE
+
       - name: Deploying Service to Kubernetes with Helm
         id: deploy
         uses: bitovi/github-actions-deploy-eks-helm@v1.2.10
         with:
-          values: image.repository=${{ steps.login-ecr.outputs.registry }}/${{ env.AWS_ECR_NAME }},image.tag=${{ steps.vars.outputs.sha_short }}
           cluster-name: ${{ env.CLUSTER_NAME }}
           config-files: ${{ env.HELM_FILE }}
           chart-path: techops-services/common
