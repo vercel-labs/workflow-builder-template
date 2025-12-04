@@ -31,7 +31,7 @@ import {
   selectedExecutionIdAtom,
   type WorkflowNodeData,
 } from "@/lib/workflow-store";
-import { findActionById, getIntegration } from "@/plugins";
+import { findActionById, getIntegration, requiresIntegration } from "@/plugins";
 
 // Helper to get display name for AI model
 const getModelDisplayName = (modelId: string): string => {
@@ -72,7 +72,6 @@ const getModelDisplayName = (modelId: string): string => {
 
 // System action labels (non-plugin actions)
 const SYSTEM_ACTION_LABELS: Record<string, string> = {
-  "HTTP Request": "System",
   "Database Query": "Database",
   Condition: "Condition",
   "Execute Code": "System",
@@ -106,25 +105,13 @@ function isBase64ImageOutput(output: unknown): output is { base64: string } {
   );
 }
 
-// Helper to check if an action requires an integration
-const requiresIntegration = (actionType: string): boolean => {
-  // System actions that require integration configuration
-  const systemActionsRequiringIntegration = ["Database Query"];
-  if (systemActionsRequiringIntegration.includes(actionType)) {
-    return true;
-  }
-
-  // Plugin actions always require integration
-  const action = findActionById(actionType);
-  return action !== undefined;
-};
+// System actions that require integration (not in plugin registry)
+const SYSTEM_ACTIONS_REQUIRING_INTEGRATION = ["Database Query"];
 
 // Helper to get provider logo for action type
 const getProviderLogo = (actionType: string) => {
   // Check for system actions first (non-plugin)
   switch (actionType) {
-    case "HTTP Request":
-      return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
     case "Database Query":
       return <Database className="size-12 text-blue-300" strokeWidth={1.5} />;
     case "Execute Code":
@@ -303,7 +290,9 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   const displayDescription =
     data.description || getIntegrationFromActionType(actionType);
 
-  const needsIntegration = requiresIntegration(actionType);
+  const needsIntegration =
+    SYSTEM_ACTIONS_REQUIRING_INTEGRATION.includes(actionType) ||
+    requiresIntegration(actionType);
   // Don't show missing indicator if we're still checking for auto-select
   const isPendingIntegrationCheck = pendingIntegrationNodes.has(id);
   // Check both that integrationId is set AND that it exists in available integrations

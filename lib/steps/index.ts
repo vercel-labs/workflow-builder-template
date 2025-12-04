@@ -13,17 +13,12 @@ import type { sendEmailStep } from "../../plugins/resend/steps/send-email";
 import type { sendSlackMessageStep } from "../../plugins/slack/steps/send-slack-message";
 import type { conditionStep } from "./condition";
 import type { databaseQueryStep } from "./database-query";
-import type { httpRequestStep } from "./http-request";
 
 // Step function type
 export type StepFunction = (input: Record<string, unknown>) => Promise<unknown>;
 
 // Registry of all available steps
 export const stepRegistry: Record<string, StepFunction> = {
-  "HTTP Request": async (input) =>
-    (await import("./http-request")).httpRequestStep(
-      input as Parameters<typeof httpRequestStep>[0]
-    ),
   "Database Query": async (input) =>
     (await import("./database-query")).databaseQueryStep(
       input as Parameters<typeof databaseQueryStep>[0]

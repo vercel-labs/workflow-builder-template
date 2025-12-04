@@ -125,6 +125,7 @@ export type {
   ActionWithFullId,
   IntegrationPlugin,
   PluginAction,
+  PluginHttpConfig,
 } from "./registry";
 
 // Export the registry utilities
@@ -140,14 +141,17 @@ export {
   getAllIntegrations,
   getCredentialMapping,
   getDependenciesForActions,
+  getHttpEnabledPlugins,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
   getPluginEnvVars,
+  getPluginHttpConfig,
   getSortedIntegrationTypes,
   isFieldGroup,
   parseActionId,
   registerIntegration,
+  requiresIntegration,
 } from "./registry";
 `;
 

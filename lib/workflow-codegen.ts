@@ -391,15 +391,62 @@ export function generateWorkflowCode(
     );
 
     const config = node.data.config || {};
-    const endpoint =
-      (config.endpoint as string) || "https://api.example.com/endpoint";
-    const method = (config.httpMethod as string) || "POST";
+    const endpoint = (config.endpoint as string) || "";
+    const method = (config.httpMethod as string) || "GET";
+    const headers = config.httpHeaders;
+    const body = config.httpBody;
+
+    // Helper to format object properties (from ObjectProperty[], Record, or JSON string)
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Multiple type checks needed for different input formats
+    function formatProperties(props: unknown): string {
+      if (!props) {
+        return "{}";
+      }
+
+      // Handle JSON string input (from ObjectBuilder serialization)
+      let parsedProps = props;
+      if (typeof props === "string") {
+        try {
+          parsedProps = JSON.parse(props);
+        } catch {
+          // If parsing fails, return empty object
+          return "{}";
+        }
+      }
+
+      let entries: [string, string][] = [];
+
+      if (Array.isArray(parsedProps)) {
+        // Handle ObjectProperty[]
+        entries = parsedProps
+          .filter((p) => p.key?.trim())
+          .map((p) => [p.key, String(p.value || "")]);
+      } else if (typeof parsedProps === "object" && parsedProps !== null) {
+        // Handle plain object
+        entries = Object.entries(parsedProps as Record<string, unknown>).map(
+          ([k, v]) => [k, String(v)]
+        );
+      }
+
+      if (entries.length === 0) {
+        return "{}";
+      }
+
+      const propStrings = entries.map(([k, v]) => {
+        const key = JSON.stringify(k);
+        const val = formatTemplateValue(v);
+        return `${key}: ${val}`;
+      });
+
+      return `{ ${propStrings.join(", ")} }`;
+    }
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
-      `${indent}  url: '${endpoint}',`,
-      `${indent}  method: '${method}',`,
-      `${indent}  body: {},`,
+      `${indent}  endpoint: ${formatTemplateValue(endpoint)},`,
+      `${indent}  httpMethod: '${method}',`,
+      `${indent}  httpHeaders: ${formatProperties(headers)},`,
+      `${indent}  httpBody: ${formatProperties(body)},`,
       `${indent}});`,
     ];
   }
@@ -802,7 +849,10 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateDatabaseActionCode(node, indent, varName))
       );
-    } else if (actionType === "HTTP Request") {
+    } else if (
+      actionType === "HTTP Request" ||
+      actionType === "native/http-request"
+    ) {
       lines.push(
         ...wrapActionCall(generateHTTPActionCode(node, indent, varName))
       );

@@ -14,6 +14,8 @@ export interface TemplateBadgeInputProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  /** Optional non-editable prefix to display before the input */
+  prefix?: string;
 }
 
 // Helper to check if a template references an existing node
@@ -80,6 +82,7 @@ export function TemplateBadgeInput({
   disabled,
   className,
   id,
+  prefix,
 }: TemplateBadgeInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -496,12 +499,17 @@ export function TemplateBadgeInput({
     document.execCommand("insertText", false, text);
   };
 
+  // Trigger display update when placeholder changes (e.g., when integration prefix changes)
+  useEffect(() => {
+    shouldUpdateDisplay.current = true;
+  }, [placeholder]);
+
   // Update display only when needed (not while typing)
   useEffect(() => {
     if (shouldUpdateDisplay.current) {
       updateDisplay();
     }
-  }, [internalValue, isFocused]);
+  }, [internalValue, isFocused, placeholder]);
 
   return (
     <>
@@ -512,8 +520,13 @@ export function TemplateBadgeInput({
           className
         )}
       >
+        {prefix && (
+          <span className="text-muted-foreground flex-shrink-0 select-none pr-1 font-mono text-xs leading-[1.35rem]">
+            {prefix}
+          </span>
+        )}
         <div
-          className="w-full outline-none"
+          className="w-full overflow-hidden whitespace-nowrap outline-none"
           contentEditable={!disabled}
           id={id}
           onBlur={handleBlur}
@@ -525,7 +538,7 @@ export function TemplateBadgeInput({
           suppressContentEditableWarning
         />
       </div>
-      
+
       <TemplateAutocomplete
         currentNodeId={selectedNodeId || undefined}
         filter={autocompleteFilter}
