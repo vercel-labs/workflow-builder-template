@@ -66,8 +66,8 @@ async function search(input: OlostepSearchInput): Promise<SearchResult> {
     const result = await response.json();
 
     // Transform the response to a consistent format
+    // Filter before slicing to ensure we return the requested number of valid results
     const results: SearchResultItem[] = (result.results || result.items || [])
-      .slice(0, input.limit || 10)
       .map(
         (item: {
           url?: string;
@@ -83,7 +83,8 @@ async function search(input: OlostepSearchInput): Promise<SearchResult> {
           markdown: item.markdown,
         })
       )
-      .filter((item: SearchResultItem) => item.url);
+      .filter((item: SearchResultItem) => item.url)
+      .slice(0, input.limit || 10);
 
     return {
       results,
