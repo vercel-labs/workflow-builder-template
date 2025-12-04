@@ -377,6 +377,7 @@ export const userApi = {
       image: string | null;
       isAnonymous: boolean | null;
       providerId: string | null;
+      walletAddress: string | null;
     }>("/api/user"),
 
   update: (data: { name?: string; email?: string }) =>
