@@ -27,10 +27,12 @@ const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
 
 type IntegrationsManagerProps = {
   showCreateDialog: boolean;
+  onIntegrationChange?: () => void;
 };
 
 export function IntegrationsManager({
   showCreateDialog: externalShowCreateDialog,
+  onIntegrationChange,
 }: IntegrationsManagerProps) {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,7 @@ export function IntegrationsManager({
       await api.integration.delete(id);
       toast.success("Integration deleted");
       await loadIntegrations();
+      onIntegrationChange?.();
     } catch (error) {
       console.error("Failed to delete integration:", error);
       toast.error("Failed to delete integration");
@@ -102,6 +105,7 @@ export function IntegrationsManager({
 
   const handleDialogSuccess = async () => {
     await loadIntegrations();
+    onIntegrationChange?.();
   };
 
   if (loading) {
