@@ -54,7 +54,7 @@ env:
     value: "http://localhost:3000"
   BETTER_AUTH_URL:
     type: kv
-    value: "http://localhost:3000"
+    value: "https://workflows-staging.keeperhub.com"
   BETTER_AUTH_SECRET:
     type: parameterStore
     name: better-auth-secret
