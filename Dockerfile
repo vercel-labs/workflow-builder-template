@@ -29,6 +29,22 @@ RUN touch README.md || true
 # Build the application
 RUN pnpm build
 
+# Stage 2.5: Migration stage (optional - for running migrations)
+FROM node:25-alpine AS migrator
+WORKDIR /app
+RUN npm install -g pnpm
+
+# Copy dependencies and migration files
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/package.json ./package.json
+
+# This stage can be used to run migrations
+# Run with: docker build --target migrator -t myapp-migrator .
+# Then: docker run --env DATABASE_URL=xxx myapp-migrator pnpm db:push
+
 # Stage 3: Runner
 FROM node:25-alpine AS runner
 WORKDIR /app
