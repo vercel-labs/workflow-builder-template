@@ -697,8 +697,9 @@ export const PanelInner = () => {
             {selectedNode.data.type !== "action" ||
             selectedNode.data.config?.actionType ? (
               <>
-                {/* Hide Label and Description for read-contract action */}
-                {selectedNode.data.config?.actionType !== "web3/read-contract" && (
+                {/* Hide Label and Description for read-contract and write-contract actions */}
+                {selectedNode.data.config?.actionType !== "web3/read-contract" &&
+                  selectedNode.data.config?.actionType !== "web3/write-contract" && (
                   <>
                     <div className="space-y-2">
                       <Label className="ml-1" htmlFor="label">

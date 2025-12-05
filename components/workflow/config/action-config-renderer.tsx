@@ -116,6 +116,7 @@ function SchemaBuilderField(props: FieldProps) {
 
 type AbiFunctionSelectProps = FieldProps & {
   abiValue: string;
+  functionFilter?: "read" | "write";
 };
 
 function AbiFunctionSelectField({
@@ -124,6 +125,7 @@ function AbiFunctionSelectField({
   onChange,
   disabled,
   abiValue,
+  functionFilter = "read",
 }: AbiFunctionSelectProps) {
   // Parse ABI and extract functions
   const functions = React.useMemo(() => {
@@ -137,12 +139,18 @@ function AbiFunctionSelectField({
         return [];
       }
 
-      // Extract only read-only functions (view/pure) from the ABI
+      // Filter functions based on functionFilter prop
+      const filterFn = functionFilter === "write"
+        ? (item: { type: string; stateMutability?: string }) =>
+            item.type === "function" &&
+            item.stateMutability !== "view" &&
+            item.stateMutability !== "pure"
+        : (item: { type: string; stateMutability?: string }) =>
+            item.type === "function" &&
+            (item.stateMutability === "view" || item.stateMutability === "pure");
+
       return abi
-        .filter((item) =>
-          item.type === "function" &&
-          (item.stateMutability === "view" || item.stateMutability === "pure")
-        )
+        .filter(filterFn)
         .map((func) => {
           const inputs = func.inputs || [];
           const params = inputs
@@ -160,7 +168,7 @@ function AbiFunctionSelectField({
     } catch {
       return [];
     }
-  }, [abiValue]);
+  }, [abiValue, functionFilter]);
 
   if (functions.length === 0) {
     return (
@@ -341,6 +349,7 @@ function renderField(
           abiValue={abiValue}
           disabled={disabled}
           field={field}
+          functionFilter={field.functionFilter}
           onChange={(val) => onUpdateConfig(field.key, val)}
           value={value}
         />

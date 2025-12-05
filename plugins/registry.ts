@@ -62,6 +62,9 @@ export type ActionConfigFieldBase = {
   // For abi-function-select: which field contains the ABI JSON
   abiField?: string;
 
+  // For abi-function-select: filter functions by type ("read" or "write")
+  functionFilter?: "read" | "write";
+
   // For abi-function-args: which field contains the ABI JSON and selected function
   abiFunctionField?: string;
 };
