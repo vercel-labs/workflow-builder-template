@@ -1,0 +1,102 @@
+on:
+  push:
+    branches:
+      - staging
+      # - main
+  workflow_dispatch:
+
+name: deploy-keeperhub
+jobs:
+  build-and-deploy-keeperhub:
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+    runs-on: ubuntu-latest
+    env:
+      HELM_FILE: deploy/${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}/values.yaml
+      REGION: ${{ github.ref == 'refs/heads/main' && 'us-east-1' || 'us-east-2' }}
+      CLUSTER_NAME: ${{ github.ref == 'refs/heads/main' && 'maker-prod' || 'maker-staging' }}
+      ENVIRONMENT_TAG: ${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+      NAMESPACE: keeperhub
+      SERVICE_NAME: keeperhub
+      AWS_ECR_NAME: keeperhub-${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract commit hash
+        id: vars
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        shell: bash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Build, tag, and push app image to ECR
+        id: build-app-image
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        env:
+          SHA_TAG: ${{ steps.vars.outputs.sha_short }}
+          LATEST_TAG: latest
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build Docker containers and push them to ECR ${{ env.AWS_ECR_NAME }}
+          docker pull $ECR_REGISTRY/$AWS_ECR_NAME:$LATEST_TAG || true
+          docker build -t $AWS_ECR_NAME \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$SHA_TAG \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$LATEST_TAG \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:$ENVIRONMENT_TAG \
+                        -f ./Dockerfile \
+                        .
+
+          docker push $ECR_REGISTRY/$AWS_ECR_NAME --all-tags
+
+      - name: Build, tag, and push migrator image to ECR
+        id: build-migrator
+        if: ${{ !contains(github.event.head_commit.message , '[skip build]') }}
+        env:
+          SHA_TAG: ${{ steps.vars.outputs.sha_short }}
+          LATEST_TAG: latest
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Build image for database migrations
+          docker build --target migrator \
+                        -t $ECR_REGISTRY/$AWS_ECR_NAME:migrator \
+                        -f ./Dockerfile \
+                        .
+
+          docker push $ECR_REGISTRY/$AWS_ECR_NAME:migrator
+
+      - name: Replace variables in the Helm values file
+        id: replace-vars
+        if: ${{ !contains(github.event.head_commit.message , '[skip deploy]') }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          sed -i 's|${ECR_REGISTRY}|'"$ECR_REGISTRY"'|g' $HELM_FILE
+          sed -i 's|${IMAGE_TAG}|'"$IMAGE_TAG"'|g' $HELM_FILE
+
+      - name: Deploying Service to Kubernetes with Helm
+        id: deploy
+        uses: bitovi/github-actions-deploy-eks-helm@v1.2.10
+        with:
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          config-files: ${{ env.HELM_FILE }}
+          chart-path: techops-services/common
+          namespace: ${{ env.NAMESPACE }}
+          timeout: 5m0s
+          name: ${{ env.SERVICE_NAME }}
+          chart-repository: https://techops-services.github.io/helm-charts
+          version: 0.0.33
+          atomic: true

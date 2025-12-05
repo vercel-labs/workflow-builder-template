@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Moon, Plug, Settings, Sun } from "lucide-react";
+import { Key, LogOut, Moon, Plug, Settings, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
   isSingleProviderSignInInitiated,
 } from "@/components/auth/dialog";
 import { SettingsDialog } from "@/components/settings";
+import { ApiKeysDialog } from "@/components/settings/api-keys-dialog";
 import { IntegrationsDialog } from "@/components/settings/integrations-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export const UserMenu = () => {
   const { theme, setTheme } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  const [apiKeysOpen, setApiKeysOpen] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
@@ -153,6 +155,10 @@ export const UserMenu = () => {
           <Plug className="size-4" />
           <span>Integrations</span>
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setApiKeysOpen(true)}>
+          <Key className="size-4" />
+          <span>API Keys</span>
+        </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Sun className="dark:-rotate-90 size-4 rotate-0 scale-100 transition-all dark:scale-0" />
@@ -180,6 +186,7 @@ export const UserMenu = () => {
         onOpenChange={setIntegrationsOpen}
         open={integrationsOpen}
       />
+      <ApiKeysDialog onOpenChange={setApiKeysOpen} open={apiKeysOpen} />
     </DropdownMenu>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { Database, Search, Settings, Zap } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,7 @@ function useAllActions(): ActionType[] {
 type ActionGridProps = {
   onSelectAction: (actionType: string) => void;
   disabled?: boolean;
+  isNewlyCreated?: boolean;
 };
 
 function ActionIcon({ action }: { action: ActionType }) {
@@ -77,9 +78,20 @@ function ActionIcon({ action }: { action: ActionType }) {
   return <Zap className="size-8" />;
 }
 
-export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
+export function ActionGrid({
+  onSelectAction,
+  disabled,
+  isNewlyCreated,
+}: ActionGridProps) {
   const [filter, setFilter] = useState("");
   const actions = useAllActions();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isNewlyCreated && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isNewlyCreated]);
 
   const filteredActions = actions.filter((action) => {
     const searchTerm = filter.toLowerCase();
@@ -100,22 +112,25 @@ export function ActionGrid({ onSelectAction, disabled }: ActionGridProps) {
           <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <Input
             className="pl-8"
+            data-testid="action-search-input"
             disabled={disabled}
             id="action-filter"
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search actions..."
+            ref={inputRef}
             value={filter}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2" data-testid="action-grid">
         {filteredActions.map((action) => (
           <button
             className={cn(
               "flex flex-col items-center justify-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-accent",
               disabled && "pointer-events-none opacity-50"
             )}
+            data-testid={`action-option-${action.id.toLowerCase().replace(/\s+/g, "-")}`}
             disabled={disabled}
             key={action.id}
             onClick={() => onSelectAction(action.id)}

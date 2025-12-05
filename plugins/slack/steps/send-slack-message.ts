@@ -101,5 +101,6 @@ export async function sendSlackMessageStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+sendSlackMessageStep.maxRetries = 0;
 
 export const _integrationType = "slack";

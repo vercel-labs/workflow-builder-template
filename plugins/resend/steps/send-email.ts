@@ -129,6 +129,7 @@ export async function sendEmailStep(
 
   return withStepLogging(input, () => stepHandler(coreInput, credentials));
 }
+sendEmailStep.maxRetries = 0;
 
 // Export marker for codegen auto-generation
 export const _integrationType = "resend";

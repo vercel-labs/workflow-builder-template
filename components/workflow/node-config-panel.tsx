@@ -9,7 +9,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -26,6 +26,7 @@ import { CodeEditor } from "@/components/ui/code-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api-client";
+import { integrationsAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import { generateWorkflowCode } from "@/lib/workflow-codegen";
 import {
@@ -37,6 +38,8 @@ import {
   deleteSelectedItemsAtom,
   edgesAtom,
   isGeneratingAtom,
+  isWorkflowOwnerAtom,
+  newlyCreatedNodeIdAtom,
   nodesAtom,
   pendingIntegrationNodesAtom,
   propertiesPanelActiveTabAtom,
@@ -153,6 +156,7 @@ export const PanelInner = () => {
   const [currentWorkflowName, setCurrentWorkflowName] = useAtom(
     currentWorkflowNameAtom
   );
+  const isOwner = useAtomValue(isWorkflowOwnerAtom);
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const deleteNode = useSetAtom(deleteNodeAtom);
   const deleteEdge = useSetAtom(deleteEdgeAtom);
@@ -161,6 +165,9 @@ export const PanelInner = () => {
   const setShowDeleteDialog = useSetAtom(showDeleteDialogAtom);
   const clearNodeStatuses = useSetAtom(clearNodeStatusesAtom);
   const setPendingIntegrationNodes = useSetAtom(pendingIntegrationNodesAtom);
+  const [newlyCreatedNodeId, setNewlyCreatedNodeId] = useAtom(
+    newlyCreatedNodeIdAtom
+  );
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
@@ -178,6 +185,84 @@ export const PanelInner = () => {
   const selectedNodes = nodes.filter((node) => node.selected);
   const selectedEdges = edges.filter((edge) => edge.selected);
   const hasMultipleSelections = selectedNodes.length + selectedEdges.length > 1;
+
+  // Switch to Properties tab if Code tab is hidden for the selected node
+  useEffect(() => {
+    if (!selectedNode || activeTab !== "code") {
+      return;
+    }
+
+    const isConditionAction =
+      selectedNode.data.config?.actionType === "Condition";
+    const isManualTrigger =
+      selectedNode.data.type === "trigger" &&
+      selectedNode.data.config?.triggerType === "Manual";
+
+    if (isConditionAction || isManualTrigger) {
+      setActiveTab("properties");
+    }
+  }, [selectedNode, activeTab, setActiveTab]);
+
+  // Auto-fix invalid integration references when a node is selected
+  const globalIntegrations = useAtomValue(integrationsAtom);
+  useEffect(() => {
+    if (!(selectedNode && isOwner)) {
+      return;
+    }
+
+    const actionType = selectedNode.data.config?.actionType as
+      | string
+      | undefined;
+    const currentIntegrationId = selectedNode.data.config?.integrationId as
+      | string
+      | undefined;
+
+    // Skip if no action type or no integration configured
+    if (!(actionType && currentIntegrationId)) {
+      return;
+    }
+
+    // Get the required integration type for this action
+    const action = findActionById(actionType);
+    const integrationType: IntegrationType | undefined =
+      (action?.integration as IntegrationType | undefined) ||
+      SYSTEM_ACTION_INTEGRATIONS[actionType];
+
+    if (!integrationType) {
+      return;
+    }
+
+    // Check if current integration still exists
+    const integrationExists = globalIntegrations.some(
+      (i) => i.id === currentIntegrationId
+    );
+
+    if (integrationExists) {
+      return;
+    }
+
+    // Current integration was deleted - find a replacement
+    const availableIntegrations = globalIntegrations.filter(
+      (i) => i.type === integrationType
+    );
+
+    if (availableIntegrations.length === 1) {
+      // Auto-select the only available integration
+      const newConfig = {
+        ...selectedNode.data.config,
+        integrationId: availableIntegrations[0].id,
+      };
+      updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
+    } else if (availableIntegrations.length === 0) {
+      // No integrations available - clear the invalid reference
+      const newConfig = {
+        ...selectedNode.data.config,
+        integrationId: undefined,
+      };
+      updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
+    }
+    // If multiple integrations exist, let the user choose manually
+  }, [selectedNode, globalIntegrations, isOwner, updateNodeData]);
 
   // Generate workflow code
   const workflowCode = useMemo(() => {
@@ -487,12 +572,14 @@ export const PanelInner = () => {
             >
               Code
             </TabsTrigger>
-            <TabsTrigger
-              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-              value="runs"
-            >
-              Runs
-            </TabsTrigger>
+            {isOwner && (
+              <TabsTrigger
+                className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                value="runs"
+              >
+                Runs
+              </TabsTrigger>
+            )}
           </TabsList>
           <TabsContent
             className="flex flex-col overflow-hidden"
@@ -504,6 +591,7 @@ export const PanelInner = () => {
                   Workflow Name
                 </Label>
                 <Input
+                  disabled={!isOwner}
                   id="workflow-name"
                   onChange={(e) => handleUpdateWorkspaceName(e.target.value)}
                   value={currentWorkflowName}
@@ -519,45 +607,63 @@ export const PanelInner = () => {
                   value={currentWorkflowId || "Not saved"}
                 />
               </div>
+              {!isOwner && (
+                <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                  <p className="text-muted-foreground text-sm">
+                    You are viewing a public workflow. Duplicate it to make
+                    changes.
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex shrink-0 items-center gap-2 border-t p-4">
-              <Button onClick={() => setShowClearDialog(true)} variant="ghost">
-                <Eraser className="size-4" />
-                Clear
-              </Button>
-              <Button onClick={() => setShowDeleteDialog(true)} variant="ghost">
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-            </div>
+            {isOwner && (
+              <div className="flex shrink-0 items-center gap-2 border-t p-4">
+                <Button
+                  onClick={() => setShowClearDialog(true)}
+                  variant="ghost"
+                >
+                  <Eraser className="size-4" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteDialog(true)}
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </Button>
+              </div>
+            )}
           </TabsContent>
-          <TabsContent className="flex flex-col overflow-hidden" value="runs">
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              <WorkflowRuns
-                isActive={activeTab === "runs"}
-                onRefreshRef={refreshRunsRef}
-              />
-            </div>
-            <div className="flex shrink-0 items-center gap-2 border-t p-4">
-              <Button
-                disabled={isRefreshing}
-                onClick={handleRefreshRuns}
-                size="icon"
-                variant="ghost"
-              >
-                <RefreshCw
-                  className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+          {isOwner && (
+            <TabsContent className="flex flex-col overflow-hidden" value="runs">
+              <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                <WorkflowRuns
+                  isActive={activeTab === "runs"}
+                  onRefreshRef={refreshRunsRef}
                 />
-              </Button>
-              <Button
-                onClick={() => setShowDeleteRunsAlert(true)}
-                size="icon"
-                variant="ghost"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </TabsContent>
+              </div>
+              <div className="flex shrink-0 items-center gap-2 border-t p-4">
+                <Button
+                  disabled={isRefreshing}
+                  onClick={handleRefreshRuns}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <RefreshCw
+                    className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteRunsAlert(true)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </TabsContent>
+          )}
           <TabsContent className="flex flex-col overflow-hidden" value="code">
             <div className="shrink-0 border-b bg-muted/30 px-3 pb-2">
               <div className="flex items-center gap-2">
@@ -634,6 +740,7 @@ export const PanelInner = () => {
     <>
       <Tabs
         className="size-full"
+        data-testid="properties-panel"
         defaultValue="properties"
         onValueChange={setActiveTab}
         value={activeTab}
@@ -645,8 +752,9 @@ export const PanelInner = () => {
           >
             Properties
           </TabsTrigger>
-          {selectedNode.data.type !== "trigger" ||
-          (selectedNode.data.config?.triggerType as string) !== "Manual" ? (
+          {(selectedNode.data.type !== "trigger" ||
+            (selectedNode.data.config?.triggerType as string) !== "Manual") &&
+          selectedNode.data.config?.actionType !== "Condition" ? (
             <TabsTrigger
               className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
               value="code"
@@ -654,12 +762,14 @@ export const PanelInner = () => {
               Code
             </TabsTrigger>
           ) : null}
-          <TabsTrigger
-            className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
-            value="runs"
-          >
-            Runs
-          </TabsTrigger>
+          {isOwner && (
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="runs"
+            >
+              Runs
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent
           className="flex flex-col overflow-hidden"
@@ -669,27 +779,43 @@ export const PanelInner = () => {
             {selectedNode.data.type === "trigger" && (
               <TriggerConfig
                 config={selectedNode.data.config || {}}
-                disabled={isGenerating}
+                disabled={isGenerating || !isOwner}
                 onUpdateConfig={handleUpdateConfig}
                 workflowId={currentWorkflowId ?? undefined}
               />
             )}
 
             {selectedNode.data.type === "action" &&
-            !selectedNode.data.config?.actionType ? (
-              <ActionGrid
-                disabled={isGenerating}
-                onSelectAction={(actionType) =>
-                  handleUpdateConfig("actionType", actionType)
-                }
-              />
-            ) : null}
+              !selectedNode.data.config?.actionType &&
+              isOwner && (
+                <ActionGrid
+                  disabled={isGenerating}
+                  isNewlyCreated={selectedNode?.id === newlyCreatedNodeId}
+                  onSelectAction={(actionType) => {
+                    handleUpdateConfig("actionType", actionType);
+                    // Clear newly created tracking once action is selected
+                    if (selectedNode?.id === newlyCreatedNodeId) {
+                      setNewlyCreatedNodeId(null);
+                    }
+                  }}
+                />
+              )}
+
+            {selectedNode.data.type === "action" &&
+              !selectedNode.data.config?.actionType &&
+              !isOwner && (
+                <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                  <p className="text-muted-foreground text-sm">
+                    No action configured for this step.
+                  </p>
+                </div>
+              )}
 
             {selectedNode.data.type === "action" &&
             selectedNode.data.config?.actionType ? (
               <ActionConfig
                 config={selectedNode.data.config || {}}
-                disabled={isGenerating}
+                disabled={isGenerating || !isOwner}
                 onUpdateConfig={handleUpdateConfig}
               />
             ) : null}
@@ -697,44 +823,43 @@ export const PanelInner = () => {
             {selectedNode.data.type !== "action" ||
             selectedNode.data.config?.actionType ? (
               <>
-                {/* Hide Label and Description for read-contract and write-contract actions */}
-                {selectedNode.data.config?.actionType !==
-                  "web3/read-contract" &&
-                  selectedNode.data.config?.actionType !==
-                    "web3/write-contract" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label className="ml-1" htmlFor="label">
-                          Label
-                        </Label>
-                        <Input
-                          disabled={isGenerating}
-                          id="label"
-                          onChange={(e) => handleUpdateLabel(e.target.value)}
-                          value={selectedNode.data.label}
-                        />
-                      </div>
+                <div className="space-y-2">
+                  <Label className="ml-1" htmlFor="label">
+                    Label
+                  </Label>
+                  <Input
+                    disabled={isGenerating || !isOwner}
+                    id="label"
+                    onChange={(e) => handleUpdateLabel(e.target.value)}
+                    value={selectedNode.data.label}
+                  />
+                </div>
 
-                      <div className="space-y-2">
-                        <Label className="ml-1" htmlFor="description">
-                          Description
-                        </Label>
-                        <Input
-                          disabled={isGenerating}
-                          id="description"
-                          onChange={(e) =>
-                            handleUpdateDescription(e.target.value)
-                          }
-                          placeholder="Optional description"
-                          value={selectedNode.data.description || ""}
-                        />
-                      </div>
-                    </>
-                  )}
+                <div className="space-y-2">
+                  <Label className="ml-1" htmlFor="description">
+                    Description
+                  </Label>
+                  <Input
+                    disabled={isGenerating || !isOwner}
+                    id="description"
+                    onChange={(e) => handleUpdateDescription(e.target.value)}
+                    placeholder="Optional description"
+                    value={selectedNode.data.description || ""}
+                  />
+                </div>
               </>
             ) : null}
+
+            {!isOwner && (
+              <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                <p className="text-muted-foreground text-sm">
+                  You are viewing a public workflow. Duplicate it to make
+                  changes.
+                </p>
+              </div>
+            )}
           </div>
-          {selectedNode.data.type === "action" && (
+          {selectedNode.data.type === "action" && isOwner && (
             <div className="flex shrink-0 items-center justify-between border-t p-4">
               <div className="flex items-center gap-2">
                 <Button
@@ -797,7 +922,7 @@ export const PanelInner = () => {
               })()}
             </div>
           )}
-          {selectedNode.data.type === "trigger" && (
+          {selectedNode.data.type === "trigger" && isOwner && (
             <div className="shrink-0 border-t p-4">
               <Button
                 onClick={() => setShowDeleteNodeAlert(true)}
@@ -874,35 +999,37 @@ export const PanelInner = () => {
             );
           })()}
         </TabsContent>
-        <TabsContent className="flex flex-col overflow-hidden" value="runs">
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            <WorkflowRuns
-              isActive={activeTab === "runs"}
-              onRefreshRef={refreshRunsRef}
-            />
-          </div>
-          <div className="flex shrink-0 items-center gap-2 border-t p-4">
-            <Button
-              disabled={isRefreshing}
-              onClick={handleRefreshRuns}
-              size="sm"
-              variant="ghost"
-            >
-              <RefreshCw
-                className={`mr-2 size-4 ${isRefreshing ? "animate-spin" : ""}`}
+        {isOwner && (
+          <TabsContent className="flex flex-col overflow-hidden" value="runs">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <WorkflowRuns
+                isActive={activeTab === "runs"}
+                onRefreshRef={refreshRunsRef}
               />
-              Refresh Runs
-            </Button>
-            <Button
-              onClick={() => setShowDeleteRunsAlert(true)}
-              size="sm"
-              variant="ghost"
-            >
-              <Eraser className="mr-2 size-4" />
-              Clear All Runs
-            </Button>
-          </div>
-        </TabsContent>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border-t p-4">
+              <Button
+                disabled={isRefreshing}
+                onClick={handleRefreshRuns}
+                size="sm"
+                variant="ghost"
+              >
+                <RefreshCw
+                  className={`mr-2 size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                Refresh Runs
+              </Button>
+              <Button
+                onClick={() => setShowDeleteRunsAlert(true)}
+                size="sm"
+                variant="ghost"
+              >
+                <Eraser className="mr-2 size-4" />
+                Clear All Runs
+              </Button>
+            </div>
+          </TabsContent>
+        )}
       </Tabs>
 
       <AlertDialog

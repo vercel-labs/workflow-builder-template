@@ -72,5 +72,6 @@ export async function sendMessageStep(
 
   return withStepLogging(input, () => stepHandler(input, credentials));
 }
+sendMessageStep.maxRetries = 0;
 
 export const _integrationType = "v0";

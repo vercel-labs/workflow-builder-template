@@ -1,0 +1,122 @@
+shared_env: &shared_env
+  DATABASE_URL:
+    type: parameterStore
+    name: db-url
+    parameter_name: /eks/maker-staging/keeperhub/db-url
+
+replicaCount: 1
+
+service:
+  enabled: true
+  name: keeperhub-staging
+  port: 3000
+  type: ClusterIP
+  containerPort: 3000
+  tls:
+    enabled: true
+    issuerName: cloudflare
+
+ingress:
+  enabled: true
+  hosts:
+    - workflows-staging.keeperhub.com
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.options: traefik-cloudflare-origin-pull@kubernetescrd
+
+httpWwwRedirect:
+  enabled: false
+httpBasicAuth:
+  enabled: false
+
+image:
+  repository: ${ECR_REGISTRY}/keeperhub-staging
+  tag: ${IMAGE_TAG}
+  pullPolicy: Always
+
+deployment:
+  enabled: true
+  initContainers:
+    - name: db-migration
+      image: "${ECR_REGISTRY}/keeperhub-staging:migrator"
+      command:
+        - /bin/sh
+        - -c
+      args:
+        - |
+          echo "Running database migrations..."
+          pnpm db:push
+          echo "Migrations completed successfully"
+      env: *shared_env
+
+serviceAccount:
+  create: false
+
+podAnnotations:
+  reloader.stakater.com/auto: "true"
+
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 1m
+    memory: 256Mi
+
+env:
+  <<: *shared_env
+  HOSTNAME:
+    type: kv
+    value: "0.0.0.0"
+  PARA_ENVIRONMENT:
+    type: kv
+    value: "beta"
+  NEXT_PUBLIC_API_URL:
+    type: kv
+    value: "http://localhost:3000"
+  BETTER_AUTH_URL:
+    type: kv
+    value: "https://workflows-staging.keeperhub.com"
+  BETTER_AUTH_SECRET:
+    type: parameterStore
+    name: better-auth-secret
+    parameter_name: /eks/maker-staging/keeperhub/better-auth-secret
+  AI_GATEWAY_API_KEY:
+    type: parameterStore
+    name: ai-gateway-api-key
+    parameter_name: /eks/maker-staging/keeperhub/ai-gateway-api-key
+  PARA_API_KEY:
+    type: parameterStore
+    name: para-api-key
+    parameter_name: /eks/maker-staging/keeperhub/para-api-key
+  WALLET_ENCRYPTION_KEY:
+    type: parameterStore
+    name: wallet-encryption-key
+    parameter_name: /eks/maker-staging/keeperhub/wallet-encryption-key
+  INTEGRATION_ENCRYPTION_KEY:
+    type: parameterStore
+    name: integration-encryption-key
+    parameter_name: /eks/maker-staging/keeperhub/integration-encryption-key
+  # TODO rename the path
+  ETHERSCAN_API_KEY:
+    type: parameterStore
+    name: etherscan-api-key
+    parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
+
+externalSecrets:
+  clusterSecretStoreName: maker-staging
+
+livenessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  tcpSocket:
+    port: 3000
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  tcpSocket:
+    port: 3000
+
+cronjob:
+  enabled: false

@@ -1,11 +1,66 @@
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
 import { db } from "@/lib/db";
 import { validateWorkflowIntegrations } from "@/lib/db/integrations";
-import { workflowExecutions, workflows } from "@/lib/db/schema";
+import { apiKeys, workflowExecutions, workflows } from "@/lib/db/schema";
 import { executeWorkflow } from "@/lib/workflow-executor.workflow";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
+
+// Validate API key and return the user ID if valid
+async function validateApiKey(
+  authHeader: string | null,
+  workflowUserId: string
+): Promise<{ valid: boolean; error?: string; statusCode?: number }> {
+  if (!authHeader) {
+    return {
+      valid: false,
+      error: "Missing Authorization header",
+      statusCode: 401,
+    };
+  }
+
+  // Support "Bearer <key>" format
+  const key = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader;
+
+  if (!key?.startsWith("wfb_")) {
+    return { valid: false, error: "Invalid API key format", statusCode: 401 };
+  }
+
+  // Hash the key to compare with stored hash
+  const keyHash = createHash("sha256").update(key).digest("hex");
+
+  // Find the API key in the database
+  const apiKey = await db.query.apiKeys.findFirst({
+    where: eq(apiKeys.keyHash, keyHash),
+  });
+
+  if (!apiKey) {
+    return { valid: false, error: "Invalid API key", statusCode: 401 };
+  }
+
+  // Verify the API key belongs to the workflow owner
+  if (apiKey.userId !== workflowUserId) {
+    return {
+      valid: false,
+      error: "You do not have permission to run this workflow",
+      statusCode: 403,
+    };
+  }
+
+  // Update last used timestamp (don't await, fire and forget)
+  db.update(apiKeys)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKeys.id, apiKey.id))
+    .catch(() => {
+      // Fire and forget - ignore errors
+    });
+
+  return { valid: true };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,7 +126,7 @@ export async function POST(
   try {
     const { workflowId } = await context.params;
 
-    // Get workflow (no auth required for webhook triggers)
+    // Get workflow
     const workflow = await db.query.workflows.findFirst({
       where: eq(workflows.id, workflowId),
     });
@@ -80,6 +135,17 @@ export async function POST(
       return NextResponse.json(
         { error: "Workflow not found" },
         { status: 404, headers: corsHeaders }
+      );
+    }
+
+    // Validate API key - must belong to the workflow owner
+    const authHeader = request.headers.get("Authorization");
+    const apiKeyValidation = await validateApiKey(authHeader, workflow.userId);
+
+    if (!apiKeyValidation.valid) {
+      return NextResponse.json(
+        { error: apiKeyValidation.error },
+        { status: apiKeyValidation.statusCode || 401, headers: corsHeaders }
       );
     }
 

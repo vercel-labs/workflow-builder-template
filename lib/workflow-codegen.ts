@@ -1,3 +1,4 @@
+import { findActionById, flattenConfigFields } from "@/plugins";
 import {
   analyzeNodeUsage,
   buildAccessPath,
@@ -55,12 +56,20 @@ export function generateWorkflowCode(
     (node) => node.data.type === "trigger" && !nodesWithIncoming.has(node.id)
   );
 
+  // Check if any trigger's output is used (meaning input param is needed)
+  const inputIsUsed = triggerNodes.some((trigger) =>
+    usedNodeOutputs.has(trigger.id)
+  );
+
   // Generate code for each node
   const codeLines: string[] = [];
   const visited = new Set<string>();
 
-  // Start function
-  codeLines.push(`export async function ${functionName}() {`);
+  // Generate function signature
+  const functionSignature = inputIsUsed
+    ? `export async function ${functionName}<TInput>(input: TInput) {`
+    : `export async function ${functionName}() {`;
+  codeLines.push(functionSignature);
   codeLines.push(`  "use workflow";`);
   codeLines.push("");
 
@@ -85,8 +94,8 @@ export function generateWorkflowCode(
       }
       usedVarNames.add(varName);
     } else {
-      // For triggers, use a simple name
-      varName = `${node.data.type}_${node.id.replace(/-/g, "_")}`;
+      // For triggers, use `input` directly - no intermediate variable needed
+      varName = "input";
     }
 
     nodeIdToVarName.set(node.id, varName);
@@ -617,6 +626,78 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  /**
+   * Format a config field value based on its type
+   */
+  function formatFieldValue(
+    fieldType: string,
+    value: unknown,
+    indent: string,
+    key: string
+  ): string {
+    const fieldTypeFormatters: Record<string, () => string> = {
+      "template-input": () =>
+        `${indent}  ${key}: ${formatTemplateValue(String(value))},`,
+      "template-textarea": () =>
+        `${indent}  ${key}: ${formatTemplateValue(String(value))},`,
+      number: () => `${indent}  ${key}: ${value},`,
+      select: () => `${indent}  ${key}: "${value}",`,
+      "schema-builder": () => `${indent}  ${key}: ${JSON.stringify(value)},`,
+    };
+
+    const formatter = fieldTypeFormatters[fieldType];
+    return formatter ? formatter() : `${indent}  ${key}: "${value}",`;
+  }
+
+  /**
+   * Generate code for plugin-based actions discovered from the plugin registry
+   */
+  function generatePluginActionCode(
+    node: WorkflowNode,
+    actionType: string,
+    indent: string,
+    varName: string
+  ): string[] | null {
+    const action = findActionById(actionType);
+    if (!action) {
+      return null;
+    }
+
+    const stepInfo = getStepInfo(actionType);
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const config = node.data.config || {};
+    const configFields = flattenConfigFields(action.configFields);
+
+    // Build parameter lines from config fields
+    const paramLines: string[] = [];
+    for (const field of configFields) {
+      const value = config[field.key];
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+      paramLines.push(formatFieldValue(field.type, value, indent, field.key));
+    }
+
+    // Generate the function call
+    const lines: string[] = [];
+    if (paramLines.length > 0) {
+      lines.push(
+        `${indent}const ${varName} = await ${stepInfo.functionName}({`
+      );
+      lines.push(...paramLines);
+      lines.push(`${indent}});`);
+    } else {
+      lines.push(
+        `${indent}const ${varName} = await ${stepInfo.functionName}({});`
+      );
+    }
+
+    return lines;
+  }
+
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Action type routing requires many conditionals
   function generateActionNodeCode(
     node: WorkflowNode,
@@ -725,10 +806,28 @@ export function generateWorkflowCode(
       lines.push(
         ...wrapActionCall(generateHTTPActionCode(node, indent, varName))
       );
-    } else if (outputIsUsed) {
-      lines.push(`${indent}const ${varName} = { status: 'success' };`);
     } else {
-      lines.push(`${indent}void ({ status: 'success' });`);
+      // Try to find the action in the plugin registry
+      const pluginCode = generatePluginActionCode(
+        node,
+        actionType,
+        indent,
+        varName
+      );
+      if (pluginCode) {
+        lines.push(...wrapActionCall(pluginCode));
+      } else if (outputIsUsed) {
+        // Unknown action type - generate placeholder
+        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
+        lines.push(
+          `${indent}const ${varName} = { status: 'pending', actionType: "${actionType}" };`
+        );
+      } else {
+        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
+        lines.push(
+          `${indent}void ({ status: 'pending', actionType: "${actionType}" });`
+        );
+      }
     }
 
     return lines;
@@ -775,47 +874,15 @@ export function generateWorkflowCode(
     return lines;
   }
 
-  // Helper to generate trigger node code
-  function generateTriggerCode(
-    node: WorkflowNode,
-    nodeId: string,
-    varName: string,
-    indent: string
-  ): string[] {
-    // Skip trigger code entirely if trigger outputs aren't used
-    if (!usedNodeOutputs.has(nodeId)) {
-      return [];
-    }
-
-    const lines: string[] = [];
-    lines.push(`${indent}// Trigger: ${node.data.label}`);
-    if (node.data.description) {
-      lines.push(`${indent}// ${node.data.description}`);
-    }
-
-    lines.push(`${indent}const ${varName} = { triggered: true };`);
-    return lines;
-  }
-
-  // Helper to process trigger node
+  // Helper to process trigger node - triggers use the `input` parameter directly
+  // so no code generation is needed, just process next nodes
   function processTriggerNode(
-    node: WorkflowNode,
     nodeId: string,
-    varName: string,
     indent: string
   ): { lines: string[]; wasSkipped: boolean } {
-    const triggerCode = generateTriggerCode(node, nodeId, varName, indent);
-    // If trigger was skipped (empty array), process next nodes
-    if (triggerCode.length === 0) {
-      const lines: string[] = [];
-      const nextNodes = edgesBySource.get(nodeId) || [];
-      for (const nextNodeId of nextNodes) {
-        const nextCode = generateNodeCode(nextNodeId, indent);
-        lines.push(...nextCode);
-      }
-      return { lines, wasSkipped: true };
-    }
-    return { lines: triggerCode, wasSkipped: false };
+    const nextNodes = edgesBySource.get(nodeId) || [];
+    const lines = generateParallelNodeCode(nextNodes, indent);
+    return { lines, wasSkipped: true };
   }
 
   // Helper to process action node
@@ -836,6 +903,303 @@ export function generateWorkflowCode(
     return lines;
   }
 
+  /**
+   * Generate code for a complete branch (node + all descendants)
+   * Used inside async IIFEs for parallel branches
+   */
+  function generateBranchCode(
+    nodeId: string,
+    indent: string,
+    branchVisited: Set<string>
+  ): string[] {
+    if (branchVisited.has(nodeId)) {
+      return [];
+    }
+    branchVisited.add(nodeId);
+
+    const node = nodeMap.get(nodeId);
+    if (!node) {
+      return [];
+    }
+
+    const lines: string[] = [];
+
+    if (node.data.type === "action") {
+      const actionType = node.data.config?.actionType as string;
+
+      if (actionType === "Condition") {
+        // Generate condition as if/else
+        lines.push(
+          ...generateConditionBranchCode(node, nodeId, indent, branchVisited)
+        );
+      } else {
+        // Generate regular action
+        lines.push(...generateActionCallCode(node, indent));
+
+        // Process children
+        const children = edgesBySource.get(nodeId) || [];
+        if (children.length > 0) {
+          lines.push("");
+          lines.push(...generateChildrenCode(children, indent, branchVisited));
+        }
+      }
+    }
+
+    return lines;
+  }
+
+  /**
+   * Generate condition branch code with if/else
+   */
+  function generateConditionBranchCode(
+    node: WorkflowNode,
+    nodeId: string,
+    indent: string,
+    branchVisited: Set<string>
+  ): string[] {
+    const lines: string[] = [`${indent}// Condition: ${node.data.label}`];
+    const condition = node.data.config?.condition as string;
+    const nextNodes = edgesBySource.get(nodeId) || [];
+
+    if (nextNodes.length > 0) {
+      const convertedCondition = condition
+        ? convertConditionToJS(condition)
+        : "true";
+
+      lines.push(`${indent}if (${convertedCondition}) {`);
+      if (nextNodes[0]) {
+        lines.push(
+          ...generateBranchCode(nextNodes[0], `${indent}  `, branchVisited)
+        );
+      }
+      if (nextNodes[1]) {
+        lines.push(`${indent}} else {`);
+        lines.push(
+          ...generateBranchCode(nextNodes[1], `${indent}  `, branchVisited)
+        );
+      }
+      lines.push(`${indent}}`);
+    }
+
+    return lines;
+  }
+
+  /**
+   * Generate a single action call with await
+   */
+  function generateActionCallCode(
+    node: WorkflowNode,
+    indent: string
+  ): string[] {
+    const actionType = node.data.config?.actionType as string;
+    const actionLabel = node.data.label || actionType || "Unknown Action";
+    const stepInfo = getStepInfo(actionType);
+    const configParams = buildActionConfigParams(node, `${indent}  `);
+
+    imports.add(
+      `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
+    );
+
+    const lines: string[] = [`${indent}// ${actionLabel}`];
+    if (configParams.length > 0) {
+      lines.push(`${indent}await ${stepInfo.functionName}({`);
+      lines.push(...configParams);
+      lines.push(`${indent}});`);
+    } else {
+      lines.push(`${indent}await ${stepInfo.functionName}({});`);
+    }
+
+    return lines;
+  }
+
+  /**
+   * Generate code for children nodes, handling parallel branches
+   */
+  function generateChildrenCode(
+    childIds: string[],
+    indent: string,
+    branchVisited: Set<string>
+  ): string[] {
+    const unvisited = childIds.filter((id) => !branchVisited.has(id));
+    if (unvisited.length === 0) {
+      return [];
+    }
+    if (unvisited.length === 1) {
+      return generateBranchCode(unvisited[0], indent, branchVisited);
+    }
+
+    // Multiple children - generate Promise.all with async IIFEs
+    const lines: string[] = [`${indent}await Promise.all([`];
+
+    for (let i = 0; i < unvisited.length; i++) {
+      const childId = unvisited[i];
+      const isLast = i === unvisited.length - 1;
+      const comma = isLast ? "" : ",";
+
+      // Create a new visited set for this branch
+      const childBranchVisited = new Set(branchVisited);
+      const branchCode = generateBranchCode(
+        childId,
+        `${indent}    `,
+        childBranchVisited
+      );
+
+      if (branchCode.length > 0) {
+        lines.push(`${indent}  (async () => {`);
+        lines.push(...branchCode);
+        lines.push(`${indent}  })()${comma}`);
+      }
+    }
+
+    lines.push(`${indent}]);`);
+    return lines;
+  }
+
+  /**
+   * Generate a single async IIFE branch for Promise.all
+   */
+  function generateAsyncIIFEBranch(
+    nodeId: string,
+    indent: string,
+    isLast: boolean
+  ): string[] {
+    const branchVisited = new Set(visited);
+    branchVisited.delete(nodeId);
+    const branchCode = generateBranchCode(
+      nodeId,
+      `${indent}    `,
+      branchVisited
+    );
+    const comma = isLast ? "" : ",";
+
+    if (branchCode.length === 0) {
+      return [];
+    }
+
+    return [
+      `${indent}  (async () => {`,
+      ...branchCode,
+      `${indent}  })()${comma}`,
+    ];
+  }
+
+  /**
+   * Generate code for multiple nodes from trigger
+   */
+  function generateParallelNodeCode(
+    nodeIds: string[],
+    indent: string
+  ): string[] {
+    if (nodeIds.length === 0) {
+      return [];
+    }
+
+    const unvisited = nodeIds.filter(
+      (id) => !visited.has(id) && nodeMap.get(id)?.data.type === "action"
+    );
+
+    if (unvisited.length === 0) {
+      return [];
+    }
+    if (unvisited.length === 1) {
+      const branchVisited = new Set(visited);
+      visited.add(unvisited[0]);
+      return generateBranchCode(unvisited[0], indent, branchVisited);
+    }
+
+    // Mark all as visited first to prevent cross-branch processing
+    for (const id of unvisited) {
+      visited.add(id);
+    }
+
+    // Multiple branches - wrap each in async IIFE
+    const lines: string[] = [`${indent}await Promise.all([`];
+    for (let i = 0; i < unvisited.length; i++) {
+      lines.push(
+        ...generateAsyncIIFEBranch(
+          unvisited[i],
+          indent,
+          i === unvisited.length - 1
+        )
+      );
+    }
+    lines.push(`${indent}]);`);
+
+    return lines;
+  }
+
+  /**
+   * Build config parameters for plugin-based action
+   */
+  function buildPluginConfigParams(
+    config: Record<string, unknown>,
+    actionType: string,
+    indent: string
+  ): string[] {
+    const action = findActionById(actionType);
+    if (!action) {
+      return [];
+    }
+
+    const params: string[] = [];
+    for (const field of flattenConfigFields(action.configFields)) {
+      const value = config[field.key];
+      if (value === undefined || value === null || value === "") {
+        continue;
+      }
+      params.push(formatFieldValue(field.type, value, indent, field.key));
+    }
+    return params;
+  }
+
+  // Keys to exclude from generated code (internal app fields)
+  const EXCLUDED_CONFIG_KEYS = new Set(["actionType", "integrationId"]);
+
+  /**
+   * Build config parameters using fallback logic
+   */
+  function buildFallbackConfigParams(
+    config: Record<string, unknown>,
+    indent: string
+  ): string[] {
+    const params: string[] = [];
+    for (const [key, value] of Object.entries(config)) {
+      if (
+        EXCLUDED_CONFIG_KEYS.has(key) ||
+        value === undefined ||
+        value === null
+      ) {
+        continue;
+      }
+      if (typeof value === "string") {
+        params.push(`${indent}${key}: ${formatTemplateValue(value)},`);
+      } else if (typeof value === "number" || typeof value === "boolean") {
+        params.push(`${indent}${key}: ${value},`);
+      } else {
+        params.push(`${indent}${key}: ${JSON.stringify(value)},`);
+      }
+    }
+    return params;
+  }
+
+  /**
+   * Build config parameters for an action node
+   */
+  function buildActionConfigParams(
+    node: WorkflowNode,
+    indent: string
+  ): string[] {
+    const actionType = node.data.config?.actionType as string;
+    const config = node.data.config || {};
+
+    const pluginParams = buildPluginConfigParams(config, actionType, indent);
+    if (pluginParams.length > 0) {
+      return pluginParams;
+    }
+
+    return buildFallbackConfigParams(config, indent);
+  }
+
   // Helper to process next nodes recursively
   function processNextNodes(
     nodeId: string,
@@ -850,10 +1214,7 @@ export function generateWorkflowCode(
       result.push("");
     }
 
-    for (const nextNodeId of nextNodes) {
-      const nextCode = generateNodeCode(nextNodeId, indent);
-      result.push(...nextCode);
-    }
+    result.push(...generateParallelNodeCode(nextNodes, indent));
 
     return result;
   }
@@ -880,9 +1241,7 @@ export function generateWorkflowCode(
     switch (node.data.type) {
       case "trigger": {
         const { lines: triggerLines, wasSkipped } = processTriggerNode(
-          node,
           nodeId,
-          varName,
           indent
         );
         // If trigger was skipped, triggerLines already contains next nodes

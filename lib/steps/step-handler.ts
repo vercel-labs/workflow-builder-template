@@ -1,11 +1,16 @@
 /**
  * Step Handler - Logging utilities for workflow builder UI
  * These functions are called FROM INSIDE steps (within "use step" context)
- * where fetch is available
+ * Uses direct database calls for security (no HTTP endpoint)
  */
 import "server-only";
 
 import { redactSensitiveData } from "../utils/redact";
+import {
+  logStepCompleteDb,
+  logStepStartDb,
+  logWorkflowCompleteDb,
+} from "../workflow-logging";
 
 export type StepContext = {
   executionId?: string;
@@ -41,33 +46,15 @@ async function logStepStart(
   try {
     const redactedInput = redactSensitiveData(input);
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/workflow-log`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start",
-          data: {
-            executionId: context.executionId,
-            nodeId: context.nodeId,
-            nodeName: context.nodeName,
-            nodeType: context.nodeType,
-            input: redactedInput,
-          },
-        }),
-      }
-    );
+    const result = await logStepStartDb({
+      executionId: context.executionId,
+      nodeId: context.nodeId,
+      nodeName: context.nodeName,
+      nodeType: context.nodeType,
+      input: redactedInput,
+    });
 
-    if (response.ok) {
-      const result = await response.json();
-      return {
-        logId: result.logId || "",
-        startTime: result.startTime || Date.now(),
-      };
-    }
-
-    return { logId: "", startTime: Date.now() };
+    return result;
   } catch (error) {
     console.error("[stepHandler] Failed to log start:", error);
     return { logId: "", startTime: Date.now() };
@@ -90,19 +77,12 @@ async function logStepComplete(
   try {
     const redactedOutput = redactSensitiveData(output);
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/workflow-log`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "complete",
-        data: {
-          logId: logInfo.logId,
-          startTime: logInfo.startTime,
-          status,
-          output: redactedOutput,
-          error,
-        },
-      }),
+    await logStepCompleteDb({
+      logId: logInfo.logId,
+      startTime: logInfo.startTime,
+      status,
+      output: redactedOutput,
+      error,
     });
   } catch (err) {
     console.error("[stepHandler] Failed to log completion:", err);
@@ -131,19 +111,12 @@ export async function logWorkflowComplete(options: {
   try {
     const redactedOutput = redactSensitiveData(options.output);
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/workflow-log`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "complete",
-        data: {
-          executionId: options.executionId,
-          status: options.status,
-          output: redactedOutput,
-          error: options.error,
-          startTime: options.startTime,
-        },
-      }),
+    await logWorkflowCompleteDb({
+      executionId: options.executionId,
+      status: options.status,
+      output: redactedOutput,
+      error: options.error,
+      startTime: options.startTime,
     });
   } catch (err) {
     console.error("[stepHandler] Failed to log workflow completion:", err);

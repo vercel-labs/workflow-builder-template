@@ -1,0 +1,64 @@
+x-db-credentials: &db-credentials
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+  POSTGRES_DB: ${POSTGRES_DB:-workflow_builder}
+
+x-db-connection: &db-connection
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-workflow_builder}
+
+x-app-common: &app-common
+  ports:
+    - "3000:3000"
+  environment:
+    <<: *db-connection
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: workflow-builder-db
+    restart: unless-stopped
+    environment:
+      <<: *db-credentials
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    <<: *app-common
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: workflow-builder-app
+    restart: unless-stopped
+    profiles:
+      - prod
+
+  dev:
+    <<: *app-common
+    image: node:22-alpine
+    container_name: workflow-builder-dev
+    working_dir: /app
+    profiles:
+      - dev
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    env_file:
+      - .env
+    environment:
+      <<: *db-connection
+      HOSTNAME: "0.0.0.0"
+    command: sh -c "npm install -g pnpm && pnpm install && pnpm dev --hostname 0.0.0.0"
+
+volumes:
+  postgres_data:
+  node_modules:

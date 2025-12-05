@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -48,3 +52,4 @@ tmp/
 lib/types/integration.ts
 lib/codegen-registry.ts
 lib/step-registry.ts
+lib/output-display-configs.ts
