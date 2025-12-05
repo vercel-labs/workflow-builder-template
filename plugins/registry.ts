@@ -28,7 +28,9 @@ export type ActionConfigFieldBase = {
     | "text" // Regular text input
     | "number" // Number input
     | "select" // Dropdown select
-    | "schema-builder"; // Schema builder for structured output
+    | "schema-builder" // Schema builder for structured output
+    | "abi-function-select" // Dynamic dropdown that parses ABI and shows functions
+    | "abi-function-args"; // Dynamic inputs for function arguments based on selected ABI function
 
   // Placeholder text
   placeholder?: string;
@@ -56,6 +58,12 @@ export type ActionConfigFieldBase = {
     field: string;
     equals: string;
   };
+
+  // For abi-function-select: which field contains the ABI JSON
+  abiField?: string;
+
+  // For abi-function-args: which field contains the ABI JSON and selected function
+  abiFunctionField?: string;
 };
 
 /**
