@@ -16,6 +16,7 @@
 
 import "./ai-gateway";
 import "./blob";
+import "./dub";
 import "./fal";
 import "./firecrawl";
 import "./github";
