@@ -140,31 +140,31 @@ function AbiFunctionSelectField({
       }
 
       // Filter functions based on functionFilter prop
-      const filterFn = functionFilter === "write"
-        ? (item: { type: string; stateMutability?: string }) =>
-            item.type === "function" &&
-            item.stateMutability !== "view" &&
-            item.stateMutability !== "pure"
-        : (item: { type: string; stateMutability?: string }) =>
-            item.type === "function" &&
-            (item.stateMutability === "view" || item.stateMutability === "pure");
+      const filterFn =
+        functionFilter === "write"
+          ? (item: { type: string; stateMutability?: string }) =>
+              item.type === "function" &&
+              item.stateMutability !== "view" &&
+              item.stateMutability !== "pure"
+          : (item: { type: string; stateMutability?: string }) =>
+              item.type === "function" &&
+              (item.stateMutability === "view" ||
+                item.stateMutability === "pure");
 
-      return abi
-        .filter(filterFn)
-        .map((func) => {
-          const inputs = func.inputs || [];
-          const params = inputs
-            .map(
-              (input: { name: string; type: string }) =>
-                `${input.type} ${input.name}`
-            )
-            .join(", ");
-          return {
-            name: func.name,
-            label: `${func.name}(${params})`,
-            stateMutability: func.stateMutability || "nonpayable",
-          };
-        });
+      return abi.filter(filterFn).map((func) => {
+        const inputs = func.inputs || [];
+        const params = inputs
+          .map(
+            (input: { name: string; type: string }) =>
+              `${input.type} ${input.name}`
+          )
+          .join(", ");
+        return {
+          name: func.name,
+          label: `${func.name}(${params})`,
+          stateMutability: func.stateMutability || "nonpayable",
+        };
+      });
     } catch {
       return [];
     }
