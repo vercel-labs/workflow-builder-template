@@ -80,7 +80,7 @@ async function stepHandler(
     }
 
     const response = await fetch(
-      `${BEEHIIV_API_URL}/publications/${publicationId}/automations/${input.automationId}/journeys`,
+      `${BEEHIIV_API_URL}/publications/${publicationId}/automations/${encodeURIComponent(input.automationId)}/journeys`,
       {
         method: "POST",
         headers: {
