@@ -697,30 +697,35 @@ export const PanelInner = () => {
             {selectedNode.data.type !== "action" ||
             selectedNode.data.config?.actionType ? (
               <>
-                <div className="space-y-2">
-                  <Label className="ml-1" htmlFor="label">
-                    Label
-                  </Label>
-                  <Input
-                    disabled={isGenerating}
-                    id="label"
-                    onChange={(e) => handleUpdateLabel(e.target.value)}
-                    value={selectedNode.data.label}
-                  />
-                </div>
+                {/* Hide Label and Description for read-contract action */}
+                {selectedNode.data.config?.actionType !== "web3/read-contract" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="ml-1" htmlFor="label">
+                        Label
+                      </Label>
+                      <Input
+                        disabled={isGenerating}
+                        id="label"
+                        onChange={(e) => handleUpdateLabel(e.target.value)}
+                        value={selectedNode.data.label}
+                      />
+                    </div>
 
-                <div className="space-y-2">
-                  <Label className="ml-1" htmlFor="description">
-                    Description
-                  </Label>
-                  <Input
-                    disabled={isGenerating}
-                    id="description"
-                    onChange={(e) => handleUpdateDescription(e.target.value)}
-                    placeholder="Optional description"
-                    value={selectedNode.data.description || ""}
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label className="ml-1" htmlFor="description">
+                        Description
+                      </Label>
+                      <Input
+                        disabled={isGenerating}
+                        id="description"
+                        onChange={(e) => handleUpdateDescription(e.target.value)}
+                        placeholder="Optional description"
+                        value={selectedNode.data.description || ""}
+                      />
+                    </div>
+                  </>
+                )}
               </>
             ) : null}
           </div>
