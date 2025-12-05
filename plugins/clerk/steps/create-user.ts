@@ -4,20 +4,7 @@ import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { ClerkCredentials } from "../credentials";
-
-type ClerkUser = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email_addresses: Array<{
-    id: string;
-    email_address: string;
-  }>;
-  public_metadata: Record<string, unknown>;
-  private_metadata: Record<string, unknown>;
-  created_at: number;
-  updated_at: number;
-};
+import type { ClerkUser } from "../types";
 
 type CreateUserResult =
   | { success: true; user: ClerkUser }
@@ -80,14 +67,20 @@ async function stepHandler(
       try {
         body.public_metadata = JSON.parse(input.publicMetadata);
       } catch {
-        body.public_metadata = input.publicMetadata;
+        return {
+          success: false,
+          error: "Invalid JSON format for publicMetadata",
+        };
       }
     }
     if (input.privateMetadata) {
       try {
         body.private_metadata = JSON.parse(input.privateMetadata);
       } catch {
-        body.private_metadata = input.privateMetadata;
+        return {
+          success: false,
+          error: "Invalid JSON format for privateMetadata",
+        };
       }
     }
 

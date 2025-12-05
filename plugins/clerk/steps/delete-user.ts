@@ -44,7 +44,7 @@ async function stepHandler(
 
   try {
     const response = await fetch(
-      `https://api.clerk.com/v1/users/${input.userId}`,
+      `https://api.clerk.com/v1/users/${encodeURIComponent(input.userId)}`,
       {
         method: "DELETE",
         headers: {

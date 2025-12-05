@@ -4,21 +4,7 @@ import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { ClerkCredentials } from "../credentials";
-
-type ClerkUser = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email_addresses: Array<{
-    id: string;
-    email_address: string;
-  }>;
-  primary_email_address_id: string | null;
-  public_metadata: Record<string, unknown>;
-  private_metadata: Record<string, unknown>;
-  created_at: number;
-  updated_at: number;
-};
+import type { ClerkUser } from "../types";
 
 type GetUserResult =
   | { success: true; user: ClerkUser }
@@ -59,7 +45,7 @@ async function stepHandler(
 
   try {
     const response = await fetch(
-      `https://api.clerk.com/v1/users/${input.userId}`,
+      `https://api.clerk.com/v1/users/${encodeURIComponent(input.userId)}`,
       {
         headers: {
           Authorization: `Bearer ${secretKey}`,
