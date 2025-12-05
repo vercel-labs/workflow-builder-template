@@ -137,9 +137,12 @@ function AbiFunctionSelectField({
         return [];
       }
 
-      // Extract all functions from the ABI
+      // Extract only read-only functions (view/pure) from the ABI
       return abi
-        .filter((item) => item.type === "function")
+        .filter((item) =>
+          item.type === "function" &&
+          (item.stateMutability === "view" || item.stateMutability === "pure")
+        )
         .map((func) => {
           const inputs = func.inputs || [];
           const params = inputs
@@ -177,7 +180,7 @@ function AbiFunctionSelectField({
       <SelectContent>
         {functions.map((func) => (
           <SelectItem key={func.name} value={func.name}>
-            <div className="flex flex-col">
+            <div className="flex flex-col items-start">
               <span>{func.label}</span>
               <span className="text-muted-foreground text-xs">
                 {func.stateMutability}
