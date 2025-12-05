@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -114,9 +114,187 @@ function SchemaBuilderField(props: FieldProps) {
   );
 }
 
-const FIELD_RENDERERS: Record<
-  ActionConfigFieldBase["type"],
-  React.ComponentType<FieldProps>
+type AbiFunctionSelectProps = FieldProps & {
+  abiValue: string;
+};
+
+function AbiFunctionSelectField({
+  field,
+  value,
+  onChange,
+  disabled,
+  abiValue,
+}: AbiFunctionSelectProps) {
+  // Parse ABI and extract functions
+  const functions = React.useMemo(() => {
+    if (!abiValue || abiValue.trim() === "") {
+      return [];
+    }
+
+    try {
+      const abi = JSON.parse(abiValue);
+      if (!Array.isArray(abi)) {
+        return [];
+      }
+
+      // Extract all functions from the ABI
+      return abi
+        .filter((item) => item.type === "function")
+        .map((func) => {
+          const inputs = func.inputs || [];
+          const params = inputs
+            .map(
+              (input: { name: string; type: string }) =>
+                `${input.type} ${input.name}`
+            )
+            .join(", ");
+          return {
+            name: func.name,
+            label: `${func.name}(${params})`,
+            stateMutability: func.stateMutability || "nonpayable",
+          };
+        });
+    } catch {
+      return [];
+    }
+  }, [abiValue]);
+
+  if (functions.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-3 text-center text-muted-foreground text-sm">
+        {abiValue
+          ? "No functions found in ABI"
+          : "Enter ABI above to see available functions"}
+      </div>
+    );
+  }
+
+  return (
+    <Select disabled={disabled} onValueChange={onChange} value={value}>
+      <SelectTrigger className="w-full" id={field.key}>
+        <SelectValue placeholder={field.placeholder || "Select a function"} />
+      </SelectTrigger>
+      <SelectContent>
+        {functions.map((func) => (
+          <SelectItem key={func.name} value={func.name}>
+            <div className="flex flex-col">
+              <span>{func.label}</span>
+              <span className="text-muted-foreground text-xs">
+                {func.stateMutability}
+              </span>
+            </div>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+type AbiFunctionArgsProps = FieldProps & {
+  abiValue: string;
+  functionValue: string;
+};
+
+function AbiFunctionArgsField({
+  field,
+  value,
+  onChange,
+  disabled,
+  abiValue,
+  functionValue,
+}: AbiFunctionArgsProps) {
+  // Parse the function inputs from the ABI
+  const functionInputs = React.useMemo(() => {
+    if (
+      !(abiValue && functionValue) ||
+      abiValue.trim() === "" ||
+      functionValue.trim() === ""
+    ) {
+      return [];
+    }
+
+    try {
+      const abi = JSON.parse(abiValue);
+      if (!Array.isArray(abi)) {
+        return [];
+      }
+
+      const func = abi.find(
+        (item) => item.type === "function" && item.name === functionValue
+      );
+
+      if (!func?.inputs) {
+        return [];
+      }
+
+      return func.inputs.map((input: { name: string; type: string }) => ({
+        name: input.name || "unnamed",
+        type: input.type,
+      }));
+    } catch {
+      return [];
+    }
+  }, [abiValue, functionValue]);
+
+  // Parse current value (JSON array) into individual arg values
+  const argValues = React.useMemo(() => {
+    if (!value || value.trim() === "") {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [value]);
+
+  // Handle individual arg change
+  const handleArgChange = (index: number, newValue: string) => {
+    const newArgs = [...argValues];
+    // Ensure array is long enough
+    while (newArgs.length <= index) {
+      newArgs.push("");
+    }
+    newArgs[index] = newValue;
+    onChange(JSON.stringify(newArgs));
+  };
+
+  if (functionInputs.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed p-3 text-center text-muted-foreground text-sm">
+        {functionValue
+          ? "This function has no parameters"
+          : "Select a function above to see parameters"}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {functionInputs.map(
+        (input: { name: string; type: string }, index: number) => (
+          <div className="space-y-1.5" key={`${field.key}-arg-${index}`}>
+            <Label className="ml-1 text-xs" htmlFor={`${field.key}-${index}`}>
+              {input.name}{" "}
+              <span className="text-muted-foreground">({input.type})</span>
+            </Label>
+            <TemplateBadgeInput
+              disabled={disabled}
+              id={`${field.key}-${index}`}
+              onChange={(val) => handleArgChange(index, val as string)}
+              placeholder={`Enter ${input.type} value or {{NodeName.value}}`}
+              value={(argValues[index] as string) || ""}
+            />
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+const FIELD_RENDERERS: Partial<
+  Record<ActionConfigFieldBase["type"], React.ComponentType<FieldProps>>
 > = {
   "template-input": TemplateInputField,
   "template-textarea": TemplateTextareaField,
@@ -145,7 +323,57 @@ function renderField(
 
   const value =
     (config[field.key] as string | undefined) || field.defaultValue || "";
+
+  // Special handling for abi-function-select
+  if (field.type === "abi-function-select") {
+    const abiField = field.abiField || "abi";
+    const abiValue = (config[abiField] as string | undefined) || "";
+
+    return (
+      <div className="space-y-2" key={field.key}>
+        <Label className="ml-1" htmlFor={field.key}>
+          {field.label}
+        </Label>
+        <AbiFunctionSelectField
+          abiValue={abiValue}
+          disabled={disabled}
+          field={field}
+          onChange={(val) => onUpdateConfig(field.key, val)}
+          value={value}
+        />
+      </div>
+    );
+  }
+
+  // Special handling for abi-function-args
+  if (field.type === "abi-function-args") {
+    const abiField = field.abiField || "abi";
+    const functionField = field.abiFunctionField || "abiFunction";
+    const abiValue = (config[abiField] as string | undefined) || "";
+    const functionValue = (config[functionField] as string | undefined) || "";
+
+    return (
+      <div className="space-y-2" key={field.key}>
+        <Label className="ml-1" htmlFor={field.key}>
+          {field.label}
+        </Label>
+        <AbiFunctionArgsField
+          abiValue={abiValue}
+          disabled={disabled}
+          field={field}
+          functionValue={functionValue}
+          onChange={(val) => onUpdateConfig(field.key, val)}
+          value={value}
+        />
+      </div>
+    );
+  }
+
   const FieldRenderer = FIELD_RENDERERS[field.type];
+
+  if (!FieldRenderer) {
+    return null;
+  }
 
   return (
     <div className="space-y-2" key={field.key}>
@@ -155,7 +383,7 @@ function renderField(
       <FieldRenderer
         disabled={disabled}
         field={field}
-        onChange={(val) => onUpdateConfig(field.key, val)}
+        onChange={(val: unknown) => onUpdateConfig(field.key, val)}
         value={value}
       />
     </div>
