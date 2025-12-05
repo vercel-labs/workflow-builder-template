@@ -109,7 +109,7 @@ async function stepHandler(
   }
 
   // Validate identifier format based on type
-  const identifier = input.identifier.trim();
+  let identifier = input.identifier.trim();
   const identifierType = input.identifierType || "domain";
 
   if (identifierType === "domain") {
@@ -120,14 +120,16 @@ async function stepHandler(
       };
     }
   } else if (identifierType === "ticker") {
-    if (!/^[A-Z]{1,5}$/.test(identifier.toUpperCase())) {
+    identifier = identifier.toUpperCase();
+    if (!/^[A-Z]{1,5}$/.test(identifier)) {
       return {
         success: false,
         error: "Invalid ticker format. Expected 1-5 uppercase letters (e.g., NKE)",
       };
     }
   } else if (identifierType === "isin") {
-    if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier.toUpperCase())) {
+    identifier = identifier.toUpperCase();
+    if (!/^[A-Z]{2}[A-Z0-9]{10}$/.test(identifier)) {
       return {
         success: false,
         error: "Invalid ISIN format. Expected 12 characters starting with country code (e.g., US6541061031)",
