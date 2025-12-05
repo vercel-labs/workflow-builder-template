@@ -52,6 +52,58 @@ const web3Plugin: IntegrationPlugin = {
         },
       ],
     },
+    {
+      slug: "read-contract",
+      label: "Read Contract",
+      description: "Read data from a smart contract (view/pure functions)",
+      category: "Web3",
+      stepFunction: "readContractStep",
+      stepImportPath: "read-contract",
+      configFields: [
+        {
+          key: "contractAddress",
+          label: "Contract Address",
+          type: "template-input",
+          placeholder: "0x... or {{NodeName.contractAddress}}",
+          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          required: true,
+        },
+        {
+          key: "network",
+          label: "Network",
+          type: "select",
+          placeholder: "Select network",
+          required: true,
+          options: [
+            { label: "Ethereum Mainnet", value: "mainnet" },
+            { label: "Sepolia Testnet", value: "sepolia" },
+          ],
+        },
+        {
+          key: "abi",
+          label: "Contract ABI",
+          type: "template-textarea",
+          placeholder: "Paste contract ABI JSON here",
+          rows: 6,
+          required: true,
+        },
+        {
+          key: "abiFunction",
+          label: "Function",
+          type: "abi-function-select",
+          abiField: "abi",
+          placeholder: "Select a function",
+          required: true,
+        },
+        {
+          key: "functionArgs",
+          label: "Function Arguments",
+          type: "abi-function-args",
+          abiField: "abi",
+          abiFunctionField: "abiFunction",
+        },
+      ],
+    },
   ],
 };
 
