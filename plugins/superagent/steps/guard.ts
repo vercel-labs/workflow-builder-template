@@ -5,7 +5,7 @@ import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessage } from "@/lib/utils";
 import type { SuperagentCredentials } from "../credentials";
 
-type GuardClassification = "allow" | "block";
+type GuardClassification = "pass" | "block";
 
 type GuardResult = {
   classification: GuardClassification;
@@ -66,7 +66,7 @@ async function stepHandler(
     const classification = content.classification;
     if (
       !classification ||
-      (classification !== "allow" && classification !== "block")
+      (classification !== "pass" && classification !== "block")
     ) {
       throw new Error(
         `Invalid Guard API response: missing or invalid classification (received: ${JSON.stringify(classification)})`
