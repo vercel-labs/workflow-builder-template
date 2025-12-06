@@ -152,7 +152,7 @@ async function stepHandler(
       if (response.status === 404) {
         return {
           success: false,
-          error: `Brand not found for: ${input.identifier}`,
+          error: `Brand not found for: ${identifier}`,
         };
       }
       const errorData = (await response.json().catch(() => ({}))) as {
