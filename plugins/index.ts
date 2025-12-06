@@ -16,6 +16,7 @@
 
 import "./ai-gateway";
 import "./blob";
+import "./brandfetch";
 import "./clerk";
 import "./fal";
 import "./firecrawl";
