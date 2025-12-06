@@ -86,12 +86,14 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **Firecrawl**: Scrape URL, Search Web
 - **GitHub**: Create Issue, List Issues, Get Issue, Update Issue
 - **Linear**: Create Ticket, Find Issues
+- **Mixedbread**: Ingest File
 - **Perplexity**: Search Web, Ask Question, Research Topic
 - **Resend**: Send Email
 - **Slack**: Send Slack Message
 - **Stripe**: Create Customer, Get Customer, Create Invoice
 - **Superagent**: Guard, Redact
 - **v0**: Create Chat, Send Message
+- **Webflow**: List Sites, Get Site, Publish Site
 <!-- PLUGINS:END -->
 
 ## Code Generation
