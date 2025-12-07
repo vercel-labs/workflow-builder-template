@@ -53,3 +53,6 @@ lib/types/integration.ts
 lib/codegen-registry.ts
 lib/step-registry.ts
 lib/output-display-configs.ts
+
+# local kubernetes generated values (from templates)
+deploy/local/values-keeperhub.yaml
