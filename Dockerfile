@@ -42,8 +42,8 @@ COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/package.json ./package.json
 
 # This stage can be used to run migrations
-# Run with: docker build --target migrator -t myapp-migrator .
-# Then: docker run --env DATABASE_URL=xxx myapp-migrator pnpm db:push
+# Run with: docker build --target migrator -t keeperhub-migrator .
+# Then: docker run --env DATABASE_URL=xxx keeperhub-migrator pnpm db:push
 
 # Stage 3: Runner
 FROM node:25-alpine AS runner
