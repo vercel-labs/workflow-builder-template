@@ -35,20 +35,17 @@ export const UserMenu = () => {
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [apiKeysOpen, setApiKeysOpen] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
-  // Fetch provider info and wallet when session is available
+  // Fetch provider info when session is available
   useEffect(() => {
     if (session?.user && !session.user.name?.startsWith("Anonymous")) {
       api.user
         .get()
         .then((user) => {
           setProviderId(user.providerId);
-          setWalletAddress(user.walletAddress || null);
         })
         .catch(() => {
           setProviderId(null);
-          setWalletAddress(null);
         });
     }
   }, [session?.user]);
@@ -101,7 +98,7 @@ export const UserMenu = () => {
       <div className="flex items-center gap-2">
         <AuthDialog>
           <Button
-            className="h-9 disabled:opacity-100 disabled:[&>*]:text-muted-foreground"
+            className="h-9 disabled:opacity-100 disabled:*:text-muted-foreground"
             size="sm"
             variant="default"
           >
@@ -137,11 +134,6 @@ export const UserMenu = () => {
             <p className="text-muted-foreground text-xs leading-none">
               {session?.user?.email}
             </p>
-            {walletAddress && (
-              <p className="font-mono text-muted-foreground text-xs leading-none">
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </p>
-            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

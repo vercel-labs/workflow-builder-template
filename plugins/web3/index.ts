@@ -75,14 +75,6 @@ const web3Plugin: IntegrationPlugin = {
       ],
       configFields: [
         {
-          key: "contractAddress",
-          label: "Contract Address",
-          type: "template-input",
-          placeholder: "0x... or {{NodeName.contractAddress}}",
-          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-          required: true,
-        },
-        {
           key: "network",
           label: "Network",
           type: "select",
@@ -92,6 +84,14 @@ const web3Plugin: IntegrationPlugin = {
             { label: "Ethereum Mainnet", value: "mainnet" },
             { label: "Sepolia Testnet", value: "sepolia" },
           ],
+        },
+        {
+          key: "contractAddress",
+          label: "Contract Address",
+          type: "template-input",
+          placeholder: "0x... or {{NodeName.contractAddress}}",
+          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          required: true,
         },
         {
           key: "abi",
@@ -145,14 +145,6 @@ const web3Plugin: IntegrationPlugin = {
       ],
       configFields: [
         {
-          key: "contractAddress",
-          label: "Contract Address",
-          type: "template-input",
-          placeholder: "0x... or {{NodeName.contractAddress}}",
-          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-          required: true,
-        },
-        {
           key: "network",
           label: "Network",
           type: "select",
@@ -162,6 +154,14 @@ const web3Plugin: IntegrationPlugin = {
             { label: "Ethereum Mainnet", value: "mainnet" },
             { label: "Sepolia Testnet", value: "sepolia" },
           ],
+        },
+        {
+          key: "contractAddress",
+          label: "Contract Address",
+          type: "template-input",
+          placeholder: "0x... or {{NodeName.contractAddress}}",
+          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          required: true,
         },
         {
           key: "abi",
