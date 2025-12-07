@@ -13,17 +13,10 @@
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
  *
- * Discovered plugins: resend, slack, v0, web3
+ * Discovered plugins: clerk, resend, slack, v0, web3, webflow
  */
 
-import "./ai-gateway";
-import "./blob";
 import "./clerk";
-import "./fal";
-import "./firecrawl";
-import "./github";
-import "./linear";
-import "./perplexity";
 import "./resend";
 import "./slack";
 import "./v0";
