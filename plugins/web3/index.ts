@@ -118,6 +118,77 @@ const web3Plugin: IntegrationPlugin = {
         },
       ],
     },
+    {
+      slug: "write-contract",
+      label: "Write Contract",
+      description: "Write data to a smart contract (state-changing functions)",
+      category: "Web3",
+      stepFunction: "writeContractStep",
+      stepImportPath: "write-contract",
+      outputFields: [
+        {
+          field: "success",
+          description: "Whether the contract call succeeded",
+        },
+        {
+          field: "transactionHash",
+          description: "The transaction hash of the successful write",
+        },
+        {
+          field: "result",
+          description: "The contract function return value (if any)",
+        },
+        {
+          field: "error",
+          description: "Error message if the call failed",
+        },
+      ],
+      configFields: [
+        {
+          key: "contractAddress",
+          label: "Contract Address",
+          type: "template-input",
+          placeholder: "0x... or {{NodeName.contractAddress}}",
+          example: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          required: true,
+        },
+        {
+          key: "network",
+          label: "Network",
+          type: "select",
+          placeholder: "Select network",
+          required: true,
+          options: [
+            { label: "Ethereum Mainnet", value: "mainnet" },
+            { label: "Sepolia Testnet", value: "sepolia" },
+          ],
+        },
+        {
+          key: "abi",
+          label: "Contract ABI",
+          type: "template-textarea",
+          placeholder: "Paste contract ABI JSON here",
+          rows: 6,
+          required: true,
+        },
+        {
+          key: "abiFunction",
+          label: "Function",
+          type: "abi-function-select",
+          abiField: "abi",
+          functionFilter: "write",
+          placeholder: "Select a function",
+          required: true,
+        },
+        {
+          key: "functionArgs",
+          label: "Function Arguments",
+          type: "abi-function-args",
+          abiField: "abi",
+          abiFunctionField: "abiFunction",
+        },
+      ],
+    },
   ],
 };
 

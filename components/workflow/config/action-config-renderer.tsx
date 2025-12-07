@@ -116,6 +116,7 @@ function SchemaBuilderField(props: FieldProps) {
 
 type AbiFunctionSelectProps = FieldProps & {
   abiValue: string;
+  functionFilter?: "read" | "write";
 };
 
 function AbiFunctionSelectField({
@@ -124,6 +125,7 @@ function AbiFunctionSelectField({
   onChange,
   disabled,
   abiValue,
+  functionFilter = "read",
 }: AbiFunctionSelectProps) {
   // Parse ABI and extract functions
   const functions = React.useMemo(() => {
@@ -137,27 +139,36 @@ function AbiFunctionSelectField({
         return [];
       }
 
-      // Extract all functions from the ABI
-      return abi
-        .filter((item) => item.type === "function")
-        .map((func) => {
-          const inputs = func.inputs || [];
-          const params = inputs
-            .map(
-              (input: { name: string; type: string }) =>
-                `${input.type} ${input.name}`
-            )
-            .join(", ");
-          return {
-            name: func.name,
-            label: `${func.name}(${params})`,
-            stateMutability: func.stateMutability || "nonpayable",
-          };
-        });
+      // Filter functions based on functionFilter prop
+      const filterFn =
+        functionFilter === "write"
+          ? (item: { type: string; stateMutability?: string }) =>
+              item.type === "function" &&
+              item.stateMutability !== "view" &&
+              item.stateMutability !== "pure"
+          : (item: { type: string; stateMutability?: string }) =>
+              item.type === "function" &&
+              (item.stateMutability === "view" ||
+                item.stateMutability === "pure");
+
+      return abi.filter(filterFn).map((func) => {
+        const inputs = func.inputs || [];
+        const params = inputs
+          .map(
+            (input: { name: string; type: string }) =>
+              `${input.type} ${input.name}`
+          )
+          .join(", ");
+        return {
+          name: func.name,
+          label: `${func.name}(${params})`,
+          stateMutability: func.stateMutability || "nonpayable",
+        };
+      });
     } catch {
       return [];
     }
-  }, [abiValue]);
+  }, [abiValue, functionFilter]);
 
   if (functions.length === 0) {
     return (
@@ -177,7 +188,7 @@ function AbiFunctionSelectField({
       <SelectContent>
         {functions.map((func) => (
           <SelectItem key={func.name} value={func.name}>
-            <div className="flex flex-col">
+            <div className="flex flex-col items-start">
               <span>{func.label}</span>
               <span className="text-muted-foreground text-xs">
                 {func.stateMutability}
@@ -338,6 +349,7 @@ function renderField(
           abiValue={abiValue}
           disabled={disabled}
           field={field}
+          functionFilter={field.functionFilter}
           onChange={(val) => onUpdateConfig(field.key, val)}
           value={value}
         />
