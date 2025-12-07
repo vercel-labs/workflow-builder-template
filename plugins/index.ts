@@ -16,10 +16,19 @@
  * Discovered plugins: resend, slack, v0, web3
  */
 
+import "./ai-gateway";
+import "./blob";
+import "./clerk";
+import "./fal";
+import "./firecrawl";
+import "./github";
+import "./linear";
+import "./perplexity";
 import "./resend";
 import "./slack";
 import "./v0";
 import "./web3";
+import "./webflow";
 
 export type {
   ActionConfigField,

@@ -1,0 +1,98 @@
+# KeeperHub local deployment values
+# Template variables: ${IMAGE_TAG} is replaced by deploy.sh
+
+replicaCount: 1
+
+image:
+  repository: keeperhub
+  tag: "${IMAGE_TAG}"
+  pullPolicy: Never
+
+service:
+  enabled: true
+  name: keeperhub
+  port: 3000
+  type: ClusterIP
+  containerPort: 3000
+  tls:
+    enabled: false
+
+ingress:
+  enabled: false
+
+deployment:
+  enabled: true
+
+serviceAccount:
+  create: true
+  name: keeperhub
+
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  NODE_ENV:
+    type: kv
+    value: "development"
+  DATABASE_URL:
+    type: kv
+    value: "postgresql://local:local@postgresql.local.svc.cluster.local:5432/keeperhub"
+  BETTER_AUTH_SECRET:
+    type: kv
+    value: "local-dev-secret-change-in-production"
+  BETTER_AUTH_URL:
+    type: kv
+    value: "https://workflow.keeperhub.local"
+  NEXT_PUBLIC_APP_URL:
+    type: kv
+    value: "https://workflow.keeperhub.local"
+  # AI Gateway (OpenAI API key) - set a real key for AI features
+  AI_GATEWAY_API_KEY:
+    type: kv
+    value: ""
+  # Para Wallet Configuration
+  PARA_API_KEY:
+    type: kv
+    value: "PLACEHOLDER_PARA_API_KEY"
+  PARA_ENVIRONMENT:
+    type: kv
+    value: "beta"
+  NEXT_PUBLIC_PARA_API_KEY:
+    type: kv
+    value: "PLACEHOLDER_PARA_API_KEY"
+  NEXT_PUBLIC_PARA_ENVIRONMENT:
+    type: kv
+    value: "beta"
+  # Encryption keys
+  WALLET_ENCRYPTION_KEY:
+    type: kv
+    value: "d1e63f001659440535f13da75c52eb9f902d0607d2a8a7c562a53cbd0e998236"
+  INTEGRATION_ENCRYPTION_KEY:
+    type: kv
+    value: "d2a5b8e59bf99673d76354bd6287cda1cc570cbf4c60b869b7c62a083b05e687"
+  NEXT_PUBLIC_API_URL:
+    type: kv
+    value: "https://workflow.keeperhub.local"
+
+livenessProbe:
+  initialDelaySeconds: 120
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+  tcpSocket:
+    port: 3000
+
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 10
+  failureThreshold: 10
+  tcpSocket:
+    port: 3000
+
+cronjob:
+  enabled: false
