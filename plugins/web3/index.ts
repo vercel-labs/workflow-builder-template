@@ -27,6 +27,57 @@ const web3Plugin: IntegrationPlugin = {
 
   actions: [
     {
+      slug: "check-balance",
+      label: "Check Balance",
+      description: "Check ETH balance of any address (wallet or contract)",
+      category: "Web3",
+      stepFunction: "checkBalanceStep",
+      stepImportPath: "check-balance",
+      outputFields: [
+        {
+          field: "success",
+          description: "Whether the balance check succeeded",
+        },
+        {
+          field: "balance",
+          description: "Balance in ETH (human-readable)",
+        },
+        {
+          field: "balanceWei",
+          description: "Balance in Wei (smallest unit)",
+        },
+        {
+          field: "address",
+          description: "The address that was checked",
+        },
+        {
+          field: "error",
+          description: "Error message if the check failed",
+        },
+      ],
+      configFields: [
+        {
+          key: "network",
+          label: "Network",
+          type: "select",
+          placeholder: "Select network",
+          required: true,
+          options: [
+            { label: "Ethereum Mainnet", value: "mainnet" },
+            { label: "Sepolia Testnet", value: "sepolia" },
+          ],
+        },
+        {
+          key: "address",
+          label: "Address",
+          type: "template-input",
+          placeholder: "0x... or {{NodeName.address}}",
+          example: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+          required: true,
+        },
+      ],
+    },
+    {
       slug: "transfer-funds",
       label: "Transfer Funds",
       description: "Transfer ETH from your wallet to a recipient address",

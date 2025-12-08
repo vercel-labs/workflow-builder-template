@@ -174,12 +174,13 @@ export type IntegrationPlugin = {
   formFields: Array<{
     id: string;
     label: string;
-    type: "text" | "password" | "url";
+    type: "text" | "password" | "url" | "checkbox";
     placeholder?: string;
     helpText?: string;
     helpLink?: { text: string; url: string };
     configKey: string; // Which key in IntegrationConfig to store the value
     envVar?: string; // Environment variable this field maps to (e.g., "RESEND_API_KEY")
+    defaultValue?: string | boolean; // Default value for the field (for checkboxes, use boolean)
   }>;
 
   // Testing configuration (lazy-loaded to avoid bundling Node.js packages in client)

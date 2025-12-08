@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -22,13 +23,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { api, type Integration } from "@/lib/api-client";
-import type { IntegrationType } from "@/lib/types/integration";
+import {
+  api,
+  type Integration,
+  type IntegrationWithConfig,
+} from "@/lib/api-client";
+import type {
+  IntegrationConfig,
+  IntegrationType,
+} from "@/lib/types/integration";
 import {
   getIntegration,
   getIntegrationLabels,
   getSortedIntegrationTypes,
 } from "@/plugins";
+import { SendGridIntegrationSection } from "./sendgrid-integration-section";
 import { Web3WalletSection } from "./web3-wallet-section";
 
 type IntegrationFormDialogProps = {
@@ -43,7 +52,7 @@ type IntegrationFormDialogProps = {
 type IntegrationFormData = {
   name: string;
   type: IntegrationType;
-  config: Record<string, string>;
+  config: Record<string, string | boolean>;
 };
 
 // System integrations that don't have plugins
@@ -77,21 +86,70 @@ export function IntegrationFormDialog({
     config: {},
   });
 
+  const initializeConfigFromPlugin = useCallback(
+    (pluginType: IntegrationType): Record<string, string | boolean> => {
+      const plugin = getIntegration(pluginType);
+      const config: Record<string, string | boolean> = {};
+      if (plugin?.formFields) {
+        for (const field of plugin.formFields) {
+          if (field.defaultValue !== undefined) {
+            config[field.configKey] = field.defaultValue as string | boolean;
+          }
+        }
+      }
+      return config;
+    },
+    []
+  );
+
+  const initializeConfigFromIntegration = useCallback(
+    (
+      integrationData: Integration | IntegrationWithConfig
+    ): Record<string, string | boolean> => {
+      const plugin = getIntegration(integrationData.type);
+      const config: Record<string, string | boolean> = {};
+
+      if (plugin?.formFields && "config" in integrationData) {
+        const integrationConfig = integrationData.config as IntegrationConfig;
+        for (const field of plugin.formFields) {
+          if (integrationConfig[field.configKey] !== undefined) {
+            config[field.configKey] = integrationConfig[field.configKey] as
+              | string
+              | boolean;
+          } else if (field.defaultValue !== undefined) {
+            config[field.configKey] = field.defaultValue as string | boolean;
+          }
+        }
+      }
+
+      return config;
+    },
+    []
+  );
+
   useEffect(() => {
     if (integration) {
+      const initialConfig = initializeConfigFromIntegration(integration);
       setFormData({
         name: integration.name,
         type: integration.type,
-        config: {},
+        config: initialConfig,
       });
     } else {
+      const pluginType = preselectedType || "resend";
+      const initialConfig = initializeConfigFromPlugin(pluginType);
       setFormData({
         name: "",
-        type: preselectedType || "resend",
-        config: {},
+        type: pluginType,
+        config: initialConfig,
       });
     }
-  }, [integration, preselectedType]);
+  }, [
+    integration,
+    preselectedType,
+    initializeConfigFromIntegration,
+    initializeConfigFromPlugin,
+  ]);
 
   const handleSave = async () => {
     try {
@@ -126,12 +184,95 @@ export function IntegrationFormDialog({
     }
   };
 
-  const updateConfig = (key: string, value: string) => {
+  const updateConfig = (key: string, value: string | boolean) => {
     setFormData({
       ...formData,
       config: { ...formData.config, [key]: value },
     });
   };
+
+  const renderHelpText = (
+    helpText?: string,
+    helpLink?: { text: string; url: string }
+  ) => {
+    if (!(helpText || helpLink)) {
+      return null;
+    }
+    return (
+      <p className="text-muted-foreground text-xs">
+        {helpText}
+        {helpLink && (
+          <a
+            className="underline hover:text-foreground"
+            href={helpLink.url}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {helpLink.text}
+          </a>
+        )}
+      </p>
+    );
+  };
+
+  const renderCheckboxField = (field: {
+    id: string;
+    type: string;
+    label: string;
+    configKey: string;
+    defaultValue?: string | boolean;
+    helpText?: string;
+    helpLink?: { text: string; url: string };
+  }) => {
+    let checkboxValue: string | boolean | undefined =
+      formData.config[field.configKey];
+    if (checkboxValue === undefined) {
+      checkboxValue =
+        field.defaultValue !== undefined ? field.defaultValue : true;
+    }
+    const isChecked =
+      typeof checkboxValue === "boolean"
+        ? checkboxValue
+        : checkboxValue === "true";
+
+    return (
+      <div className="flex items-center space-x-2" key={field.id}>
+        <Checkbox
+          checked={isChecked}
+          id={field.id}
+          onCheckedChange={(checked) =>
+            updateConfig(field.configKey, checked === true)
+          }
+        />
+        <Label className="cursor-pointer font-normal" htmlFor={field.id}>
+          {field.label}
+        </Label>
+        {renderHelpText(field.helpText, field.helpLink)}
+      </div>
+    );
+  };
+
+  const renderInputField = (field: {
+    id: string;
+    type: string;
+    label: string;
+    configKey: string;
+    placeholder?: string;
+    helpText?: string;
+    helpLink?: { text: string; url: string };
+  }) => (
+    <div className="space-y-2" key={field.id}>
+      <Label htmlFor={field.id}>{field.label}</Label>
+      <Input
+        id={field.id}
+        onChange={(e) => updateConfig(field.configKey, e.target.value)}
+        placeholder={field.placeholder}
+        type={field.type}
+        value={(formData.config[field.configKey] as string) || ""}
+      />
+      {renderHelpText(field.helpText, field.helpLink)}
+    </div>
+  );
 
   const renderConfigFields = () => {
     // Handle system integrations with hardcoded fields
@@ -144,7 +285,7 @@ export function IntegrationFormDialog({
             onChange={(e) => updateConfig("url", e.target.value)}
             placeholder="postgresql://..."
             type="password"
-            value={formData.config.url || ""}
+            value={(formData.config.url as string) || ""}
           />
           <p className="text-muted-foreground text-xs">
             Connection string in the format:
@@ -165,33 +306,24 @@ export function IntegrationFormDialog({
       return null;
     }
 
-    return plugin.formFields.map((field) => (
-      <div className="space-y-2" key={field.id}>
-        <Label htmlFor={field.id}>{field.label}</Label>
-        <Input
-          id={field.id}
-          onChange={(e) => updateConfig(field.configKey, e.target.value)}
-          placeholder={field.placeholder}
-          type={field.type}
-          value={formData.config[field.configKey] || ""}
+    // Handle SendGrid integration with special checkbox logic
+    if (formData.type === "sendgrid") {
+      return (
+        <SendGridIntegrationSection
+          config={formData.config}
+          formFields={plugin.formFields}
+          updateConfig={updateConfig}
         />
-        {(field.helpText || field.helpLink) && (
-          <p className="text-muted-foreground text-xs">
-            {field.helpText}
-            {field.helpLink && (
-              <a
-                className="underline hover:text-foreground"
-                href={field.helpLink.url}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {field.helpLink.text}
-              </a>
-            )}
-          </p>
-        )}
-      </div>
-    ));
+      );
+    }
+
+    // Default rendering for other integrations
+    return plugin.formFields.map((field) => {
+      if (field.type === "checkbox") {
+        return renderCheckboxField(field);
+      }
+      return renderInputField(field);
+    });
   };
 
   return (
