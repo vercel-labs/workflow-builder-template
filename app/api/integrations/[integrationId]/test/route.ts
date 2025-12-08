@@ -47,7 +47,11 @@ export async function POST(
     }
 
     if (integration.type === "database") {
-      const result = await testDatabaseConnection(integration.config.url);
+      const url =
+        typeof integration.config.url === "string"
+          ? integration.config.url
+          : undefined;
+      const result = await testDatabaseConnection(url);
       return NextResponse.json(result);
     }
 

@@ -243,7 +243,7 @@ export type IntegrationType =
 ${unionType};
 
 // Generic config type - plugins define their own keys via formFields[].configKey
-export type IntegrationConfig = Record<string, string | undefined>;
+export type IntegrationConfig = Record<string, string | boolean | undefined>;
 `;
 
   writeFileSync(TYPES_FILE, content, "utf-8");

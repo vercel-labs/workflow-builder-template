@@ -13,12 +13,13 @@
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
  *
- * Discovered plugins: clerk, discord, resend, slack, v0, web3, webflow
+ * Discovered plugins: clerk, discord, resend, sendgrid, slack, v0, web3, webflow
  */
 
 import "./clerk";
 import "./discord";
 import "./resend";
+import "./sendgrid";
 import "./slack";
 import "./v0";
 import "./web3";
