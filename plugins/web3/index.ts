@@ -96,8 +96,9 @@ const web3Plugin: IntegrationPlugin = {
         {
           key: "abi",
           label: "Contract ABI",
-          type: "template-textarea",
-          placeholder: "Paste contract ABI JSON here",
+          type: "abi-with-auto-fetch",
+          contractAddressField: "contractAddress",
+          networkField: "network",
           rows: 6,
           required: true,
         },
@@ -166,8 +167,9 @@ const web3Plugin: IntegrationPlugin = {
         {
           key: "abi",
           label: "Contract ABI",
-          type: "template-textarea",
-          placeholder: "Paste contract ABI JSON here",
+          type: "abi-with-auto-fetch",
+          contractAddressField: "contractAddress",
+          networkField: "network",
           rows: 6,
           required: true,
         },
