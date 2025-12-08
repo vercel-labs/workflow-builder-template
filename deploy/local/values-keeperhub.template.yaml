@@ -57,13 +57,13 @@ env:
   # Para Wallet Configuration
   PARA_API_KEY:
     type: kv
-    value: "d2a1ef99aefddcb07bae55518a800366"
+    value: "PLACEHOLDER_PARA_API_KEY"
   PARA_ENVIRONMENT:
     type: kv
     value: "beta"
   NEXT_PUBLIC_PARA_API_KEY:
     type: kv
-    value: "d2a1ef99aefddcb07bae55518a800366"
+    value: "PLACEHOLDER_PARA_API_KEY"
   NEXT_PUBLIC_PARA_ENVIRONMENT:
     type: kv
     value: "beta"
