@@ -17,8 +17,8 @@ type ResendErrorResponse = {
 };
 
 type SendEmailResult =
-  | { success: true; id: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string } }
+  | { success: false; error: { message: string } };
 
 export type SendEmailCoreInput = {
   emailFrom?: string;
@@ -51,8 +51,10 @@ async function stepHandler(
   if (!apiKey) {
     return {
       success: false,
-      error:
-        "RESEND_API_KEY is not configured. Please add it in Project Integrations.",
+      error: {
+        message:
+          "RESEND_API_KEY is not configured. Please add it in Project Integrations.",
+      },
     };
   }
 
@@ -61,8 +63,10 @@ async function stepHandler(
   if (!senderEmail) {
     return {
       success: false,
-      error:
-        "No sender is configured. Please add it in the action or in Project Integrations.",
+      error: {
+        message:
+          "No sender is configured. Please add it in the action or in Project Integrations.",
+      },
     };
   }
 
@@ -95,17 +99,20 @@ async function stepHandler(
       const errorData = (await response.json()) as ResendErrorResponse;
       return {
         success: false,
-        error: errorData.message || `HTTP ${response.status}: Failed to send email`,
+        error: {
+          message:
+            errorData.message || `HTTP ${response.status}: Failed to send email`,
+        },
       };
     }
 
     const data = (await response.json()) as ResendEmailResponse;
-    return { success: true, id: data.id };
+    return { success: true, data: { id: data.id } };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to send email: ${message}`,
+      error: { message: `Failed to send email: ${errorMessage}` },
     };
   }
 }

@@ -83,3 +83,18 @@ If any of the above commands fail or show errors:
 - **No dependencies field**: Do not use the `dependencies` field in plugin `index.ts` files. All API calls should use native `fetch`.
 - **Why**: Using `fetch` instead of SDKs reduces supply chain attack surface. SDKs have transitive dependencies that could be compromised.
 
+## Step Output Format
+All plugin steps must return a standardized output format:
+
+```typescript
+// Success
+return { success: true, data: { id: "...", name: "..." } };
+
+// Error
+return { success: false, error: { message: "Error description" } };
+```
+
+- **outputFields** in plugin `index.ts` should reference fields without `data.` prefix (e.g., `{ field: "id" }` not `{ field: "data.id" }`)
+- Template variables automatically unwrap: `{{GetUser.firstName}}` resolves to `data.firstName`
+- Logs display only the inner `data` or `error` object, not the full wrapper
+
