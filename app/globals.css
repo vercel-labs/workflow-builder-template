@@ -211,20 +211,14 @@
   z-index: 20 !important;
 }
 
-/* Invisible hit area for desktop */
-.react-flow__handle::after {
-  content: "" !important;
-  position: absolute !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  width: 24px !important;
-  height: 24px !important;
-}
-
-/* Invisible hit area for mobile with WCAG minimum target size */
+/* Increase hit area on mobile without changing visual size */
 @media (max-width: 768px) {
   .react-flow__handle::after {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
     width: 44px !important;
     height: 44px !important;
   }
