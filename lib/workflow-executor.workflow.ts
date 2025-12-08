@@ -586,12 +586,19 @@ export async function executeWorkflow(input: WorkflowExecutionInput) {
           (stepResult as { success: boolean }).success === false;
 
         if (isErrorResult) {
-          const errorResult = stepResult as { success: false; error?: string };
+          const errorResult = stepResult as {
+            success: false;
+            error?: string | { message: string };
+          };
+          // Support both old format (error: string) and new format (error: { message: string })
+          const errorMessage =
+            typeof errorResult.error === "string"
+              ? errorResult.error
+              : errorResult.error?.message ||
+                `Step "${actionType}" in node "${node.data.label || node.id}" failed without a specific error message.`;
           result = {
             success: false,
-            error:
-              errorResult.error ||
-              `Step "${actionType}" in node "${node.data.label || node.id}" failed without a specific error message.`,
+            error: errorMessage,
           };
         } else {
           result = {
