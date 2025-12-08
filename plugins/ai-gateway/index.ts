@@ -5,7 +5,7 @@ import { AiGatewayIcon } from "./icon";
 const aiGatewayPlugin: IntegrationPlugin = {
   type: "ai-gateway",
   label: "AI Gateway",
-  description: "Generate text and images using AI models",
+  description: "Generate text, images, and embeddings using AI models",
 
   icon: AiGatewayIcon,
 
@@ -139,6 +139,75 @@ const aiGatewayPlugin: IntegrationPlugin = {
           example: "A serene mountain landscape at sunset",
           required: true,
         },
+      ],
+    },
+    {
+      slug: "generate-embeddings",
+      label: "Generate Embeddings",
+      description: "Generate text embeddings using AI models",
+      category: "AI Gateway",
+      stepFunction: "generateEmbeddingsStep",
+      stepImportPath: "generate-embeddings",
+      outputFields: [
+        { field: "embedding", description: "Single embedding vector" },
+        { field: "embeddings", description: "Batch embedding vectors" },
+      ],
+      configFields: [
+        {
+          key: "embeddingMode",
+          label: "Embedding Mode",
+          type: "select",
+          defaultValue: "single",
+          options: [
+            { value: "single", label: "Single Value" },
+            { value: "batch", label: "Batch Values" },
+          ],
+          required: true,
+        },
+        {
+          key: "embeddingModel",
+          label: "Model",
+          type: "select",
+          defaultValue: "openai/text-embedding-3-small",
+          options: [
+						{ value: "amazon/titan-embed-text-v2", label: "Amazon Titan Embed Text V2"},
+						{ value: "cohere/embed-v4.0", label: "Cohere Embed V4.0"},
+						{ value: "google/gemini-embedding-001", label: "Gemini Embedding 001"},
+						{ value: "google/text-embedding-005", label: "Google Text Embedding 005" },
+						{ value: "google/text-multilingual-embedding-002", label: "Google Text Multilingual Embedding 002" },
+						{ value: "mistral/codestral-embed", label: "Mistral Codestral Embed" },
+						{ value: "mistral/mistral-embed", label: "Mistral Embed" },
+						{ value: "openai/text-embedding-3-large", label: "OpenAI Text Embedding 3 Large" },
+						{ value: "openai/text-embedding-3-small", label: "OpenAI Text Embedding 3 Small" },
+						{ value: "openai/text-embedding-ada-002", label: "OpenAI Text Embedding Ada 002" },
+						{ value: "voyage/voyage-3-large", label: "Voyage 3 Large" },
+						{ value: "voyage/voyage-3.5", label: "Voyage 3.5" },
+						{ value: "voyage/voyage-3.5-lite", label: "Voyage 3.5 Lite" },
+						{ value: "voyage/voyage-code-3", label: "Voyage Code 3" },
+          ],
+          required: true,
+        },
+        {
+          key: "embeddingValue",
+          label: "Text to Embed",
+          type: "template-input",
+          placeholder: "Enter text to embed. Use {{NodeName.field}} to reference previous outputs.",
+          example: "sunny day at the beach",
+          showWhen: { field: "embeddingMode", equals: "single" },
+          required: true,
+        },
+        {
+          key: "embeddingValues",
+          label: "Texts to Embed",
+          type: "template-textarea",
+          placeholder:
+						"Enter one text per line for batch embedding:\n- First text\n- Second text\nUse {{NodeName.field}} to reference previous outputs.",
+          example:
+            "sunny day at the beach\nrainy afternoon in the city\nsnowy night in the mountains",
+          rows: 6,
+          showWhen: { field: "embeddingMode", equals: "batch" },
+          required: true,
+        }
       ],
     },
   ],
