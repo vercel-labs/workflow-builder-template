@@ -1,6 +1,6 @@
 "use client";
 
-import { Key, LogOut, Moon, Plug, Settings, Sun } from "lucide-react";
+import { Key, LogOut, Moon, Plug, Settings, Sun, Wallet } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
@@ -10,6 +10,7 @@ import {
 import { SettingsDialog } from "@/components/settings";
 import { ApiKeysDialog } from "@/components/settings/api-keys-dialog";
 import { IntegrationsDialog } from "@/components/settings/integrations-dialog";
+import { WalletDialog } from "@/components/settings/wallet-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ export const UserMenu = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [apiKeysOpen, setApiKeysOpen] = useState(false);
+  const [walletOpen, setWalletOpen] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
 
   // Fetch provider info when session is available
@@ -151,6 +153,10 @@ export const UserMenu = () => {
           <Key className="size-4" />
           <span>API Keys</span>
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setWalletOpen(true)}>
+          <Wallet className="size-4" />
+          <span>Wallet</span>
+        </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Sun className="dark:-rotate-90 size-4 rotate-0 scale-100 transition-all dark:scale-0" />
@@ -179,6 +185,7 @@ export const UserMenu = () => {
         open={integrationsOpen}
       />
       <ApiKeysDialog onOpenChange={setApiKeysOpen} open={apiKeysOpen} />
+      <WalletDialog onOpenChange={setWalletOpen} open={walletOpen} />
     </DropdownMenu>
   );
 };
