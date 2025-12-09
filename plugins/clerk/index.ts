@@ -1,6 +1,5 @@
 import type { IntegrationPlugin } from "../registry";
 import { registerIntegration } from "../registry";
-import { UserCard } from "./components/user-card";
 import { ClerkIcon } from "./icon";
 
 const clerkPlugin: IntegrationPlugin = {
@@ -47,10 +46,6 @@ const clerkPlugin: IntegrationPlugin = {
         { field: "lastName", description: "Last name" },
         { field: "primaryEmailAddress", description: "Primary email address" },
       ],
-      outputConfig: {
-        type: "component",
-        component: UserCard,
-      },
       configFields: [
         {
           key: "userId",
@@ -75,10 +70,6 @@ const clerkPlugin: IntegrationPlugin = {
         { field: "lastName", description: "Last name" },
         { field: "primaryEmailAddress", description: "Primary email address" },
       ],
-      outputConfig: {
-        type: "component",
-        component: UserCard,
-      },
       configFields: [
         {
           key: "emailAddress",
@@ -145,10 +136,6 @@ const clerkPlugin: IntegrationPlugin = {
         { field: "lastName", description: "Last name" },
         { field: "primaryEmailAddress", description: "Primary email address" },
       ],
-      outputConfig: {
-        type: "component",
-        component: UserCard,
-      },
       configFields: [
         {
           key: "userId",
