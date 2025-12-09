@@ -32,6 +32,15 @@ const slackPlugin: IntegrationPlugin = {
     },
   },
 
+  // HTTP configuration for custom API requests
+  // Allows users to make direct API calls to Slack via HTTP Request step
+  httpConfig: {
+    baseUrl: "https://slack.com/api",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    authCredentialKey: "SLACK_API_KEY",
+  },
+
   actions: [
     {
       slug: "send-message",

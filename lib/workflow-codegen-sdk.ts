@@ -4,12 +4,10 @@ import { findActionById } from "@/plugins";
 // System action codegen templates (not in plugin registry)
 import conditionTemplate from "./codegen-templates/condition";
 import databaseQueryTemplate from "./codegen-templates/database-query";
-import httpRequestTemplate from "./codegen-templates/http-request";
 
 // System actions that don't have plugins
 const SYSTEM_CODEGEN_TEMPLATES: Record<string, string> = {
   "Database Query": databaseQueryTemplate,
-  "HTTP Request": httpRequestTemplate,
   Condition: conditionTemplate,
 };
 
@@ -320,15 +318,47 @@ export function generateWorkflowSDKCode(
   }
 
   function buildHttpParams(config: Record<string, unknown>): string[] {
-    const params = [
-      `url: "${config.endpoint || "https://api.example.com/endpoint"}"`,
-      `method: "${config.httpMethod || "POST"}"`,
-      `headers: ${config.httpHeaders || "{}"}`,
-    ];
-    if (config.httpBody) {
-      params.push(`body: ${config.httpBody}`);
+    const endpoint = (config.endpoint as string) || "";
+    const method = (config.httpMethod as string) || "GET";
+
+    // Helper to format object properties
+    function formatProperties(props: unknown): string {
+      if (!props) {
+        return "{}";
+      }
+
+      let entries: [string, string][] = [];
+
+      if (Array.isArray(props)) {
+        entries = props
+          .filter((p) => p.key?.trim())
+          .map((p) => [p.key, String(p.value || "")]);
+      } else if (typeof props === "object") {
+        entries = Object.entries(props as Record<string, unknown>).map(
+          ([k, v]) => [k, String(v)]
+        );
+      }
+
+      if (entries.length === 0) {
+        return "{}";
+      }
+
+      const propStrings = entries.map(([k, v]) => {
+        const key = JSON.stringify(k);
+        const converted = convertTemplateToJS(v);
+        const escaped = escapeForTemplateLiteral(converted);
+        return `${key}: \`${escaped}\``;
+      });
+
+      return `{ ${propStrings.join(", ")} }`;
     }
-    return params;
+
+    return [
+      `endpoint: \`${convertTemplateToJS(endpoint)}\``,
+      `httpMethod: "${method}"`,
+      `httpHeaders: ${formatProperties(config.httpHeaders)}`,
+      `httpBody: ${formatProperties(config.httpBody)}`,
+    ];
   }
 
   function buildConditionParams(config: Record<string, unknown>): string[] {
@@ -483,6 +513,7 @@ export function generateWorkflowSDKCode(
       "Generate Image": () => buildAIImageParams(config),
       "Database Query": () => buildDatabaseParams(config),
       "HTTP Request": () => buildHttpParams(config),
+      "native/http-request": () => buildHttpParams(config),
       Condition: () => buildConditionParams(config),
       Scrape: () => buildFirecrawlParams(actionType, config),
       Search: () => buildFirecrawlParams(actionType, config),

@@ -12,6 +12,8 @@
  * To remove an integration:
  * 1. Delete the plugin directory
  * 2. Run: pnpm discover-plugins (or it runs automatically on build)
+ *
+ * Discovered plugins: ai-gateway, blob, fal, firecrawl, github, linear, native, perplexity, resend, slack, stripe, superagent, v0
  */
 
 import "./ai-gateway";
@@ -21,6 +23,7 @@ import "./fal";
 import "./firecrawl";
 import "./github";
 import "./linear";
+import "./native";
 import "./perplexity";
 import "./resend";
 import "./slack";
@@ -36,6 +39,7 @@ export type {
   ActionWithFullId,
   IntegrationPlugin,
   PluginAction,
+  PluginHttpConfig,
 } from "./registry";
 
 // Export the registry utilities
@@ -51,12 +55,15 @@ export {
   getAllIntegrations,
   getCredentialMapping,
   getDependenciesForActions,
+  getHttpEnabledPlugins,
   getIntegration,
   getIntegrationLabels,
   getIntegrationTypes,
   getPluginEnvVars,
+  getPluginHttpConfig,
   getSortedIntegrationTypes,
   isFieldGroup,
   parseActionId,
   registerIntegration,
+  requiresIntegration,
 } from "./registry";

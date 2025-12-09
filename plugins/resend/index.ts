@@ -41,6 +41,15 @@ const resendPlugin: IntegrationPlugin = {
     },
   },
 
+  // HTTP configuration for custom API requests
+  // Allows users to make direct API calls to Resend via HTTP Request step
+  httpConfig: {
+    baseUrl: "https://api.resend.com",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    authCredentialKey: "RESEND_API_KEY",
+  },
+
   actions: [
     {
       slug: "send-email",

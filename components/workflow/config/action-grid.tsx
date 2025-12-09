@@ -20,13 +20,6 @@ type ActionType = {
 // System actions that don't have plugins
 const SYSTEM_ACTIONS: ActionType[] = [
   {
-    id: "HTTP Request",
-    label: "HTTP Request",
-    description: "Make an HTTP request to any API",
-    category: "System",
-    icon: Zap,
-  },
-  {
     id: "Database Query",
     label: "Database Query",
     description: "Query your database",
@@ -75,7 +68,7 @@ function ActionIcon({ action }: { action: ActionType }) {
   if (action.icon) {
     return <action.icon className="size-8" />;
   }
-  return <Zap className="size-8" />;
+  return <Settings className="size-8" />;
 }
 
 export function ActionGrid({

@@ -9,6 +9,9 @@
  * TODO: Remove this file once all workflows have been migrated to the new format.
  */
 export const LEGACY_ACTION_MAPPINGS: Record<string, string> = {
+  // Native
+  "HTTP Request": "native/http-request",
+
   // Firecrawl
   Scrape: "firecrawl/scrape",
   Search: "firecrawl/search",

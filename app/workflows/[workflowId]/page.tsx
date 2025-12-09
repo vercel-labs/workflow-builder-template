@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { NodeConfigPanel } from "@/components/workflow/node-config-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { api } from "@/lib/api-client";
+import { fetchIntegrationsAtom } from "@/lib/integrations-store";
 import {
   integrationsAtom,
   integrationsLoadedAtom,
@@ -122,6 +123,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
   const setTriggerExecute = useSetAtom(triggerExecuteAtom);
   const setRightPanelWidth = useSetAtom(rightPanelWidthAtom);
   const setIsPanelAnimating = useSetAtom(isPanelAnimatingAtom);
+  const fetchIntegrations = useSetAtom(fetchIntegrationsAtom);
   const [hasSidebarBeenShown, setHasSidebarBeenShown] = useAtom(
     hasSidebarBeenShownAtom
   );
@@ -391,6 +393,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
       const storedPrompt = sessionStorage.getItem("ai-prompt");
       const storedWorkflowId = sessionStorage.getItem("generating-workflow-id");
 
+      // Prefetch integrations in parallel with workflow loading
+      fetchIntegrations();
+
       // Check if state is already loaded for this workflow
       if (currentWorkflowId === workflowId && nodes.length > 0) {
         return;
@@ -418,6 +423,7 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
     nodes.length,
     generateWorkflowFromAI,
     loadExistingWorkflow,
+    fetchIntegrations,
   ]);
 
   // Auto-fix invalid/missing integrations on workflow load or when integrations change

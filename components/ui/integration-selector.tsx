@@ -2,7 +2,7 @@
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { AlertTriangle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  fetchIntegrationsAtom,
+  integrationsAtom,
+  integrationsFetchedAtom,
+  integrationsLoadingAtom,
 import { api, type Integration } from "@/lib/api-client";
 import {
   integrationsAtom,
@@ -36,13 +41,25 @@ export function IntegrationSelector({
   label,
   disabled,
 }: IntegrationSelectorProps) {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
+  const allIntegrations = useAtomValue(integrationsAtom);
+  const loading = useAtomValue(integrationsLoadingAtom);
+  const fetched = useAtomValue(integrationsFetchedAtom);
+  const fetchIntegrations = useSetAtom(fetchIntegrationsAtom);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const integrationsVersion = useAtomValue(integrationsVersionAtom);
   const setGlobalIntegrations = useSetAtom(integrationsAtom);
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
 
+  // Filter integrations by type
+  const integrations = useMemo(
+    () => allIntegrations.filter((i) => i.type === integrationType),
+    [allIntegrations, integrationType]
+  );
+
+  // Fetch integrations on mount if not already fetched
+  useEffect(() => {
+    if (!fetched && !loading) {
+      fetchIntegrations();
   const loadIntegrations = async () => {
     try {
       setLoading(true);
@@ -61,9 +78,14 @@ export function IntegrationSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetched, loading, fetchIntegrations]);
 
+  // Auto-select if only one option and nothing selected yet
   useEffect(() => {
+    if (integrations.length === 1 && !value && fetched) {
+      onChange(integrations[0].id);
+    }
+  }, [integrations, value, fetched, onChange]);
     loadIntegrations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [integrationType, integrationsVersion]);
@@ -79,14 +101,14 @@ export function IntegrationSelector({
   };
 
   const handleNewIntegrationCreated = async (integrationId: string) => {
-    await loadIntegrations();
+    await fetchIntegrations();
     onChange(integrationId);
     setShowNewDialog(false);
     // Increment version to trigger auto-fix for other nodes that need this integration type
     setIntegrationsVersion((v) => v + 1);
   };
 
-  if (loading) {
+  if (loading || !fetched) {
     return (
       <Select disabled value="">
         <SelectTrigger className="flex-1">
