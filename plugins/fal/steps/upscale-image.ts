@@ -30,9 +30,11 @@ type FalUpscaleResponse = {
   error?: string;
 };
 
-type UpscaleImageResult =
-  | { success: true; data: { imageUrl: string; width?: number; height?: number } }
-  | { success: false; error: { message: string } };
+type UpscaleImageResult = {
+  imageUrl: string;
+  width?: number;
+  height?: number;
+};
 
 export type FalUpscaleImageCoreInput = {
   model: string;
@@ -91,13 +93,7 @@ async function stepHandler(
   const apiKey = credentials.FAL_API_KEY;
 
   if (!apiKey) {
-    return {
-      success: false,
-      error: {
-        message:
-          "FAL_API_KEY is not configured. Please add it in Project Integrations.",
-      },
-    };
+    throw new Error("FAL_API_KEY is not configured. Please add it in Project Integrations.");
   }
 
   try {
@@ -118,19 +114,13 @@ async function stepHandler(
 
     if (!response.ok) {
       const errorText = await response.text();
-      return {
-        success: false,
-        error: { message: `HTTP ${response.status}: ${errorText}` },
-      };
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const queueResponse = (await response.json()) as FalQueueResponse;
 
     let result: FalUpscaleResponse;
-    if (
-      queueResponse.status === "IN_QUEUE" ||
-      queueResponse.status === "IN_PROGRESS"
-    ) {
+    if (queueResponse.status === "IN_QUEUE" || queueResponse.status === "IN_PROGRESS") {
       result = await pollForResult(
         queueResponse.status_url,
         queueResponse.response_url,
@@ -141,29 +131,20 @@ async function stepHandler(
     }
 
     if (result.error) {
-      return { success: false, error: { message: result.error } };
+      throw new Error(result.error);
     }
 
     if (!result.image?.url) {
-      return {
-        success: false,
-        error: { message: "No image returned from fal.ai" },
-      };
+      throw new Error("No image returned from fal.ai");
     }
 
     return {
-      success: true,
-      data: {
-        imageUrl: result.image.url,
-        width: result.image.width,
-        height: result.image.height,
-      },
+      imageUrl: result.image.url,
+      width: result.image.width,
+      height: result.image.height,
     };
   } catch (error) {
-    return {
-      success: false,
-      error: { message: `Failed to upscale image: ${getErrorMessage(error)}` },
-    };
+    throw new Error(`Failed to upscale image: ${getErrorMessage(error)}`);
   }
 }
 

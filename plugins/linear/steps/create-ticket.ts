@@ -30,8 +30,8 @@ type CreateIssueMutationResponse = {
 };
 
 type CreateTicketResult =
-  | { success: true; data: { id: string; url: string; title: string } }
-  | { success: false; error: { message: string } };
+  | { success: true; id: string; url: string; title: string }
+  | { success: false; error: string };
 
 export type CreateTicketCoreInput = {
   ticketTitle: string;
@@ -77,10 +77,8 @@ async function stepHandler(
   if (!apiKey) {
     return {
       success: false,
-      error: {
-        message:
-          "LINEAR_API_KEY is not configured. Please add it in Project Integrations.",
-      },
+      error:
+        "LINEAR_API_KEY is not configured. Please add it in Project Integrations.",
     };
   }
 
@@ -96,7 +94,7 @@ async function stepHandler(
       if (teamsResult.errors?.length) {
         return {
           success: false,
-          error: { message: teamsResult.errors[0].message },
+          error: teamsResult.errors[0].message,
         };
       }
 
@@ -104,7 +102,7 @@ async function stepHandler(
       if (!firstTeam) {
         return {
           success: false,
-          error: { message: "No teams found in Linear workspace" },
+          error: "No teams found in Linear workspace",
         };
       }
       targetTeamId = firstTeam.id;
@@ -132,7 +130,7 @@ async function stepHandler(
     if (createResult.errors?.length) {
       return {
         success: false,
-        error: { message: createResult.errors[0].message },
+        error: createResult.errors[0].message,
       };
     }
 
@@ -140,22 +138,20 @@ async function stepHandler(
     if (!issue) {
       return {
         success: false,
-        error: { message: "Failed to create issue" },
+        error: "Failed to create issue",
       };
     }
 
     return {
       success: true,
-      data: {
-        id: issue.id,
-        url: issue.url,
-        title: issue.title,
-      },
+      id: issue.id,
+      url: issue.url,
+      title: issue.title,
     };
   } catch (error) {
     return {
       success: false,
-      error: { message: `Failed to create ticket: ${getErrorMessage(error)}` },
+      error: `Failed to create ticket: ${getErrorMessage(error)}`,
     };
   }
 }

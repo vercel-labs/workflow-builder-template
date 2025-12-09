@@ -1,0 +1,44 @@
+# Docker Compose configuration for DevOps AI Toolkit MCP Server
+# Development and testing deployment with MCP server + Qdrant
+
+services:
+  # DevOps AI Toolkit MCP Server
+  dot-ai:
+    image: ${DOT_AI_IMAGE:-ghcr.io/vfarcic/dot-ai:latest}
+    container_name: dot-ai
+    network_mode: "host"
+    environment:
+      # AI Provider Configuration (default: anthropic)
+      # Future: Add AI_PROVIDER variable here for alternative AI providers
+      # Required: Anthropic API key for AI analysis
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Required: OpenAI API key for embeddings (capabilities, policies, patterns)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Qdrant Vector Database connection
+      QDRANT_URL: http://localhost:${QDRANT_PORT:-6333}
+      # Kubernetes configuration
+      KUBECONFIG: /root/.kube/config
+    volumes:
+      # Mount kubeconfig - uses standard KUBECONFIG environment variable
+      - ${KUBECONFIG:-~/.kube/config}:/root/.kube/config:ro
+    depends_on:
+      - qdrant
+
+  # Qdrant Vector Database
+  qdrant:
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:latest}
+    container_name: ${QDRANT_NAME:-qdrant}
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - dot-ai-network
+
+volumes:
+  qdrant_data:
+    name: ${QDRANT_NAME:-qdrant}-data
+
+networks:
+  dot-ai-network:
+    name: dot-ai-network

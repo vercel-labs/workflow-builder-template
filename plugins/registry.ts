@@ -92,30 +92,14 @@ export type OutputField = {
 };
 
 /**
- * Result Component Props
- * Props passed to custom result components
- */
-export type ResultComponentProps = {
-  output: unknown;
-  input?: unknown;
-};
-
-/**
  * Output Display Config
  * Specifies how to render step output in the workflow runs panel
  */
-export type OutputDisplayConfig =
-  | {
-      // Built-in display types
+export type OutputDisplayConfig = {
+  // Type of display: image renders as img, video renders as video element, url renders in iframe
   type: "image" | "video" | "url";
   // Field name in the step output that contains the displayable value
   field: string;
-    }
-  | {
-      // Custom component display
-      type: "component";
-      // React component to render the output
-      component: React.ComponentType<ResultComponentProps>;
 };
 
 /**

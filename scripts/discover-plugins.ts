@@ -608,6 +608,7 @@ async function generateStepRegistry(): Promise<void> {
     integration: string;
     stepImportPath: string;
     stepFunction: string;
+    outputConfig?: { type: string; field: string };
   }> = [];
 
   for (const integration of integrations) {
@@ -619,6 +620,7 @@ async function generateStepRegistry(): Promise<void> {
         integration: integration.type,
         stepImportPath: action.stepImportPath,
         stepFunction: action.stepFunction,
+        outputConfig: action.outputConfig,
       });
     }
   }
@@ -750,7 +752,7 @@ async function generateOutputDisplayConfigs(): Promise<void> {
   );
   const integrations = getAllIntegrations();
 
-  // Collect output configs (only built-in types, not component types)
+  // Collect output configs
   const outputConfigs: Array<{
     actionId: string;
     type: string;
@@ -759,8 +761,7 @@ async function generateOutputDisplayConfigs(): Promise<void> {
 
   for (const integration of integrations) {
     for (const action of integration.actions) {
-      // Only include built-in config types (image/video/url), not component types
-      if (action.outputConfig && action.outputConfig.type !== "component") {
+      if (action.outputConfig) {
         outputConfigs.push({
           actionId: computeActionId(integration.type, action.slug),
           type: action.outputConfig.type,

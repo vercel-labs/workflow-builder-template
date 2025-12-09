@@ -27,7 +27,6 @@ import {
   executionLogsAtom,
   selectedExecutionIdAtom,
 } from "@/lib/workflow-store";
-import { findActionById } from "@/plugins";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 
@@ -69,7 +68,7 @@ function getOutputConfig(nodeType: string): OutputDisplayConfig | undefined {
 // Helper to extract the displayable value from output based on config
 function getOutputDisplayValue(
   output: unknown,
-  config: { type: "image" | "video" | "url"; field: string }
+  config: OutputDisplayConfig
 ): string | undefined {
   if (typeof output !== "object" || output === null) {
     return;
@@ -266,51 +265,31 @@ function CollapsibleSection({
 function OutputDisplay({
   output,
   input,
-  actionType,
 }: {
   output: unknown;
   input?: unknown;
-  actionType?: string;
 }) {
-  // Look up action from plugin registry to get outputConfig (including custom components)
-  const action = actionType ? findActionById(actionType) : undefined;
-  const pluginConfig = action?.outputConfig;
-
-  // Fall back to auto-generated config for legacy support (only built-in types)
-  const builtInConfig = actionType ? getOutputConfig(actionType) : undefined;
-
-  // Get the effective built-in config (plugin config if not component, else auto-generated)
-  const effectiveBuiltInConfig =
-    pluginConfig?.type !== "component" ? pluginConfig : builtInConfig;
-
-  // Get display value for built-in types (image/video/url)
-  const displayValue = effectiveBuiltInConfig
-    ? getOutputDisplayValue(output, effectiveBuiltInConfig)
+  // Get actionType from input to look up the output config
+  const actionType =
+    typeof input === "object" && input !== null
+      ? (input as Record<string, unknown>).actionType
+      : undefined;
+  const config =
+    typeof actionType === "string" ? getOutputConfig(actionType) : undefined;
+  const displayValue = config
+    ? getOutputDisplayValue(output, config)
     : undefined;
 
   // Check for legacy base64 image
-  const isLegacyBase64 =
-    !(pluginConfig || builtInConfig) && isBase64ImageOutput(output);
+  const isLegacyBase64 = !config && isBase64ImageOutput(output);
 
   const renderRichResult = () => {
-    // Priority 1: Custom component from plugin outputConfig
-    if (pluginConfig?.type === "component") {
-      const CustomComponent = pluginConfig.component;
-      return (
-        <div className="overflow-hidden rounded-lg border bg-muted/50 p-3">
-          <CustomComponent input={input} output={output} />
-        </div>
-      );
-    }
-
-    // Priority 2: Built-in output config (image/video/url)
-    if (effectiveBuiltInConfig && displayValue) {
-      switch (effectiveBuiltInConfig.type) {
+    if (config && displayValue) {
+      switch (config.type) {
         case "image": {
           // Handle base64 images by adding data URI prefix if needed
           const imageSrc =
-            effectiveBuiltInConfig.field === "base64" &&
-            !displayValue.startsWith("data:")
+            config.field === "base64" && !displayValue.startsWith("data:")
               ? `data:image/png;base64,${displayValue}`
               : displayValue;
           return (
@@ -376,12 +355,6 @@ function OutputDisplay({
   const richResult = renderRichResult();
   const hasRichResult = richResult !== null;
 
-  // Determine external link for URL type configs
-  const externalLink =
-    effectiveBuiltInConfig?.type === "url" && displayValue
-      ? displayValue
-      : undefined;
-
   return (
     <>
       {/* Always show JSON output */}
@@ -395,7 +368,7 @@ function OutputDisplay({
       {hasRichResult && (
         <CollapsibleSection
           defaultExpanded
-          externalLink={externalLink}
+          externalLink={config?.type === "url" ? displayValue : undefined}
           title="Result"
         >
           {richResult}
@@ -485,11 +458,7 @@ function ExecutionLogEntry({
               </CollapsibleSection>
             )}
             {log.output !== null && log.output !== undefined && (
-              <OutputDisplay
-                actionType={log.nodeType}
-                input={log.input}
-                output={log.output}
-              />
+              <OutputDisplay input={log.input} output={log.output} />
             )}
             {log.error && (
               <CollapsibleSection

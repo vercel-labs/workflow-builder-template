@@ -33,9 +33,11 @@ type PerplexityResponse = {
   };
 };
 
-type SearchResult =
-  | { success: true; data: { answer: string; citations: string[]; model: string } }
-  | { success: false; error: { message: string } };
+type SearchResult = {
+  answer: string;
+  citations: string[];
+  model: string;
+};
 
 export type PerplexitySearchCoreInput = {
   query: string;
@@ -57,10 +59,7 @@ async function stepHandler(
   const apiKey = credentials.PERPLEXITY_API_KEY;
 
   if (!apiKey) {
-    return {
-      success: false,
-      error: { message: "Perplexity API Key is not configured." },
-    };
+    throw new Error("Perplexity API Key is not configured.");
   }
 
   try {
@@ -90,10 +89,7 @@ async function stepHandler(
 
     if (!response.ok) {
       const errorText = await response.text();
-      return {
-        success: false,
-        error: { message: `HTTP ${response.status}: ${errorText}` },
-      };
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const result = (await response.json()) as PerplexityResponse;
@@ -104,14 +100,12 @@ async function stepHandler(
     );
 
     return {
-      success: true,
-      data: { answer, citations, model: result.model },
+      answer,
+      citations,
+      model: result.model,
     };
   } catch (error) {
-    return {
-      success: false,
-      error: { message: `Failed to search: ${getErrorMessage(error)}` },
-    };
+    throw new Error(`Failed to search: ${getErrorMessage(error)}`);
   }
 }
 

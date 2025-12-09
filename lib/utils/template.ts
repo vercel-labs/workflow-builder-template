@@ -160,33 +160,6 @@ export function processConfigTemplates(
 /**
  * Resolve a field path in data like "field.nested" or "items[0]"
  */
-/**
- * Check if data has the standardized step output format: { success: boolean, data: {...} }
- */
-function isStandardizedOutput(
-  data: unknown
-): data is { success: boolean; data: unknown } {
-  return (
-    data !== null &&
-    typeof data === "object" &&
-    "success" in data &&
-    "data" in data &&
-    typeof (data as Record<string, unknown>).success === "boolean"
-  );
-}
-
-/**
- * Unwrap standardized output to get the inner data
- * For { success: true, data: {...} } returns the inner data object
- */
-function unwrapStandardizedOutput(data: unknown): unknown {
-  if (isStandardizedOutput(data)) {
-    return data.data;
-  }
-  return data;
-}
-
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Field path resolution requires nested logic for arrays and standardized outputs
 function resolveFieldPath(data: unknown, fieldPath: string): unknown {
   if (!data) {
     return;
@@ -194,18 +167,6 @@ function resolveFieldPath(data: unknown, fieldPath: string): unknown {
 
   const parts = fieldPath.split(".");
   let current: unknown = data;
-
-  // For standardized outputs, automatically look inside data.data
-  // unless explicitly accessing 'success', 'data', or 'error'
-  const firstPart = parts[0]?.trim();
-  if (
-    isStandardizedOutput(current) &&
-    firstPart !== "success" &&
-    firstPart !== "data" &&
-    firstPart !== "error"
-  ) {
-    current = current.data;
-  }
 
   for (const part of parts) {
     const trimmedPart = part.trim();
@@ -488,13 +449,9 @@ export function getAvailableFields(nodeOutputs: NodeOutputs): Array<{
       sample: output.data,
     });
 
-    // For standardized outputs, extract fields from inside data
-    // so autocomplete shows firstName instead of data.firstName
-    const dataToExtract = unwrapStandardizedOutput(output.data);
-
     // Add individual fields if data is an object
-    if (dataToExtract && typeof dataToExtract === "object") {
-      extractFields(dataToExtract, output.label, fields, {
+    if (output.data && typeof output.data === "object") {
+      extractFields(output.data, output.label, fields, {
         currentPath: `{{${output.label}`,
       });
     }
