@@ -106,6 +106,10 @@ env:
     type: parameterStore
     name: etherscan-api-key
     parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
+  SENDGRID_API_KEY:
+    type: parameterStore
+    name: sendgrid-api-key
+    parameter_name: /eks/maker-staging/keeper-app/sendgrid-api-key
 
 externalSecrets:
   clusterSecretStoreName: maker-staging
