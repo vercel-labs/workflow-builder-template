@@ -1498,6 +1498,13 @@ function WorkflowMenuComponent({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
+  const handleWorkflowClick = (workflow: { id: string; name: string }) => {
+    if (workflow.id === state.currentWorkflowId) {
+      return;
+    }
+    state.router.push(`/workflows/${workflow.id}`);
+  };
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex h-9 max-w-[160px] items-center overflow-hidden rounded-md border bg-secondary text-secondary-foreground sm:max-w-none">
@@ -1547,6 +1554,40 @@ function WorkflowMenuComponent({
                   </DropdownMenuItem>
                 ))
             )}
+          </p>
+          <ChevronDown className="size-3 opacity-50" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          <DropdownMenuItem
+            asChild
+            className="flex items-center justify-between"
+          >
+            <a href="/">
+              New Workflow{" "}
+              {!workflowId && <Check className="size-4 shrink-0" />}
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {state.allWorkflows.length === 0 ? (
+            <DropdownMenuItem disabled>No workflows found</DropdownMenuItem>
+          ) : (
+            state.allWorkflows
+              .filter((w) => w.name !== "__current__")
+              .map((workflow) => (
+                <DropdownMenuItem
+                  className="flex items-center justify-between"
+                  key={workflow.id}
+                  onClick={() => handleWorkflowClick(workflow)}
+                >
+                  <span className="truncate">{workflow.name}</span>
+                  {workflow.id === state.currentWorkflowId && (
+                    <Check className="size-4 shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

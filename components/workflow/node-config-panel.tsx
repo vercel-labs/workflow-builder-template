@@ -1,5 +1,6 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
+  Check,
   Copy,
   Eraser,
   Eye,
@@ -49,7 +50,7 @@ import {
   showDeleteDialogAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
-import { findActionById } from "@/plugins";
+import { findActionById, getIntegration } from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -69,6 +70,46 @@ const WORD_SPLIT_REGEX = /\s+/;
 // System actions that need integrations (not in plugin registry)
 const SYSTEM_ACTION_INTEGRATIONS: Record<string, IntegrationType> = {
   "Database Query": "database",
+};
+
+// Helper to get a display label for a node
+const getNodeDisplayLabel = (
+  node:
+    | {
+        data: {
+          label?: string;
+          type: string;
+          config?: Record<string, unknown>;
+        };
+        id: string;
+      }
+    | undefined,
+  fallbackId: string
+): string => {
+  if (!node) {
+    return fallbackId;
+  }
+  if (node.data.label) {
+    return node.data.label;
+  }
+
+  if (node.data.type === "action" && node.data.config?.actionType) {
+    const actionType = node.data.config.actionType as string;
+    const action = findActionById(actionType);
+    if (action) {
+      const plugin = getIntegration(action.integration);
+      if (plugin) {
+        return `${plugin.label}: ${action.label}`;
+      }
+    }
+    return `System: ${actionType}`;
+  }
+
+  if (node.data.type === "trigger" && node.data.config?.triggerType) {
+    return `Trigger: ${node.data.config.triggerType as string}`;
+  }
+
+  return node.id;
 };
 
 // Multi-selection panel component
@@ -173,6 +214,8 @@ export const PanelInner = () => {
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
   const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copiedNode, setCopiedNode] = useState(false);
+  const [copiedWorkflow, setCopiedWorkflow] = useState(false);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
   const autoSelectAbortControllersRef = useRef<Record<string, AbortController>>(
@@ -284,15 +327,28 @@ export const PanelInner = () => {
     return code;
   }, [nodes, edges, currentWorkflowName]);
 
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
     if (selectedNode) {
-      navigator.clipboard.writeText(generateNodeCode(selectedNode));
+      try {
+        await navigator.clipboard.writeText(generateNodeCode(selectedNode));
+        setCopiedNode(true);
+        setTimeout(() => setCopiedNode(false), 2000);
+      } catch (error) {
+        console.error("Failed to copy:", error);
+        toast.error("Failed to copy code to clipboard");
+      }
     }
   };
 
-  const handleCopyWorkflowCode = () => {
-    navigator.clipboard.writeText(workflowCode);
-    toast.success("Code copied to clipboard");
+  const handleCopyWorkflowCode = async () => {
+    try {
+      await navigator.clipboard.writeText(workflowCode);
+      setCopiedWorkflow(true);
+      setTimeout(() => setCopiedWorkflow(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error("Failed to copy code to clipboard");
+    }
   };
 
   const handleDelete = () => {
@@ -487,43 +543,93 @@ export const PanelInner = () => {
   }
 
   // If an edge is selected, show edge properties
+
   if (selectedEdge) {
+    const sourceNode = nodes.find((node) => node.id === selectedEdge.source);
+    const targetNode = nodes.find((node) => node.id === selectedEdge.target);
+    const sourceLabel = getNodeDisplayLabel(sourceNode, selectedEdge.source);
+    const targetLabel = getNodeDisplayLabel(targetNode, selectedEdge.target);
+
     return (
       <>
-        <div className="flex size-full flex-col">
-          <div className="flex h-14 w-full shrink-0 items-center border-b bg-transparent px-4">
-            <h2 className="font-semibold text-foreground">Properties</h2>
-          </div>
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            <div className="space-y-2">
-              <Label className="ml-1" htmlFor="edge-id">
-                Edge ID
-              </Label>
-              <Input disabled id="edge-id" value={selectedEdge.id} />
-            </div>
-            <div className="space-y-2">
-              <Label className="ml-1" htmlFor="edge-source">
-                Source
-              </Label>
-              <Input disabled id="edge-source" value={selectedEdge.source} />
-            </div>
-            <div className="space-y-2">
-              <Label className="ml-1" htmlFor="edge-target">
-                Target
-              </Label>
-              <Input disabled id="edge-target" value={selectedEdge.target} />
-            </div>
-          </div>
-          <div className="shrink-0 border-t p-4">
-            <Button
-              onClick={() => setShowDeleteEdgeAlert(true)}
-              size="icon"
-              variant="ghost"
+        <Tabs
+          className="size-full"
+          defaultValue="properties"
+          onValueChange={setActiveTab}
+          value={activeTab}
+        >
+          <TabsList className="h-14 w-full shrink-0 rounded-none border-b bg-transparent px-4 py-2.5">
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="properties"
             >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
-        </div>
+              Properties
+            </TabsTrigger>
+            <TabsTrigger
+              className="bg-transparent text-muted-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              value="runs"
+            >
+              Runs
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent
+            className="flex flex-col overflow-hidden"
+            value="properties"
+          >
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-source">
+                  From
+                </Label>
+                <Input disabled id="edge-source" value={sourceLabel} />
+              </div>
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-target">
+                  To
+                </Label>
+                <Input disabled id="edge-target" value={targetLabel} />
+              </div>
+              <div className="space-y-2">
+                <Label className="ml-1" htmlFor="edge-id">
+                  Edge ID
+                </Label>
+                <Input disabled id="edge-id" value={selectedEdge.id} />
+              </div>
+            </div>
+            <div className="shrink-0 border-t p-4">
+              <Button
+                onClick={() => setShowDeleteEdgeAlert(true)}
+                size="icon"
+                title="Delete connection"
+                variant="ghost"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          </TabsContent>
+          <TabsContent className="flex flex-col overflow-hidden" value="runs">
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              <WorkflowRuns
+                connectionNodeIds={[selectedEdge.source, selectedEdge.target]}
+                isActive={activeTab === "runs"}
+                onRefreshRef={refreshRunsRef}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border-t p-4">
+              <Button
+                disabled={isRefreshing}
+                onClick={handleRefreshRuns}
+                size="icon"
+                title="Refresh runs"
+                variant="ghost"
+              >
+                <RefreshCw
+                  className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <AlertDialog
           onOpenChange={setShowDeleteEdgeAlert}
@@ -531,7 +637,7 @@ export const PanelInner = () => {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Edge</AlertDialogTitle>
+              <AlertDialogTitle>Delete Connection</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete this connection? This action
                 cannot be undone.
@@ -699,9 +805,14 @@ export const PanelInner = () => {
               <Button
                 onClick={handleCopyWorkflowCode}
                 size="icon"
+                title="Copy code"
                 variant="ghost"
               >
-                <Copy className="size-4" />
+                {copiedWorkflow ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
               </Button>
             </div>
           </TabsContent>
@@ -831,10 +942,10 @@ export const PanelInner = () => {
                     disabled={isGenerating || !isOwner}
                     id="label"
                     onChange={(e) => handleUpdateLabel(e.target.value)}
+                    placeholder="e.g. Send welcome email"
                     value={selectedNode.data.label}
                   />
                 </div>
-
                 <div className="space-y-2">
                   <Label className="ml-1" htmlFor="description">
                     Description
@@ -843,7 +954,7 @@ export const PanelInner = () => {
                     disabled={isGenerating || !isOwner}
                     id="description"
                     onChange={(e) => handleUpdateDescription(e.target.value)}
-                    placeholder="Optional description"
+                    placeholder="e.g. Sends a welcome email to new users"
                     value={selectedNode.data.description || ""}
                   />
                 </div>
@@ -990,9 +1101,17 @@ export const PanelInner = () => {
                   />
                 </div>
                 <div className="shrink-0 border-t p-4">
-                  <Button onClick={handleCopyCode} size="sm" variant="ghost">
-                    <Copy className="mr-2 size-4" />
-                    Copy Code
+                  <Button
+                    onClick={handleCopyCode}
+                    size="icon"
+                    title="Copy code"
+                    variant="ghost"
+                  >
+                    {copiedNode ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
                   </Button>
                 </div>
               </>
