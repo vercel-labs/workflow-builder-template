@@ -1,0 +1,84 @@
+import "server-only";
+
+import { fetchCredentials } from "@/lib/credential-fetcher";
+import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
+import type { InstantlyCredentials } from "../credentials";
+
+const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
+
+type ResumeAccountResult =
+  | { success: true; email: string; status: string }
+  | { success: false; error: string };
+
+export type ResumeAccountCoreInput = {
+  email: string;
+};
+
+export type ResumeAccountInput = StepInput &
+  ResumeAccountCoreInput & {
+    integrationId?: string;
+  };
+
+async function stepHandler(
+  input: ResumeAccountCoreInput,
+  credentials: InstantlyCredentials
+): Promise<ResumeAccountResult> {
+  const apiKey = credentials.INSTANTLY_API_KEY;
+
+  if (!apiKey) {
+    return { success: false, error: "INSTANTLY_API_KEY is required" };
+  }
+
+  if (!input.email) {
+    return { success: false, error: "Email is required" };
+  }
+
+  try {
+    const response = await fetch(
+      `${INSTANTLY_API_URL}/accounts/${encodeURIComponent(input.email)}/resume`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { success: false, error: "Account not found" };
+      }
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Failed to resume account: ${response.status} - ${errorText}`,
+      };
+    }
+
+    return {
+      success: true,
+      email: input.email,
+      status: "active",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: `Failed to resume account: ${message}` };
+  }
+}
+
+export async function resumeAccountStep(
+  input: ResumeAccountInput
+): Promise<ResumeAccountResult> {
+  "use step";
+
+  const credentials = input.integrationId
+    ? await fetchCredentials(input.integrationId)
+    : {};
+
+  return withStepLogging(input, () => stepHandler(input, credentials));
+}
+resumeAccountStep.maxRetries = 0;
+
+export const _integrationType = "instantly";
+
