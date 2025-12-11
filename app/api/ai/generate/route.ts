@@ -1,4 +1,6 @@
 import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
@@ -267,15 +269,66 @@ export async function POST(request: Request) {
       );
     }
 
-    const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY;
+    // Determine which AI provider and model to use
+    // AI_MODEL env var can be:
+    // - "openai/gpt-4" (uses AI Gateway)
+    // - "gpt-4o" (uses OpenAI directly)
+    // - "claude-3-5-sonnet-20241022" (uses Anthropic directly)
+    const modelString = process.env.AI_MODEL || "gpt-4o";
 
-    if (!apiKey) {
-      return NextResponse.json(
-        {
-          error: "AI API key not configured on server. Please contact support.",
-        },
-        { status: 500 }
-      );
+    // Check available API keys
+    const aiGatewayKey = process.env.AI_GATEWAY_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+    let model: any;
+
+    if (modelString.includes("/")) {
+      // Model has provider prefix (e.g., "openai/gpt-4") - use AI Gateway mode
+      if (!aiGatewayKey) {
+        return NextResponse.json(
+          {
+            error: "AI Gateway API key not configured. Set AI_GATEWAY_API_KEY environment variable.",
+          },
+          { status: 500 }
+        );
+      }
+      // Use model string directly - AI SDK will route through gateway
+      model = modelString;
+    } else {
+      // Direct provider mode - determine provider from model name
+      if (modelString.startsWith("gpt-") || modelString.startsWith("o1-")) {
+        if (!openaiKey) {
+          return NextResponse.json(
+            {
+              error: "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+            },
+            { status: 500 }
+          );
+        }
+        model = openai(modelString, { apiKey: openaiKey });
+      } else if (modelString.startsWith("claude-")) {
+        if (!anthropicKey) {
+          return NextResponse.json(
+            {
+              error: "Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable.",
+            },
+            { status: 500 }
+          );
+        }
+        model = anthropic(modelString, { apiKey: anthropicKey });
+      } else {
+        // Default to OpenAI for unknown models
+        if (!openaiKey) {
+          return NextResponse.json(
+            {
+              error: "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
+            },
+            { status: 500 }
+          );
+        }
+        model = openai(modelString, { apiKey: openaiKey });
+      }
     }
 
     // Build the user prompt
@@ -326,7 +379,7 @@ Example: If user says "connect node A to node B", output:
     }
 
     const result = streamText({
-      model: "openai/gpt-5.1-instant",
+      model,
       system: getSystemPrompt(),
       prompt: userPrompt,
     });

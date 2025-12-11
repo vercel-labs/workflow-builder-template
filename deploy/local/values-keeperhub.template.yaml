@@ -50,10 +50,23 @@ env:
   NEXT_PUBLIC_APP_URL:
     type: kv
     value: "https://workflow.keeperhub.local"
-  # AI Gateway (OpenAI API key) - set a real key for AI features
+  # AI Configuration - Choose ONE based on your setup:
+  # Option 1: Vercel AI Gateway API key
   AI_GATEWAY_API_KEY:
     type: kv
     value: ""
+  # Option 2: Direct OpenAI API key
+  OPENAI_API_KEY:
+    type: kv
+    value: ""
+  # Option 3: Direct Anthropic API key
+  ANTHROPIC_API_KEY:
+    type: kv
+    value: ""
+  # AI_MODEL: Which model to use (default: gpt-4o)
+  AI_MODEL:
+    type: kv
+    value: "gpt-4o"
   # Para Wallet Configuration
   PARA_API_KEY:
     type: kv

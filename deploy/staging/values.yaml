@@ -95,10 +95,14 @@ env:
     type: parameterStore
     name: better-auth-secret
     parameter_name: /eks/maker-staging/keeperhub/better-auth-secret
-  AI_GATEWAY_API_KEY:
+  OPENAI_API_KEY:
     type: parameterStore
-    name: ai-gateway-api-key
-    parameter_name: /eks/maker-staging/keeperhub/ai-gateway-api-key
+    name: openai-api-key
+    parameter_name: /eks/maker-staging/keeperhub/openai-api-key
+  # Examples: "gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet-20241022", "openai/gpt-4" (gateway)
+  AI_MODEL:
+    type: kv
+    value: "gpt-4o"
   PARA_API_KEY:
     type: parameterStore
     name: para-api-key

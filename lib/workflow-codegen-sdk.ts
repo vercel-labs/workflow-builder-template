@@ -272,30 +272,49 @@ export function generateWorkflowSDKCode(
 
   function buildAITextParams(config: Record<string, unknown>): string[] {
     imports.add("import { generateText } from 'ai';");
-    const modelId = (config.aiModel as string) || "meta/llama-4-scout";
+    const modelId = (config.aiModel as string) || "gpt-4o";
 
-    // Determine the full model string with provider
-    // If the model already contains a "/", it already has a provider prefix, so use as-is
-    let modelString: string;
+    // Determine provider and model for direct provider usage
+    let providerImport: string;
+    let providerCall: string;
+    let cleanModelId: string;
+
     if (modelId.includes("/")) {
-      modelString = modelId;
-    } else {
-      // Infer provider from model name for models without provider prefix
-      let provider: string;
-      if (modelId.startsWith("gpt-") || modelId.startsWith("o1-")) {
-        provider = "openai";
-      } else if (modelId.startsWith("claude-")) {
-        provider = "anthropic";
+      // Model already has provider prefix (e.g., "openai/gpt-4")
+      const [provider, model] = modelId.split("/", 2);
+      cleanModelId = model;
+      if (provider === "openai") {
+        providerImport = "import { openai } from '@ai-sdk/openai';";
+        providerCall = `openai("${cleanModelId}", { apiKey: process.env.OPENAI_API_KEY! })`;
+      } else if (provider === "anthropic") {
+        providerImport = "import { anthropic } from '@ai-sdk/anthropic';";
+        providerCall = `anthropic("${cleanModelId}", { apiKey: process.env.ANTHROPIC_API_KEY! })`;
       } else {
-        provider = "openai"; // default to openai
+        // Default to openai
+        providerImport = "import { openai } from '@ai-sdk/openai';";
+        providerCall = `openai("${cleanModelId}", { apiKey: process.env.OPENAI_API_KEY! })`;
       }
-      modelString = `${provider}/${modelId}`;
+    } else {
+      // Infer provider from model name
+      cleanModelId = modelId;
+      if (modelId.startsWith("gpt-") || modelId.startsWith("o1-")) {
+        providerImport = "import { openai } from '@ai-sdk/openai';";
+        providerCall = `openai("${cleanModelId}", { apiKey: process.env.OPENAI_API_KEY! })`;
+      } else if (modelId.startsWith("claude-")) {
+        providerImport = "import { anthropic } from '@ai-sdk/anthropic';";
+        providerCall = `anthropic("${cleanModelId}", { apiKey: process.env.ANTHROPIC_API_KEY! })`;
+      } else {
+        // Default to openai
+        providerImport = "import { openai } from '@ai-sdk/openai';";
+        providerCall = `openai("${cleanModelId}", { apiKey: process.env.OPENAI_API_KEY! })`;
+      }
     }
 
+    imports.add(providerImport);
+
     return [
-      `model: "${modelString}"`,
+      `model: ${providerCall}`,
       `prompt: \`${convertTemplateToJS((config.aiPrompt as string) || "")}\``,
-      "apiKey: process.env.OPENAI_API_KEY!",
     ];
   }
 

@@ -48,8 +48,20 @@ DATABASE_URL=postgresql://user:password@localhost:5432/workflow_builder
 BETTER_AUTH_SECRET=your-secret-key
 BETTER_AUTH_URL=http://localhost:3000
 
-# AI Gateway (for AI workflow generation)
-AI_GATEWAY_API_KEY=your-openai-api-key
+# AI Configuration - Choose ONE option based on your setup:
+
+# Option 1: Vercel AI Gateway (recommended for production)
+# Provides caching, rate limiting, and monitoring across multiple AI providers
+# AI_GATEWAY_API_KEY=your-vercel-ai-gateway-key
+# AI_MODEL=openai/gpt-4o  # Use provider/model format for gateway
+
+# Option 2: Direct OpenAI API (simple, no Vercel account needed)
+OPENAI_API_KEY=your-openai-api-key
+AI_MODEL=gpt-4o  # Options: gpt-4o, gpt-4o-mini, gpt-3.5-turbo
+
+# Option 3: Direct Anthropic API
+# ANTHROPIC_API_KEY=your-anthropic-api-key
+# AI_MODEL=claude-3-5-sonnet-20241022  # Or other Claude models
 ```
 
 ### Installation

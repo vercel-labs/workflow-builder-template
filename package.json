@@ -21,6 +21,8 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.54",
+    "@ai-sdk/openai": "^2.0.80",
     "@ai-sdk/provider": "^2.0.0",
     "@getpara/ethers-v6-integration": "2.0.0-alpha.69",
     "@getpara/server-sdk": "2.0.0-alpha.69",
