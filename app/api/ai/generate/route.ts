@@ -1,6 +1,6 @@
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
-import type { LanguageModelV1 } from "@ai-sdk/provider";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModelV2 } from "@ai-sdk/provider";
 import { streamText } from "ai";
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
@@ -256,7 +256,7 @@ function getAIModel(
   openaiKey: string | undefined,
   anthropicKey: string | undefined
 ):
-  | { success: true; model: LanguageModelV1 | string }
+  | { success: true; model: LanguageModelV2 | string }
   | { success: false; error: string } {
   // AI Gateway mode - model has provider prefix (e.g., "openai/gpt-4")
   if (modelString.includes("/")) {
@@ -280,7 +280,8 @@ function getAIModel(
           "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
       };
     }
-    return { success: true, model: openai(modelString, { apiKey: openaiKey }) };
+    const provider = createOpenAI({ apiKey: openaiKey });
+    return { success: true, model: provider(modelString) };
   }
 
   if (modelString.startsWith("claude-")) {
@@ -291,9 +292,10 @@ function getAIModel(
           "Anthropic API key not configured. Set ANTHROPIC_API_KEY environment variable.",
       };
     }
+    const provider = createAnthropic({ apiKey: anthropicKey });
     return {
       success: true,
-      model: anthropic(modelString, { apiKey: anthropicKey }),
+      model: provider(modelString),
     };
   }
 
@@ -305,7 +307,8 @@ function getAIModel(
         "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
     };
   }
-  return { success: true, model: openai(modelString, { apiKey: openaiKey }) };
+  const provider = createOpenAI({ apiKey: openaiKey });
+  return { success: true, model: provider(modelString) };
 }
 
 export async function POST(request: Request) {

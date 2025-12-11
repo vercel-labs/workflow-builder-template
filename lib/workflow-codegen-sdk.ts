@@ -296,14 +296,14 @@ export function generateWorkflowSDKCode(
   ): { providerImport: string; providerCall: string } {
     if (provider === "anthropic") {
       return {
-        providerImport: "import { anthropic } from '@ai-sdk/anthropic';",
-        providerCall: `anthropic("${model}", { apiKey: process.env.ANTHROPIC_API_KEY! })`,
+        providerImport: "import { createAnthropic } from '@ai-sdk/anthropic';",
+        providerCall: `createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })("${model}")`,
       };
     }
     // Default to openai for any other provider
     return {
-      providerImport: "import { openai } from '@ai-sdk/openai';",
-      providerCall: `openai("${model}", { apiKey: process.env.OPENAI_API_KEY! })`,
+      providerImport: "import { createOpenAI } from '@ai-sdk/openai';",
+      providerCall: `createOpenAI({ apiKey: process.env.OPENAI_API_KEY! })("${model}")`,
     };
   }
 
