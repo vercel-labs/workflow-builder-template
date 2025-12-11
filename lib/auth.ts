@@ -147,11 +147,14 @@ export const auth = betterAuth({
   onAPIError: {
     onError: (error, ctx) => {
       console.error("[Better Auth API Error]", {
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        } : error,
+        error:
+          error instanceof Error
+            ? {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+              }
+            : error,
         context: ctx,
       });
     },
