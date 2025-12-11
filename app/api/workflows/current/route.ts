@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
@@ -43,16 +44,7 @@ export async function GET(request: Request) {
       edges: currentWorkflow.edges,
     });
   } catch (error) {
-    console.error("Failed to get current workflow:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get current workflow",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to get current workflow");
   }
 }
 
@@ -128,15 +120,6 @@ export async function POST(request: Request) {
       edges: savedWorkflow.edges,
     });
   } catch (error) {
-    console.error("Failed to save current workflow:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to save current workflow",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to save current workflow");
   }
 }

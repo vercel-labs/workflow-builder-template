@@ -1,6 +1,7 @@
 import { Environment, Para as ParaServer } from "@getpara/server-sdk";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createIntegration } from "@/lib/db/integrations";
@@ -188,13 +189,7 @@ export async function GET(request: Request) {
       createdAt: wallet.createdAt,
     });
   } catch (error) {
-    console.error("Failed to get wallet:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Failed to get wallet",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to get wallet");
   }
 }
 
@@ -293,13 +288,6 @@ export async function DELETE(request: Request) {
       message: "Wallet deleted successfully",
     });
   } catch (error) {
-    console.error("[Para] Wallet deletion failed:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to delete wallet",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to delete wallet");
   }
 }

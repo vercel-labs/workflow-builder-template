@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflowExecutionLogs, workflowExecutions } from "@/lib/db/schema";
@@ -58,15 +59,6 @@ export async function GET(
       logs: redactedLogs,
     });
   } catch (error) {
-    console.error("Failed to get execution logs:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get execution logs",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to get execution logs");
   }
 }

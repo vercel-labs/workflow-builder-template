@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { validateWorkflowIntegrations } from "@/lib/db/integrations";
@@ -140,13 +141,6 @@ export async function POST(
       status: "running",
     });
   } catch (error) {
-    console.error("Failed to start workflow execution:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to execute workflow",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to start workflow execution");
   }
 }

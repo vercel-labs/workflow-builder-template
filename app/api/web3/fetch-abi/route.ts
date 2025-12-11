@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
@@ -259,19 +260,6 @@ export async function POST(request: Request) {
       abi,
     });
   } catch (error) {
-    console.error("[Etherscan] Failed to fetch ABI:", error);
-    console.error(
-      "[Etherscan] Error stack:",
-      error instanceof Error ? error.stack : "No stack"
-    );
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch ABI from Etherscan",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to fetch ABI from Etherscan");
   }
 }

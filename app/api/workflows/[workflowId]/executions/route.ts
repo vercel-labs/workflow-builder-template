@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflowExecutions, workflows } from "@/lib/db/schema";
@@ -42,14 +43,7 @@ export async function GET(
 
     return NextResponse.json(executions);
   } catch (error) {
-    console.error("Failed to get executions:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to get executions",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to get executions");
   }
 }
 
@@ -110,15 +104,6 @@ export async function DELETE(
       deletedCount: executionIds.length,
     });
   } catch (error) {
-    console.error("Failed to delete executions:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete executions",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to delete executions");
   }
 }

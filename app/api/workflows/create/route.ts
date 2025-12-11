@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { validateWorkflowIntegrations } from "@/lib/db/integrations";
@@ -91,13 +92,6 @@ export async function POST(request: Request) {
       updatedAt: newWorkflow.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error("Failed to create workflow:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to create workflow",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to create workflow");
   }
 }

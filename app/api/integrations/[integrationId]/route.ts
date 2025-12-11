@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import {
   deleteIntegration,
@@ -59,14 +60,7 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Failed to get integration:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to get integration",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to get integration");
   }
 }
 
@@ -114,14 +108,7 @@ export async function PUT(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Failed to update integration:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to update integration",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to update integration");
   }
 }
 
@@ -154,13 +141,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete integration:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to delete integration",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to delete integration");
   }
 }

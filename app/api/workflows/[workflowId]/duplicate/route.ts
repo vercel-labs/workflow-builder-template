@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/api-error";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
@@ -151,15 +152,6 @@ export async function POST(
       isOwner: true,
     });
   } catch (error) {
-    console.error("Failed to duplicate workflow:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to duplicate workflow",
-      },
-      { status: 500 }
-    );
+    return apiError(error, "Failed to duplicate workflow");
   }
 }
