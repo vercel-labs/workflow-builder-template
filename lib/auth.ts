@@ -152,8 +152,7 @@ export const auth = betterAuth({
           stack: error.stack,
           name: error.name,
         } : error,
-        path: ctx.request?.url,
-        method: ctx.request?.method,
+        context: ctx,
       });
     },
   },
