@@ -106,10 +106,14 @@ env:
     type: parameterStore
     name: etherscan-api-key
     parameter_name: /eks/maker-staging/keeper-app/etherscan-api-key
+  # TODO rename the path
   SENDGRID_API_KEY:
     type: parameterStore
     name: sendgrid-api-key
     parameter_name: /eks/maker-staging/keeper-app/sendgrid-api-key
+  FROM_ADDRESS:
+    type: kv
+    value: "noreply@keeperhub.com"
 
 externalSecrets:
   clusterSecretStoreName: maker-staging
