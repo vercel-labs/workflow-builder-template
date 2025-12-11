@@ -156,5 +156,14 @@ export const auth = betterAuth({
       enabled: !!process.env.GOOGLE_CLIENT_ID,
     },
   },
+  advanced: {
+    // Use secure cookies in production (HTTPS only)
+    useSecureCookies: process.env.NODE_ENV === "production",
+  },
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://workflows-staging.keeperhub.com",
+    "https://*.keeperhub.com",
+  ],
   plugins,
 });
