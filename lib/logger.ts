@@ -20,6 +20,11 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   silent: 4,
 };
 
+// Regex patterns for stack trace parsing (top-level for performance)
+const STACK_PATTERN_PARENS = /\((.+):(\d+):\d+\)$/;
+const STACK_PATTERN_AT = /at (.+):(\d+):\d+$/;
+const PATH_STRIP_PATTERN = /^.*\//;
+
 function getLogLevel(): LogLevel {
   const level = (process.env.LOG_LEVEL || "info").toLowerCase() as LogLevel;
   return LOG_LEVELS[level] !== undefined ? level : "info";
@@ -31,7 +36,7 @@ function shouldLog(level: LogLevel): boolean {
 }
 
 function getCallerLocation(): string {
-  const err = new Error();
+  const err = new Error("stack");
   const stack = err.stack?.split("\n") || [];
   // Stack: Error -> getCallerLocation -> formatArgs -> console.X wrapper -> actual caller
   // We want index 4 (the actual caller)
@@ -39,11 +44,12 @@ function getCallerLocation(): string {
 
   // Extract file:line from stack trace
   // Formats: "at functionName (file:line:col)" or "at file:line:col"
-  const match = callerLine.match(/\((.+):(\d+):\d+\)$/) ||
-                callerLine.match(/at (.+):(\d+):\d+$/);
+  const match =
+    callerLine.match(STACK_PATTERN_PARENS) ||
+    callerLine.match(STACK_PATTERN_AT);
 
   if (match) {
-    const file = match[1].replace(/^.*\//, ""); // Get just filename
+    const file = match[1].replace(PATH_STRIP_PATTERN, ""); // Get just filename
     const line = match[2];
     return `${file}:${line}`;
   }
