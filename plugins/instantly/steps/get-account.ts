@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type GetAccountResult =
-  | { success: true; email: string; status: string; warmupEnabled: boolean }
-  | { success: false; error: string };
+  | { success: true; data: { email: string; status: string; warmupEnabled: boolean } }
+  | { success: false; error: { message: string } };
 
 export type GetAccountCoreInput = {
   email: string;
@@ -26,11 +26,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.email) {
-    return { success: false, error: "Email is required" };
+    return { success: false, error: { message: "Email is required" } };
   }
 
   try {
@@ -47,16 +47,16 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Account not found" };
+        return { success: false, error: { message: "Account not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to get account: ${response.status} - ${errorText}`,
+        error: { message: `Failed to get account: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as {
+    const responseData = (await response.json()) as {
       email: string;
       status: string;
       warmup_enabled?: boolean;
@@ -64,13 +64,15 @@ async function stepHandler(
 
     return {
       success: true,
-      email: data.email,
-      status: data.status || "unknown",
-      warmupEnabled: data.warmup_enabled || false,
+      data: {
+        email: responseData.email,
+        status: responseData.status || "unknown",
+        warmupEnabled: responseData.warmup_enabled || false,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to get account: ${message}` };
+    return { success: false, error: { message: `Failed to get account: ${message}` } };
   }
 }
 

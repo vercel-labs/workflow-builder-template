@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type DeleteLeadResult =
-  | { success: true; deleted: boolean }
-  | { success: false; error: string };
+  | { success: true; data: { deleted: boolean } }
+  | { success: false; error: { message: string } };
 
 export type DeleteLeadCoreInput = {
   leadId: string;
@@ -26,11 +26,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.leadId) {
-    return { success: false, error: "Lead ID is required" };
+    return { success: false, error: { message: "Lead ID is required" } };
   }
 
   try {
@@ -43,22 +43,22 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Lead not found" };
+        return { success: false, error: { message: "Lead not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to delete lead: ${response.status} - ${errorText}`,
+        error: { message: `Failed to delete lead: ${response.status} - ${errorText}` },
       };
     }
 
     return {
       success: true,
-      deleted: true,
+      data: { deleted: true },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to delete lead: ${message}` };
+    return { success: false, error: { message: `Failed to delete lead: ${message}` } };
   }
 }
 

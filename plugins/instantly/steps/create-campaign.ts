@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type CreateCampaignResult =
-  | { success: true; id: string; name: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; name: string } }
+  | { success: false; error: { message: string } };
 
 export type CreateCampaignCoreInput = {
   name: string;
@@ -26,11 +26,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.name) {
-    return { success: false, error: "Campaign name is required" };
+    return { success: false, error: { message: "Campaign name is required" } };
   }
 
   try {
@@ -74,20 +74,22 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to create campaign: ${response.status} - ${errorText}`,
+        error: { message: `Failed to create campaign: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id: string; name: string };
+    const responseData = (await response.json()) as { id: string; name: string };
 
     return {
       success: true,
-      id: data.id,
-      name: data.name,
+      data: {
+        id: responseData.id,
+        name: responseData.name,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to create campaign: ${message}` };
+    return { success: false, error: { message: `Failed to create campaign: ${message}` } };
   }
 }
 

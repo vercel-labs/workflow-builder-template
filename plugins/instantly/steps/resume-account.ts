@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type ResumeAccountResult =
-  | { success: true; email: string; status: string }
-  | { success: false; error: string };
+  | { success: true; data: { email: string; status: string } }
+  | { success: false; error: { message: string } };
 
 export type ResumeAccountCoreInput = {
   email: string;
@@ -26,11 +26,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.email) {
-    return { success: false, error: "Email is required" };
+    return { success: false, error: { message: "Email is required" } };
   }
 
   try {
@@ -46,23 +46,25 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Account not found" };
+        return { success: false, error: { message: "Account not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to resume account: ${response.status} - ${errorText}`,
+        error: { message: `Failed to resume account: ${response.status} - ${errorText}` },
       };
     }
 
     return {
       success: true,
-      email: input.email,
-      status: "active",
+      data: {
+        email: input.email,
+        status: "active",
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to resume account: ${message}` };
+    return { success: false, error: { message: `Failed to resume account: ${message}` } };
   }
 }
 

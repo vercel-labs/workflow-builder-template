@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type UpdateLeadStatusResult =
-  | { success: true; id: string; status: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; status: string } }
+  | { success: false; error: { message: string } };
 
 export type UpdateLeadStatusCoreInput = {
   campaignId: string;
@@ -28,20 +28,33 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.campaignId) {
-    return { success: false, error: "Campaign ID is required" };
+    return { success: false, error: { message: "Campaign ID is required" } };
   }
 
   if (!input.email) {
-    return { success: false, error: "Email is required" };
+    return { success: false, error: { message: "Email is required" } };
   }
 
   if (!input.status) {
-    return { success: false, error: "Status is required" };
+    return { success: false, error: { message: "Status is required" } };
   }
+
+  // Map string status to numeric value
+  const statusMap: Record<string, number> = {
+    interested: 1,
+    not_interested: -1,
+    meeting_booked: 2,
+    meeting_completed: 3,
+    closed: 4,
+    out_of_office: 0,
+    wrong_person: -2,
+  };
+
+  const interestValue = statusMap[input.status] ?? 1;
 
   try {
     const response = await fetch(
@@ -54,8 +67,8 @@ async function stepHandler(
         },
         body: JSON.stringify({
           campaign_id: input.campaignId,
-          email: input.email,
-          interest_status: input.status,
+          lead_email: input.email,
+          interest_value: interestValue,
         }),
       }
     );
@@ -64,20 +77,22 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to update lead status: ${response.status} - ${errorText}`,
+        error: { message: `Failed to update lead status: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id?: string };
+    const responseData = (await response.json()) as { id?: string };
 
     return {
       success: true,
-      id: data.id || input.email,
-      status: input.status,
+      data: {
+        id: responseData.id || input.email,
+        status: input.status,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to update lead status: ${message}` };
+    return { success: false, error: { message: `Failed to update lead status: ${message}` } };
   }
 }
 

@@ -13,8 +13,8 @@ type Account = {
 };
 
 type ListAccountsResult =
-  | { success: true; accounts: Account[]; total: number }
-  | { success: false; error: string };
+  | { success: true; data: { accounts: Account[]; total: number } }
+  | { success: false; error: { message: string } };
 
 export type ListAccountsCoreInput = {
   limit?: number;
@@ -32,7 +32,7 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   try {
@@ -54,11 +54,11 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to list accounts: ${response.status} - ${errorText}`,
+        error: { message: `Failed to list accounts: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as {
+    const responseData = (await response.json()) as {
       items: Array<{
         email: string;
         status: string;
@@ -67,7 +67,7 @@ async function stepHandler(
       total_count?: number;
     };
 
-    const accounts: Account[] = data.items.map((item) => ({
+    const accounts: Account[] = responseData.items.map((item) => ({
       email: item.email,
       status: item.status || "unknown",
       warmupEnabled: item.warmup_enabled || false,
@@ -75,12 +75,14 @@ async function stepHandler(
 
     return {
       success: true,
-      accounts,
-      total: data.total_count || accounts.length,
+      data: {
+        accounts,
+        total: responseData.total_count || accounts.length,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to list accounts: ${message}` };
+    return { success: false, error: { message: `Failed to list accounts: ${message}` } };
   }
 }
 

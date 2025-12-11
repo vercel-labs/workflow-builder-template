@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type UpdateLeadResult =
-  | { success: true; id: string; email: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; email: string } }
+  | { success: false; error: { message: string } };
 
 export type UpdateLeadCoreInput = {
   leadId: string;
@@ -30,11 +30,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.leadId) {
-    return { success: false, error: "Lead ID is required" };
+    return { success: false, error: { message: "Lead ID is required" } };
   }
 
   try {
@@ -43,7 +43,7 @@ async function stepHandler(
       try {
         customVars = JSON.parse(input.customVariables);
       } catch {
-        return { success: false, error: "Invalid JSON in custom variables" };
+        return { success: false, error: { message: "Invalid JSON in custom variables" } };
       }
     }
 
@@ -65,25 +65,27 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Lead not found" };
+        return { success: false, error: { message: "Lead not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to update lead: ${response.status} - ${errorText}`,
+        error: { message: `Failed to update lead: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id: string; email: string };
+    const responseData = (await response.json()) as { id: string; email: string };
 
     return {
       success: true,
-      id: data.id,
-      email: data.email,
+      data: {
+        id: responseData.id,
+        email: responseData.email,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to update lead: ${message}` };
+    return { success: false, error: { message: `Failed to update lead: ${message}` } };
   }
 }
 

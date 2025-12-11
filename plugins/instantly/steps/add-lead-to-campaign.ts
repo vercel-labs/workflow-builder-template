@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type AddLeadToCampaignResult =
-  | { success: true; id: string; campaignId: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; campaignId: string } }
+  | { success: false; error: { message: string } };
 
 export type AddLeadToCampaignCoreInput = {
   campaignId: string;
@@ -27,15 +27,15 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.campaignId) {
-    return { success: false, error: "Campaign ID is required" };
+    return { success: false, error: { message: "Campaign ID is required" } };
   }
 
   if (!input.email) {
-    return { success: false, error: "Email is required" };
+    return { success: false, error: { message: "Email is required" } };
   }
 
   try {
@@ -56,22 +56,24 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to add lead to campaign: ${response.status} - ${errorText}`,
+        error: { message: `Failed to add lead to campaign: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id: string };
+    const responseData = (await response.json()) as { id: string };
 
     return {
       success: true,
-      id: data.id || input.email,
-      campaignId: input.campaignId,
+      data: {
+        id: responseData.id || input.email,
+        campaignId: input.campaignId,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: `Failed to add lead to campaign: ${message}`,
+      error: { message: `Failed to add lead to campaign: ${message}` },
     };
   }
 }

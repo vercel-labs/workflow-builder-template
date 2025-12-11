@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type CreateLeadResult =
-  | { success: true; id: string; email: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; email: string } }
+  | { success: false; error: { message: string } };
 
 export type CreateLeadCoreInput = {
   campaignId: string;
@@ -34,15 +34,15 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.campaignId) {
-    return { success: false, error: "Campaign ID is required" };
+    return { success: false, error: { message: "Campaign ID is required" } };
   }
 
   if (!input.email) {
-    return { success: false, error: "Email is required" };
+    return { success: false, error: { message: "Email is required" } };
   }
 
   try {
@@ -51,7 +51,7 @@ async function stepHandler(
       try {
         customVars = JSON.parse(input.customVariables);
       } catch {
-        return { success: false, error: "Invalid JSON in custom variables" };
+        return { success: false, error: { message: "Invalid JSON in custom variables" } };
       }
     }
 
@@ -80,20 +80,22 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to create lead: ${response.status} - ${errorText}`,
+        error: { message: `Failed to create lead: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id: string; email: string };
+    const responseData = (await response.json()) as { id: string; email: string };
 
     return {
       success: true,
-      id: data.id,
-      email: data.email,
+      data: {
+        id: responseData.id,
+        email: responseData.email,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to create lead: ${message}` };
+    return { success: false, error: { message: `Failed to create lead: ${message}` } };
   }
 }
 

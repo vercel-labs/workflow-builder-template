@@ -15,8 +15,8 @@ type Lead = {
 };
 
 type ListLeadsResult =
-  | { success: true; leads: Lead[]; total: number }
-  | { success: false; error: string };
+  | { success: true; data: { leads: Lead[]; total: number } }
+  | { success: false; error: { message: string } };
 
 export type ListLeadsCoreInput = {
   campaignId?: string;
@@ -36,7 +36,7 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   try {
@@ -65,11 +65,11 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to list leads: ${response.status} - ${errorText}`,
+        error: { message: `Failed to list leads: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as {
+    const responseData = (await response.json()) as {
       items: Array<{
         id: string;
         email: string;
@@ -80,7 +80,7 @@ async function stepHandler(
       total_count?: number;
     };
 
-    const leads: Lead[] = data.items.map((item) => ({
+    const leads: Lead[] = responseData.items.map((item) => ({
       id: item.id,
       email: item.email,
       firstName: item.first_name,
@@ -90,12 +90,14 @@ async function stepHandler(
 
     return {
       success: true,
-      leads,
-      total: data.total_count || leads.length,
+      data: {
+        leads,
+        total: responseData.total_count || leads.length,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to list leads: ${message}` };
+    return { success: false, error: { message: `Failed to list leads: ${message}` } };
   }
 }
 

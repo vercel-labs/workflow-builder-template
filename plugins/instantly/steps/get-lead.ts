@@ -9,13 +9,15 @@ const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 type GetLeadResult =
   | {
       success: true;
-      id: string;
-      email: string;
-      firstName?: string;
-      lastName?: string;
-      status?: string;
+      data: {
+        id: string;
+        email: string;
+        firstName?: string;
+        lastName?: string;
+        status?: string;
+      };
     }
-  | { success: false; error: string };
+  | { success: false; error: { message: string } };
 
 export type GetLeadCoreInput = {
   leadId: string;
@@ -33,11 +35,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.leadId) {
-    return { success: false, error: "Lead ID is required" };
+    return { success: false, error: { message: "Lead ID is required" } };
   }
 
   try {
@@ -51,16 +53,16 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Lead not found" };
+        return { success: false, error: { message: "Lead not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to get lead: ${response.status} - ${errorText}`,
+        error: { message: `Failed to get lead: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as {
+    const responseData = (await response.json()) as {
       id: string;
       email: string;
       first_name?: string;
@@ -70,15 +72,17 @@ async function stepHandler(
 
     return {
       success: true,
-      id: data.id,
-      email: data.email,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      status: data.lead_status,
+      data: {
+        id: responseData.id,
+        email: responseData.email,
+        firstName: responseData.first_name,
+        lastName: responseData.last_name,
+        status: responseData.lead_status,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to get lead: ${message}` };
+    return { success: false, error: { message: `Failed to get lead: ${message}` } };
   }
 }
 

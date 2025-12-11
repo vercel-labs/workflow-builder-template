@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type UpdateCampaignResult =
-  | { success: true; id: string; name: string }
-  | { success: false; error: string };
+  | { success: true; data: { id: string; name: string } }
+  | { success: false; error: { message: string } };
 
 export type UpdateCampaignCoreInput = {
   campaignId: string;
@@ -27,11 +27,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.campaignId) {
-    return { success: false, error: "Campaign ID is required" };
+    return { success: false, error: { message: "Campaign ID is required" } };
   }
 
   try {
@@ -55,25 +55,27 @@ async function stepHandler(
 
     if (!response.ok) {
       if (response.status === 404) {
-        return { success: false, error: "Campaign not found" };
+        return { success: false, error: { message: "Campaign not found" } };
       }
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to update campaign: ${response.status} - ${errorText}`,
+        error: { message: `Failed to update campaign: ${response.status} - ${errorText}` },
       };
     }
 
-    const data = (await response.json()) as { id: string; name: string };
+    const responseData = (await response.json()) as { id: string; name: string };
 
     return {
       success: true,
-      id: data.id,
-      name: data.name,
+      data: {
+        id: responseData.id,
+        name: responseData.name,
+      },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to update campaign: ${message}` };
+    return { success: false, error: { message: `Failed to update campaign: ${message}` } };
   }
 }
 

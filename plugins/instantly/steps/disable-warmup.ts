@@ -7,8 +7,8 @@ import type { InstantlyCredentials } from "../credentials";
 const INSTANTLY_API_URL = "https://api.instantly.ai/api/v2";
 
 type DisableWarmupResult =
-  | { success: true; disabled: boolean }
-  | { success: false; error: string };
+  | { success: true; data: { disabled: boolean } }
+  | { success: false; error: { message: string } };
 
 export type DisableWarmupCoreInput = {
   emails: string;
@@ -26,11 +26,11 @@ async function stepHandler(
   const apiKey = credentials.INSTANTLY_API_KEY;
 
   if (!apiKey) {
-    return { success: false, error: "INSTANTLY_API_KEY is required" };
+    return { success: false, error: { message: "INSTANTLY_API_KEY is required" } };
   }
 
   if (!input.emails) {
-    return { success: false, error: "At least one email is required" };
+    return { success: false, error: { message: "At least one email is required" } };
   }
 
   try {
@@ -41,7 +41,7 @@ async function stepHandler(
       .filter((e) => e.length > 0);
 
     if (emailList.length === 0) {
-      return { success: false, error: "At least one valid email is required" };
+      return { success: false, error: { message: "At least one valid email is required" } };
     }
 
     const response = await fetch(
@@ -62,17 +62,17 @@ async function stepHandler(
       const errorText = await response.text();
       return {
         success: false,
-        error: `Failed to disable warmup: ${response.status} - ${errorText}`,
+        error: { message: `Failed to disable warmup: ${response.status} - ${errorText}` },
       };
     }
 
     return {
       success: true,
-      disabled: true,
+      data: { disabled: true },
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: `Failed to disable warmup: ${message}` };
+    return { success: false, error: { message: `Failed to disable warmup: ${message}` } };
   }
 }
 
