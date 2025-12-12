@@ -824,7 +824,6 @@ export const PanelInner = () => {
                 <ActionConfig
                   config={selectedNode.data.config || {}}
                   disabled={isGenerating || !isOwner}
-                  onOpenIntegrations={() => setShowIntegrationsDialog(true)}
                   onUpdateConfig={handleUpdateConfig}
                 />
               ) : null}

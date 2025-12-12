@@ -517,9 +517,13 @@ export function IntegrationFormDialog({
       const integrationName = formData.name.trim();
 
       if (mode === "edit" && integration) {
+        // Only include config if there are actual new values entered
+        const hasNewConfig = Object.values(formData.config).some(
+          (v) => v && v.length > 0
+        );
         await api.integration.update(integration.id, {
           name: integrationName,
-          config: formData.config,
+          ...(hasNewConfig ? { config: formData.config } : {}),
         });
         toast.success("Connection updated");
         onSuccess?.(integration.id);

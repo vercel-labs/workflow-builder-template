@@ -1,8 +1,15 @@
 "use client";
 
-import { HelpCircle, Settings } from "lucide-react";
+import { HelpCircle, MoreHorizontal, Plus, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { IntegrationSelector } from "@/components/ui/integration-selector";
 import { Label } from "@/components/ui/label";
@@ -34,7 +41,6 @@ type ActionConfigProps = {
   config: Record<string, unknown>;
   onUpdateConfig: (key: string, value: string) => void;
   disabled: boolean;
-  onOpenIntegrations?: () => void;
 };
 
 // Database Query fields component
@@ -283,7 +289,6 @@ export function ActionConfig({
   config,
   onUpdateConfig,
   disabled,
-  onOpenIntegrations,
 }: ActionConfigProps) {
   const actionType = (config?.actionType as string) || "";
   const categories = useCategoryData();
@@ -399,24 +404,43 @@ export function ActionConfig({
 
       {integrationType && (
         <div className="space-y-2">
-          <div className="ml-1 flex items-center gap-1">
-            <Label>Connection</Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="size-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>API key or OAuth credentials for this service</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <div className="ml-1 flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Label>Connection</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="size-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>API key or OAuth credentials for this service</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="size-6"
+                  disabled={disabled}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Plus className="mr-2 size-4" />
+                  Add Secondary Connection(s)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <IntegrationSelector
             disabled={disabled}
             integrationType={integrationType}
             onChange={(id) => onUpdateConfig("integrationId", id)}
-            onOpenSettings={onOpenIntegrations}
             value={(config?.integrationId as string) || ""}
           />
         </div>
