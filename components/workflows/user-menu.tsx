@@ -141,7 +141,7 @@ export const UserMenu = () => {
         )}
         <DropdownMenuItem onClick={() => setIntegrationsOpen(true)}>
           <Plug className="size-4" />
-          <span>Integrations</span>
+          <span>Connections</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setApiKeysOpen(true)}>
           <Key className="size-4" />
