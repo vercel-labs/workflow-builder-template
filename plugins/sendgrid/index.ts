@@ -4,10 +4,13 @@ import { SendGridIcon } from "./icon";
 
 const sendgridPlugin: IntegrationPlugin = {
   type: "sendgrid",
-  label: "SendGrid",
-  description: "Send transactional emails via SendGrid",
+  label: "Email",
+  description: "Send transactional emails",
 
   icon: SendGridIcon,
+
+  // No integration required - uses KeeperHub SendGrid API key by default
+  requiresIntegration: false,
 
   formFields: [
     {
@@ -45,18 +48,11 @@ const sendgridPlugin: IntegrationPlugin = {
       slug: "send-email",
       label: "Send Email",
       description: "Send an email via SendGrid",
-      category: "SendGrid",
+      category: "Email",
       stepFunction: "sendEmailStep",
       stepImportPath: "send-email",
       outputFields: [{ field: "id", description: "Email ID" }],
       configFields: [
-        {
-          key: "emailFrom",
-          label: "From (Sender) - Optional",
-          type: "template-input",
-          placeholder: "Uses FROM_ADDRESS from environment",
-          example: "noreply@example.com",
-        },
         {
           key: "emailTo",
           label: "To",
@@ -81,33 +77,6 @@ const sendgridPlugin: IntegrationPlugin = {
           rows: 5,
           example: "This is the email body content.",
           required: true,
-        },
-        {
-          type: "group",
-          label: "Additional Recipients",
-          fields: [
-            {
-              key: "emailCc",
-              label: "CC",
-              type: "template-input",
-              placeholder: "cc@example.com",
-              example: "manager@example.com",
-            },
-            {
-              key: "emailBcc",
-              label: "BCC",
-              type: "template-input",
-              placeholder: "bcc@example.com",
-              example: "archive@example.com",
-            },
-            {
-              key: "emailReplyTo",
-              label: "Reply-To",
-              type: "template-input",
-              placeholder: "reply@example.com",
-              example: "support@example.com",
-            },
-          ],
         },
       ],
     },

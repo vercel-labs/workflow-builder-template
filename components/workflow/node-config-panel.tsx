@@ -49,7 +49,7 @@ import {
   showDeleteDialogAtom,
   updateNodeDataAtom,
 } from "@/lib/workflow-store";
-import { findActionById } from "@/plugins";
+import { findActionById, getIntegration } from "@/plugins";
 import { Panel } from "../ai-elements/panel";
 import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
@@ -898,6 +898,8 @@ export const PanelInner = () => {
 
                 // Get integration type dynamically
                 let integrationType: string | undefined;
+                let requiresIntegration = true;
+
                 if (actionType) {
                   if (SYSTEM_INTEGRATION_MAP[actionType]) {
                     integrationType = SYSTEM_INTEGRATION_MAP[actionType];
@@ -905,10 +907,29 @@ export const PanelInner = () => {
                     // Look up from plugin registry
                     const action = findActionById(actionType);
                     integrationType = action?.integration;
+
+                    // Check if this plugin requires integration
+                    if (action) {
+                      const plugin = getIntegration(action.integration);
+                      requiresIntegration = plugin?.requiresIntegration ?? true;
+                    }
                   }
                 }
 
-                return integrationType ? (
+                if (!integrationType) {
+                  return null;
+                }
+
+                // If integration is not required, show a message instead of selector
+                if (!requiresIntegration) {
+                  return (
+                    <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-muted-foreground text-sm">
+                      No integration required
+                    </div>
+                  );
+                }
+
+                return (
                   <IntegrationSelector
                     integrationType={integrationType as IntegrationType}
                     label="Integration"
@@ -918,7 +939,7 @@ export const PanelInner = () => {
                       (selectedNode.data.config?.integrationId as string) || ""
                     }
                   />
-                ) : null;
+                );
               })()}
             </div>
           )}

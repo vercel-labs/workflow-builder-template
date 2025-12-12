@@ -9,6 +9,9 @@ const webhookPlugin: IntegrationPlugin = {
 
   icon: WebhookIcon,
 
+  // No integration required - users provide URL and config directly in each step
+  requiresIntegration: false,
+
   // No credentials needed - users provide URL and config directly in each step
   formFields: [
     {

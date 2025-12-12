@@ -114,9 +114,17 @@ const requiresIntegration = (actionType: string): boolean => {
     return true;
   }
 
-  // Plugin actions always require integration
+  // Check if plugin action requires integration
   const action = findActionById(actionType);
-  return action !== undefined;
+  if (!action) {
+    return false;
+  }
+
+  // Get the plugin definition
+  const plugin = getIntegration(action.integration);
+
+  // Default to true if not specified, but allow plugins to opt out
+  return plugin?.requiresIntegration ?? true;
 };
 
 // Helper to get provider logo for action type

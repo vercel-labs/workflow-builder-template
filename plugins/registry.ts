@@ -170,6 +170,11 @@ export type IntegrationPlugin = {
   // Icon component (should be exported from plugins/[name]/icon.tsx)
   icon: React.ComponentType<{ className?: string }>;
 
+  // Whether this plugin requires an integration to be configured
+  // If false, actions will work out of the box without requiring users to add an integration
+  // Defaults to true if not specified
+  requiresIntegration?: boolean;
+
   // Form fields for the integration dialog
   formFields: Array<{
     id: string;
