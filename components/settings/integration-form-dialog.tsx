@@ -498,7 +498,14 @@ export function IntegrationFormDialog({
             searchQuery={searchQuery}
           />
         ) : (
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            id="integration-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSave();
+            }}
+          >
             <ConfigFields
               formData={formData}
               isEditMode={mode === "edit"}
@@ -516,7 +523,7 @@ export function IntegrationFormDialog({
                 value={formData.name}
               />
             </div>
-          </div>
+          </form>
         )}
 
         <DialogFooter
@@ -547,11 +554,16 @@ export function IntegrationFormDialog({
               <Button
                 disabled={saving || deleting}
                 onClick={() => onClose()}
+                type="button"
                 variant="outline"
               >
                 Cancel
               </Button>
-              <Button disabled={saving || deleting} onClick={handleSave}>
+              <Button
+                disabled={saving || deleting}
+                form="integration-form"
+                type="submit"
+              >
                 {saving ? <Spinner className="mr-2 size-4" /> : null}
                 {mode === "edit" ? "Update" : "Create"}
               </Button>

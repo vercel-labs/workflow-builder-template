@@ -83,21 +83,36 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <Spinner />
           </div>
         ) : (
-          <div className="mt-4">
+          <form
+            className="mt-4"
+            id="settings-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveAccount();
+            }}
+          >
             <AccountSettings
               accountEmail={accountEmail}
               accountName={accountName}
               onEmailChange={setAccountEmail}
               onNameChange={setAccountName}
             />
-          </div>
+          </form>
         )}
 
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} variant="outline">
+          <Button
+            onClick={() => onOpenChange(false)}
+            type="button"
+            variant="outline"
+          >
             Cancel
           </Button>
-          <Button disabled={loading || saving} onClick={saveAccount}>
+          <Button
+            disabled={loading || saving}
+            form="settings-form"
+            type="submit"
+          >
             {saving ? <Spinner className="mr-2 size-4" /> : null}
             Save
           </Button>

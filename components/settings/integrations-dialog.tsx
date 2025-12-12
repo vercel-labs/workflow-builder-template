@@ -92,14 +92,12 @@ export function IntegrationsDialog({
           </div>
         )}
 
-        <DialogFooter className="flex justify-between sm:justify-between">
-          <Button onClick={() => handleClose(false)} variant="outline">
-            Done
-          </Button>
-          <Button onClick={() => setShowCreateDialog(true)}>
+        <DialogFooter className="sm:justify-between">
+          <Button onClick={() => setShowCreateDialog(true)} variant="outline">
             <Plus className="mr-2 size-4" />
             Add Connection
           </Button>
+          <Button onClick={() => handleClose(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

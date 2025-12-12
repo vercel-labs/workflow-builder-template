@@ -1744,11 +1744,11 @@ function WorkflowIssuesDialog({
             )}
           </div>
 
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="sm:justify-between">
             <Button onClick={actions.handleExecuteAnyway} variant="outline">
               Run Anyway
             </Button>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1920,12 +1920,14 @@ function WorkflowDialogsComponent({
               the workflow?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="sm:justify-between">
             <Button onClick={actions.handleRunWithoutSaving} variant="outline">
               Run Without Saving
             </Button>
-            <Button onClick={actions.handleSaveAndRun}>Save and Run</Button>
+            <div className="flex gap-2">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <Button onClick={actions.handleSaveAndRun}>Save and Run</Button>
+            </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

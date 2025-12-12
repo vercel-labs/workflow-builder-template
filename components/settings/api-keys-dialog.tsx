@@ -253,25 +253,38 @@ export function ApiKeysDialog({ open, onOpenChange }: ApiKeysDialogProps) {
               Create a new API key for webhook authentication
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="key-name">Label (optional)</Label>
-              <Input
-                id="key-name"
-                onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="e.g., Production, Testing"
-                value={newKeyName}
-              />
+          <form
+            id="create-api-key-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="key-name">Label (optional)</Label>
+                <Input
+                  id="key-name"
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="e.g., Production, Testing"
+                  value={newKeyName}
+                />
+              </div>
             </div>
-          </div>
+          </form>
           <DialogFooter>
             <Button
               onClick={() => setShowCreateDialog(false)}
+              type="button"
               variant="outline"
             >
               Cancel
             </Button>
-            <Button disabled={creating} onClick={handleCreate}>
+            <Button
+              disabled={creating}
+              form="create-api-key-form"
+              type="submit"
+            >
               {creating ? <Spinner className="mr-2 size-4" /> : null}
               Create
             </Button>
