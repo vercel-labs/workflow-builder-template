@@ -299,7 +299,7 @@ export function AIPrompt({ workflowId, onWorkflowCreated }: AIPromptProps) {
       >
         <form
           aria-busy={isGenerating}
-          aria-label="AI workflow prompt"
+          aria-label="KeeperHub workflow prompt"
           className="relative flex items-center gap-2 rounded-lg border bg-background pl-3 pr-2 py-2 shadow-lg cursor-text"
           onClick={(e) => {
             // Focus textarea when clicking anywhere in the form (including padding)

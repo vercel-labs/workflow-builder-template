@@ -54,7 +54,7 @@ const Home = () => {
 
   // Update page title when workflow name changes
   useEffect(() => {
-    document.title = `${currentWorkflowName} - AI Workflow Builder`;
+    document.title = `${currentWorkflowName} - KeeperHub`;
   }, [currentWorkflowName]);
 
   // Helper to create anonymous session if needed

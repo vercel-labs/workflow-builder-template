@@ -1453,7 +1453,7 @@ function RunButtonGroup({
         <Loader2 className="size-4 animate-spin" />
       ) : (
         <div className="flex items-center gap-2">
-          <Play className="size-4" /> Trigger
+          <Play className="size-4" /> Run
         </div>
       )}
     </Button>
