@@ -48,37 +48,27 @@ export function IntegrationSelector({
   // Check if we have cached data
   const hasCachedData = globalIntegrations.length > 0;
 
-  const loadIntegrations = useCallback(
-    async (isBackground = false) => {
-      try {
-        const all = await api.integration.getAll();
-        // Update global store so other components can access it
-        setGlobalIntegrations(all);
-        const filtered = all.filter((i) => i.type === integrationType);
-
-        // Auto-select if only one option and nothing selected yet
-        if (filtered.length === 1 && !value && !isBackground) {
-          onChange(filtered[0].id);
-        }
-        setHasFetched(true);
-      } catch (error) {
-        console.error("Failed to load integrations:", error);
-      }
-    },
-    [integrationType, onChange, setGlobalIntegrations, value]
-  );
+  const loadIntegrations = useCallback(async () => {
+    try {
+      const all = await api.integration.getAll();
+      // Update global store so other components can access it
+      setGlobalIntegrations(all);
+      setHasFetched(true);
+    } catch (error) {
+      console.error("Failed to load integrations:", error);
+    }
+  }, [setGlobalIntegrations]);
 
   useEffect(() => {
-    // Always fetch in background, but track if it's the first fetch
-    loadIntegrations(!hasCachedData);
-  }, [hasCachedData, loadIntegrations]);
+    loadIntegrations();
+  }, [loadIntegrations, integrationType]);
 
   // Listen for version changes (from other components creating/editing integrations)
   useEffect(() => {
     // Skip initial render - only react to actual version changes
     if (integrationsVersion !== lastVersionRef.current) {
       lastVersionRef.current = integrationsVersion;
-      loadIntegrations(true);
+      loadIntegrations();
     }
   }, [integrationsVersion, loadIntegrations]);
 
@@ -90,7 +80,7 @@ export function IntegrationSelector({
   }, [integrations, value, disabled, onChange]);
 
   const handleNewIntegrationCreated = async (integrationId: string) => {
-    await loadIntegrations(true);
+    await loadIntegrations();
     onChange(integrationId);
     setShowNewDialog(false);
     // Increment version to trigger re-fetch in other selectors
@@ -98,7 +88,7 @@ export function IntegrationSelector({
   };
 
   const handleEditSuccess = async () => {
-    await loadIntegrations(true);
+    await loadIntegrations();
     setEditingIntegration(null);
     setIntegrationsVersion((v) => v + 1);
   };
@@ -187,7 +177,7 @@ export function IntegrationSelector({
             mode="edit"
             onClose={() => setEditingIntegration(null)}
             onDelete={async () => {
-              await loadIntegrations(true);
+              await loadIntegrations();
               setEditingIntegration(null);
               setIntegrationsVersion((v) => v + 1);
             }}
@@ -262,7 +252,7 @@ export function IntegrationSelector({
           mode="edit"
           onClose={() => setEditingIntegration(null)}
           onDelete={async () => {
-            await loadIntegrations(true);
+            await loadIntegrations();
             setEditingIntegration(null);
             setIntegrationsVersion((v) => v + 1);
           }}
