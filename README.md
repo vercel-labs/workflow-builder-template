@@ -86,6 +86,7 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **Firecrawl**: Scrape URL, Search Web
 - **GitHub**: Create Issue, List Issues, Get Issue, Update Issue
 - **Instantly**: Create Lead, Get Lead, List Leads, Update Lead, Delete Lead, Update Lead Interest Status, Add Lead to Campaign, Create Campaign, Get Campaign, List Campaigns, Update Campaign, Delete Campaign, Activate Campaign, Pause Campaign, List Accounts, Get Account, Pause Account, Resume Account, Enable Warmup, Disable Warmup
+- **LeadMagic**: Find Email, Validate Email, Search Profile, Find Mobile, Find Role, B2B Profile Email, Search Company, Get Technographics, Get Company Funding
 - **Linear**: Create Ticket, Find Issues
 - **Perplexity**: Search Web, Ask Question, Research Topic
 - **Resend**: Send Email
