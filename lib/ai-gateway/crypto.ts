@@ -1,4 +1,14 @@
+import { hkdf } from "node:crypto";
+import { promisify } from "node:util";
 import { EncryptJWT, jwtDecrypt } from "jose";
+
+const hkdfAsync = promisify(hkdf);
+
+// HKDF parameters for key derivation
+const HKDF_HASH = "sha256";
+const HKDF_SALT = "ai-gateway-managed-keys-v1";
+const HKDF_INFO = "jwe-encryption-key";
+const KEY_LENGTH = 32; // 256 bits for A256GCM
 
 /**
  * Payload for encrypted AI Gateway API key
@@ -9,23 +19,47 @@ export interface AiGatewayKeyPayload {
   iat: number;
 }
 
+// Cache the derived key to avoid repeated HKDF calls
+let cachedKey: Uint8Array | null = null;
+let cachedSecretHash: string | null = null;
+
 /**
- * Get the encryption key from environment
+ * Derive encryption key from secret using HKDF
+ * Uses SHA-256 with a fixed salt and info string for domain separation
  */
-function getEncryptionKey(): Uint8Array {
+async function getEncryptionKey(): Promise<Uint8Array> {
   const secret = process.env.AI_GATEWAY_MANAGED_KEYS_SECRET;
   if (!secret) {
     throw new Error(
       "AI_GATEWAY_MANAGED_KEYS_SECRET environment variable is required"
     );
   }
-  // Use first 32 bytes of the secret (256 bits for A256GCM)
-  const encoder = new TextEncoder();
-  const keyMaterial = encoder.encode(secret);
-  if (keyMaterial.length < 32) {
-    throw new Error("Encryption secret must be at least 32 characters");
+
+  if (secret.length < 16) {
+    throw new Error("Encryption secret must be at least 16 characters");
   }
-  return keyMaterial.slice(0, 32);
+
+  // Simple hash to check if secret changed (for cache invalidation)
+  const secretHash = Buffer.from(secret).toString("base64").slice(0, 16);
+
+  // Return cached key if secret hasn't changed
+  if (cachedKey && cachedSecretHash === secretHash) {
+    return cachedKey;
+  }
+
+  // Derive key using HKDF
+  const derivedKey = await hkdfAsync(
+    HKDF_HASH,
+    secret,
+    HKDF_SALT,
+    HKDF_INFO,
+    KEY_LENGTH
+  );
+
+  cachedKey = new Uint8Array(derivedKey);
+  cachedSecretHash = secretHash;
+
+  return cachedKey;
 }
 
 /**
@@ -35,7 +69,7 @@ export async function encryptAiGatewayKey(params: {
   apiKey: string;
   userId: string;
 }): Promise<string> {
-  const key = getEncryptionKey();
+  const key = await getEncryptionKey();
   const now = Math.floor(Date.now() / 1000);
 
   // No expiration - keys are stored indefinitely until user revokes
@@ -57,7 +91,7 @@ export async function encryptAiGatewayKey(params: {
 export async function decryptAiGatewayKey(
   jwe: string
 ): Promise<AiGatewayKeyPayload> {
-  const key = getEncryptionKey();
+  const key = await getEncryptionKey();
 
   try {
     const { payload } = await jwtDecrypt(jwe, key);
