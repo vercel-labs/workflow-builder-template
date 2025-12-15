@@ -112,10 +112,13 @@ export function IntegrationSelector({
         .getTeams()
         .then((response) => {
           setTeams(response.teams);
-          setTeamsFetched(true);
+          // Only mark as fetched if we got teams - empty might mean expired token
+          if (response.teams.length > 0) {
+            setTeamsFetched(true);
+          }
         })
         .catch(() => {
-          setTeamsFetched(true);
+          // Don't mark as fetched on error - allow retry
         })
         .finally(() => {
           setTeamsLoading(false);
@@ -130,26 +133,27 @@ export function IntegrationSelector({
     setTeamsLoading,
   ]);
 
-  // Refresh teams in background when modal is opened
+  // Refresh teams in background (always try if we should use managed keys)
   useEffect(() => {
     if (
       integrationType === "ai-gateway" &&
       aiGatewayStatus?.enabled &&
-      aiGatewayStatus?.isVercelUser &&
-      teamsFetched &&
-      teams.length > 0
+      aiGatewayStatus?.isVercelUser
     ) {
-      // Background refresh - don't show loading state
+      // Always try to refresh teams - handles token refresh after re-auth
       api.aiGateway
         .getTeams()
         .then((response) => {
-          setTeams(response.teams);
+          if (response.teams.length > 0) {
+            setTeams(response.teams);
+            setTeamsFetched(true);
+          }
         })
         .catch(() => {
           // Silently fail background refresh
         });
     }
-    // Only run on mount and when status changes, not on teams change
+    // Only run on mount and when status changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [integrationType, aiGatewayStatus?.enabled, aiGatewayStatus?.isVercelUser]);
 
