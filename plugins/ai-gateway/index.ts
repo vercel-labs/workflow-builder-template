@@ -64,7 +64,22 @@ const aiGatewayPlugin: IntegrationPlugin = {
           type: "select",
           defaultValue: "meta/llama-4-scout",
           options: [
+            // Current models
+            { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5" },
+            { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5" },
             { value: "anthropic/claude-opus-4.5", label: "Claude Opus 4.5" },
+            { value: "meta/llama-4-scout", label: "Llama 4 Scout" },
+            { value: "meta/llama-4-maverick", label: "Llama 4 Maverick" },
+            { value: "openai/gpt-5.2", label: "GPT-5.2" },
+            { value: "openai/gpt-5.2-pro", label: "GPT-5.2 Pro" },
+            {
+              value: "google/gemini-3-pro-preview",
+              label: "Gemini 3 Pro Preview",
+            },
+            { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
+            { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+            { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+            // Legacy models (kept for backwards compatibility)
             { value: "anthropic/claude-sonnet-4.0", label: "Claude Sonnet 4.0" },
             {
               value: "anthropic/claude-3.5-sonnet-20241022",
@@ -83,7 +98,6 @@ const aiGatewayPlugin: IntegrationPlugin = {
               value: "google/gemini-2.0-flash-lite",
               label: "Gemini 2.0 Flash Lite",
             },
-            { value: "meta/llama-4-scout", label: "Llama 4 Scout" },
             { value: "meta/llama-4-instruct", label: "Llama 4 Instruct" },
           ],
         },
