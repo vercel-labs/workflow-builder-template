@@ -87,7 +87,7 @@ export function IntegrationsDialog({
         ) : (
           <div className="mt-4 space-y-4">
             <div className="relative">
-              <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-9"
                 onChange={(e) => setFilter(e.target.value)}

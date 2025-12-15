@@ -8,6 +8,7 @@ import { type ReactNode, Suspense } from "react";
 import { AuthProvider } from "@/components/auth/provider";
 import { GitHubStarsLoader } from "@/components/github-stars-loader";
 import { GitHubStarsProvider } from "@/components/github-stars-provider";
+import { GlobalModals } from "@/components/global-modals";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { PersistentCanvas } from "@/components/workflow/persistent-canvas";
@@ -65,6 +66,7 @@ const RootLayout = ({ children }: RootLayoutProps) => (
               </GitHubStarsLoader>
             </Suspense>
             <Toaster />
+            <GlobalModals />
           </AuthProvider>
         </Provider>
       </ThemeProvider>

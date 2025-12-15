@@ -426,7 +426,7 @@ function ExecutionLogEntry({
   return (
     <div className="relative flex gap-3" key={log.id}>
       {/* Timeline connector */}
-      <div className="-ml-px relative flex flex-col items-center pt-2">
+      <div className="relative -ml-px flex flex-col items-center pt-2">
         {!isFirst && (
           <div className="absolute bottom-full h-2 w-px bg-border" />
         )}

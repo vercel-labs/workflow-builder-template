@@ -10,6 +10,7 @@ export type GetIntegrationsResponse = {
   id: string;
   name: string;
   type: IntegrationType;
+  isManaged?: boolean;
   createdAt: string;
   updatedAt: string;
   // Config is intentionally excluded for security
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
         id: integration.id,
         name: integration.name,
         type: integration.type,
+        isManaged: integration.isManaged ?? false,
         createdAt: integration.createdAt.toISOString(),
         updatedAt: integration.updatedAt.toISOString(),
       })

@@ -1,0 +1,1 @@
+ALTER TABLE "integrations" ADD COLUMN "is_managed" boolean DEFAULT false;

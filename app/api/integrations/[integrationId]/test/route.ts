@@ -1,16 +1,38 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
+import { decryptAiGatewayKey } from "@/lib/ai-gateway/crypto";
 import { auth } from "@/lib/auth";
+import type { DecryptedIntegration } from "@/lib/db/integrations";
 import { getIntegration as getIntegrationFromDb } from "@/lib/db/integrations";
 import {
   getCredentialMapping,
   getIntegration as getPluginFromRegistry,
 } from "@/plugins";
+import type { IntegrationPlugin } from "@/plugins/registry";
 
 export type TestConnectionResult = {
   status: "success" | "error";
   message: string;
 };
+
+/**
+ * Build credentials for testing an integration
+ * Handles managed AI Gateway connections specially by decrypting the JWE
+ */
+async function buildCredentials(
+  integration: DecryptedIntegration,
+  plugin: IntegrationPlugin
+): Promise<Record<string, string> | { error: string }> {
+  if (integration.type === "ai-gateway" && integration.isManaged) {
+    const encryptedKey = integration.config.apiKey as string;
+    if (!encryptedKey) {
+      return { error: "No API key found in managed connection" };
+    }
+    const decrypted = await decryptAiGatewayKey(encryptedKey);
+    return { AI_GATEWAY_API_KEY: decrypted.apiKey };
+  }
+  return getCredentialMapping(plugin, integration.config);
+}
 
 export async function POST(
   request: Request,
@@ -67,7 +89,13 @@ export async function POST(
       );
     }
 
-    const credentials = getCredentialMapping(plugin, integration.config);
+    const credentials = await buildCredentials(integration, plugin);
+    if ("error" in credentials) {
+      return NextResponse.json(
+        { status: "error", message: credentials.error },
+        { status: 200 }
+      );
+    }
 
     const testFn = await plugin.testConfig.getTestFunction();
     const testResult = await testFn(credentials);

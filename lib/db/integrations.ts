@@ -101,6 +101,7 @@ export type DecryptedIntegration = {
   name: string;
   type: IntegrationType;
   config: IntegrationConfig;
+  isManaged: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 };

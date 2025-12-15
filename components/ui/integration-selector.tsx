@@ -1,9 +1,24 @@
 "use client";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { AlertTriangle, Check, Circle, Pencil, Plus, Settings } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Circle,
+  Pencil,
+  Plus,
+  Settings,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  aiGatewayStatusAtom,
+  aiGatewayTeamsAtom,
+  aiGatewayTeamsFetchedAtom,
+  aiGatewayTeamsLoadingAtom,
+  openAiGatewayConsentModalAtom,
+} from "@/lib/ai-gateway/state";
 import { api, type Integration } from "@/lib/api-client";
 import {
   integrationsAtom,
@@ -12,7 +27,6 @@ import {
 import type { IntegrationType } from "@/lib/types/integration";
 import { cn } from "@/lib/utils";
 import { getIntegration } from "@/plugins";
-import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
 
 type IntegrationSelectorProps = {
   integrationType: IntegrationType;
@@ -40,6 +54,16 @@ export function IntegrationSelector({
   const lastVersionRef = useRef(integrationsVersion);
   const [hasFetched, setHasFetched] = useState(false);
 
+  // AI Gateway user keys state
+  const [aiGatewayStatus, setAiGatewayStatus] = useAtom(aiGatewayStatusAtom);
+  const [aiGatewayStatusFetched, setAiGatewayStatusFetched] = useState(false);
+  const openConsentModal = useSetAtom(openAiGatewayConsentModalAtom);
+
+  // AI Gateway teams state (pre-loaded for consent modal)
+  const [teams, setTeams] = useAtom(aiGatewayTeamsAtom);
+  const [teamsFetched, setTeamsFetched] = useAtom(aiGatewayTeamsFetchedAtom);
+  const setTeamsLoading = useSetAtom(aiGatewayTeamsLoadingAtom);
+
   // Filter integrations from global cache
   const integrations = useMemo(
     () => globalIntegrations.filter((i) => i.type === integrationType),
@@ -59,6 +83,75 @@ export function IntegrationSelector({
       console.error("Failed to load integrations:", error);
     }
   }, [setGlobalIntegrations]);
+
+  // Load AI Gateway status for ai-gateway type
+  useEffect(() => {
+    if (integrationType === "ai-gateway" && !aiGatewayStatusFetched) {
+      api.aiGateway
+        .getStatus()
+        .then((status) => {
+          setAiGatewayStatus(status);
+          setAiGatewayStatusFetched(true);
+        })
+        .catch(() => {
+          setAiGatewayStatusFetched(true);
+        });
+    }
+  }, [integrationType, aiGatewayStatusFetched, setAiGatewayStatus]);
+
+  // Load AI Gateway teams when status indicates user can use managed keys
+  useEffect(() => {
+    if (
+      integrationType === "ai-gateway" &&
+      aiGatewayStatus?.enabled &&
+      aiGatewayStatus?.isVercelUser &&
+      !teamsFetched
+    ) {
+      setTeamsLoading(true);
+      api.aiGateway
+        .getTeams()
+        .then((response) => {
+          setTeams(response.teams);
+          setTeamsFetched(true);
+        })
+        .catch(() => {
+          setTeamsFetched(true);
+        })
+        .finally(() => {
+          setTeamsLoading(false);
+        });
+    }
+  }, [
+    integrationType,
+    aiGatewayStatus,
+    teamsFetched,
+    setTeams,
+    setTeamsFetched,
+    setTeamsLoading,
+  ]);
+
+  // Refresh teams in background when modal is opened
+  useEffect(() => {
+    if (
+      integrationType === "ai-gateway" &&
+      aiGatewayStatus?.enabled &&
+      aiGatewayStatus?.isVercelUser &&
+      teamsFetched &&
+      teams.length > 0
+    ) {
+      // Background refresh - don't show loading state
+      api.aiGateway
+        .getTeams()
+        .then((response) => {
+          setTeams(response.teams);
+        })
+        .catch(() => {
+          // Silently fail background refresh
+        });
+    }
+    // Only run on mount and when status changes, not on teams change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [integrationType, aiGatewayStatus?.enabled, aiGatewayStatus?.isVercelUser]);
 
   useEffect(() => {
     loadIntegrations();
@@ -94,13 +187,51 @@ export function IntegrationSelector({
     setIntegrationsVersion((v) => v + 1);
   };
 
-  const handleAddConnection = () => {
+  const handleDelete = async () => {
+    await loadIntegrations();
+    setEditingIntegration(null);
+    setIntegrationsVersion((v) => v + 1);
+    // Refresh AI Gateway status if this is an AI Gateway integration
+    if (integrationType === "ai-gateway") {
+      const status = await api.aiGateway.getStatus();
+      setAiGatewayStatus(status);
+    }
+  };
+
+  // Check if AI Gateway managed keys should be used
+  const shouldUseManagedKeys =
+    integrationType === "ai-gateway" &&
+    aiGatewayStatus?.enabled &&
+    aiGatewayStatus?.isVercelUser &&
+    !aiGatewayStatus?.hasManagedKey;
+
+  const handleConsentSuccess = useCallback(async (integrationId: string) => {
+    console.log("[IntegrationSelector] handleConsentSuccess called with:", integrationId);
+    await loadIntegrations();
+    onChange(integrationId);
+    setIntegrationsVersion((v) => v + 1);
+    // Refetch AI Gateway status
+    const status = await api.aiGateway.getStatus();
+    setAiGatewayStatus(status);
+  }, [loadIntegrations, onChange, setIntegrationsVersion, setAiGatewayStatus]);
+
+  const handleAddConnection = useCallback(() => {
     if (onAddConnection) {
       onAddConnection();
+    } else if (shouldUseManagedKeys) {
+      // For AI Gateway with managed keys enabled, show consent modal
+      console.log("[IntegrationSelector] Opening global consent modal for type:", integrationType);
+      openConsentModal({
+        onConsent: handleConsentSuccess,
+        onManualEntry: () => {
+          console.log("[IntegrationSelector] onManualEntry callback for type:", integrationType);
+          setShowNewDialog(true);
+        },
+      });
     } else {
       setShowNewDialog(true);
     }
-  };
+  }, [onAddConnection, shouldUseManagedKeys, integrationType, openConsentModal, handleConsentSuccess]);
 
   // Only show loading skeleton if we have no cached data and haven't fetched yet
   if (!hasCachedData && !hasFetched) {
@@ -118,7 +249,11 @@ export function IntegrationSelector({
   const plugin = getIntegration(integrationType);
   const integrationLabel = plugin?.label || integrationType;
 
-  // No integrations - show error button to add one
+  // Separate managed and manual integrations for AI Gateway
+  const managedIntegrations = integrations.filter((i) => i.isManaged);
+  const manualIntegrations = integrations.filter((i) => !i.isManaged);
+
+  // No integrations - show add button
   if (integrations.length === 0) {
     return (
       <>
@@ -172,16 +307,20 @@ export function IntegrationSelector({
           </Button>
         </div>
 
+        <IntegrationFormDialog
+          mode="create"
+          onClose={() => setShowNewDialog(false)}
+          onSuccess={handleNewIntegrationCreated}
+          open={showNewDialog}
+          preselectedType={integrationType}
+        />
+
         {editingIntegration && (
           <IntegrationFormDialog
             integration={editingIntegration}
             mode="edit"
             onClose={() => setEditingIntegration(null)}
-            onDelete={async () => {
-              await loadIntegrations();
-              setEditingIntegration(null);
-              setIntegrationsVersion((v) => v + 1);
-            }}
+            onDelete={handleDelete}
             onSuccess={handleEditSuccess}
             open
           />
@@ -190,21 +329,19 @@ export function IntegrationSelector({
     );
   }
 
-  // Multiple integrations - show radio-style selection list
+  // Multiple integrations or AI Gateway with option to add managed key
   return (
     <>
       <div className="flex flex-col gap-1">
-        {integrations.map((integration) => {
+        {/* Show managed integrations first */}
+        {managedIntegrations.map((integration) => {
           const isSelected = value === integration.id;
-          const displayName =
-            integration.name || `${integrationLabel} API Key`;
+          const displayName = integration.name || `${integrationLabel} API Key`;
           return (
             <div
               className={cn(
                 "flex w-full items-center gap-2 rounded-md px-[13px] py-1.5 text-sm transition-colors",
-                isSelected
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-muted/50",
+                isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
                 disabled && "cursor-not-allowed opacity-50"
               )}
               key={integration.id}
@@ -237,6 +374,50 @@ export function IntegrationSelector({
             </div>
           );
         })}
+
+        {/* Show manual integrations */}
+        {manualIntegrations.map((integration) => {
+          const isSelected = value === integration.id;
+          const displayName =
+            integration.name || `${integrationLabel} API Key`;
+          return (
+            <div
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-[13px] py-1.5 text-sm transition-colors",
+                isSelected ? "bg-primary/10 text-primary" : "hover:bg-muted/50",
+                disabled && "cursor-not-allowed opacity-50"
+              )}
+              key={integration.id}
+            >
+              <button
+                className="flex flex-1 items-center gap-2 text-left"
+                disabled={disabled}
+                onClick={() => onChange(integration.id)}
+                type="button"
+              >
+                {isSelected ? (
+                  <Check className="size-4 shrink-0" />
+                ) : (
+                  <Circle className="size-4 shrink-0 text-muted-foreground" />
+                )}
+                <span className="truncate">{displayName}</span>
+              </button>
+              <Button
+                className="size-6 shrink-0"
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingIntegration(integration);
+                }}
+                size="icon"
+                variant="ghost"
+              >
+                <Pencil className="size-3" />
+              </Button>
+            </div>
+          );
+        })}
+
         {onOpenSettings && (
           <button
             className="flex w-full items-center gap-2 rounded-md px-[13px] py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted/50 hover:text-foreground"
@@ -263,11 +444,7 @@ export function IntegrationSelector({
           integration={editingIntegration}
           mode="edit"
           onClose={() => setEditingIntegration(null)}
-          onDelete={async () => {
-            await loadIntegrations();
-            setEditingIntegration(null);
-            setIntegrationsVersion((v) => v + 1);
-          }}
+          onDelete={handleDelete}
           onSuccess={handleEditSuccess}
           open
         />
@@ -275,4 +452,3 @@ export function IntegrationSelector({
     </>
   );
 }
-

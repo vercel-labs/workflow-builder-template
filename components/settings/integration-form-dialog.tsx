@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   ArrowLeft,
   Check,
@@ -24,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +38,10 @@ import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  aiGatewayStatusAtom,
+  showAiGatewayConsentModalAtom,
+} from "@/lib/ai-gateway/state";
 import { api, type Integration } from "@/lib/api-client";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
@@ -372,12 +378,16 @@ function DeleteConfirmDialog({
   onOpenChange,
   deleting,
   onDelete,
+  isManaged,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deleting: boolean;
-  onDelete: () => void;
+  onDelete: (revokeKey: boolean) => void;
+  isManaged?: boolean;
 }) {
+  const [revokeKey, setRevokeKey] = useState(true);
+
   return (
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent>
@@ -388,11 +398,66 @@ function DeleteConfirmDialog({
             will fail until a new one is configured.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {isManaged && (
+          <div className="flex items-center gap-2 py-2">
+            <Checkbox
+              checked={revokeKey}
+              id="revoke-key"
+              onCheckedChange={(checked: boolean) => setRevokeKey(checked)}
+            />
+            <Label className="cursor-pointer font-normal" htmlFor="revoke-key">
+              Revoke API key from Vercel
+            </Label>
+          </div>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={deleting} onClick={onDelete}>
+          <AlertDialogAction
+            disabled={deleting}
+            onClick={() => onDelete(isManaged ? revokeKey : false)}
+          >
             {deleting ? <Spinner className="mr-2 size-4" /> : null}
             Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function TestFailedConfirmDialog({
+  open,
+  onOpenChange,
+  message,
+  onProceed,
+  saving,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  message: string;
+  onProceed: () => void;
+  saving: boolean;
+}) {
+  return (
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Connection Test Failed</AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span>The connection test failed with the following error:</span>
+            <span className="block rounded bg-muted p-2 font-mono text-destructive text-xs">
+              {message}
+            </span>
+            <span className="block">
+              Do you want to save the connection anyway?
+            </span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+          <AlertDialogAction disabled={saving} onClick={onProceed}>
+            {saving ? <Spinner className="mr-2 size-4" /> : null}
+            Save Anyway
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -414,7 +479,7 @@ function TypeSelector({
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
+        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           autoFocus
           className="pl-9"
@@ -477,6 +542,8 @@ export function IntegrationFormDialog({
     message: string;
   } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showTestFailedConfirm, setShowTestFailedConfirm] = useState(false);
+  const [testFailedMessage, setTestFailedMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState<IntegrationFormData>({
     name: "",
@@ -484,7 +551,15 @@ export function IntegrationFormDialog({
     config: {},
   });
 
-  // Step: "select" for type selection list, "configure" for form
+  // AI Gateway managed keys state
+  const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
+  const setShowConsentModal = useSetAtom(showAiGatewayConsentModalAtom);
+
+  // Check if AI Gateway managed keys should be offered
+  const shouldUseManagedKeys =
+    aiGatewayStatus?.enabled && aiGatewayStatus?.isVercelUser;
+
+  // Step: "select" for type selection, "configure" for form
   const [step, setStep] = useState<"select" | "configure">(
     preselectedType || mode === "edit" ? "configure" : "select"
   );
@@ -509,6 +584,13 @@ export function IntegrationFormDialog({
   }, [integration, preselectedType]);
 
   const handleSelectType = (type: IntegrationType) => {
+    // If selecting AI Gateway and managed keys are available, show consent modal
+    if (type === "ai-gateway" && shouldUseManagedKeys) {
+      onClose();
+      setShowConsentModal(true);
+      return;
+    }
+
     setFormData({
       name: "",
       type,
@@ -527,7 +609,7 @@ export function IntegrationFormDialog({
     });
   };
 
-  const handleSave = async () => {
+  const doSave = async () => {
     if (!formData.type) {
       return;
     }
@@ -565,14 +647,68 @@ export function IntegrationFormDialog({
     }
   };
 
-  const handleDelete = async () => {
+  const handleSave = async () => {
+    if (!formData.type) {
+      return;
+    }
+
+    // Check if we have config values to test
+    const hasConfig = Object.values(formData.config).some(
+      (v) => v && v.length > 0
+    );
+
+    // In edit mode without new config, skip testing
+    if (mode === "edit" && !hasConfig) {
+      await doSave();
+      return;
+    }
+
+    // Test the connection before saving
+    try {
+      setSaving(true);
+      setTestResult(null);
+
+      const result = await api.integration.testCredentials({
+        type: formData.type,
+        config: formData.config,
+      });
+
+      if (result.status === "error") {
+        // Test failed - ask user if they want to proceed
+        setTestFailedMessage(result.message);
+        setShowTestFailedConfirm(true);
+        setSaving(false);
+        return;
+      }
+
+      // Test passed - proceed with save
+      setSaving(false);
+      await doSave();
+    } catch (error) {
+      console.error("Failed to test connection:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to test connection";
+      setTestFailedMessage(message);
+      setShowTestFailedConfirm(true);
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (revokeKey: boolean) => {
     if (!integration) {
       return;
     }
 
     try {
       setDeleting(true);
-      await api.integration.delete(integration.id);
+
+      // If this is a managed connection and user wants to revoke the key
+      if (integration.isManaged && revokeKey) {
+        await api.aiGateway.revokeConsent();
+      } else {
+        await api.integration.delete(integration.id);
+      }
+
       toast.success("Connection deleted");
       onDelete?.();
       onClose();
@@ -674,14 +810,16 @@ export function IntegrationFormDialog({
           <DialogDescription>{getDialogDescription()}</DialogDescription>
         </DialogHeader>
 
-        {step === "select" ? (
+        {step === "select" && (
           <TypeSelector
             filteredTypes={filteredIntegrationTypes}
             onSearchChange={setSearchQuery}
             onSelectType={handleSelectType}
             searchQuery={searchQuery}
           />
-        ) : (
+        )}
+
+        {step === "configure" && (
           <form
             className="space-y-4"
             id="integration-form"
@@ -731,9 +869,21 @@ export function IntegrationFormDialog({
 
       <DeleteConfirmDialog
         deleting={deleting}
+        isManaged={integration?.isManaged}
         onDelete={handleDelete}
         onOpenChange={setShowDeleteConfirm}
         open={showDeleteConfirm}
+      />
+
+      <TestFailedConfirmDialog
+        message={testFailedMessage}
+        onOpenChange={setShowTestFailedConfirm}
+        onProceed={() => {
+          setShowTestFailedConfirm(false);
+          doSave();
+        }}
+        open={showTestFailedConfirm}
+        saving={saving}
       />
     </Dialog>
   );

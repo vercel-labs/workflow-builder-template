@@ -93,6 +93,8 @@ export const integrations = pgTable("integrations", {
   type: text("type").notNull().$type<IntegrationType>(),
   // biome-ignore lint/suspicious/noExplicitAny: JSONB type - encrypted credentials stored as JSON
   config: jsonb("config").notNull().$type<any>(),
+  // Whether this integration was created via OAuth (managed by app) vs manual entry
+  isManaged: boolean("is_managed").default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
