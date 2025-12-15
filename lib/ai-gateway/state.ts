@@ -29,9 +29,6 @@ export const aiGatewayConsentCallbacksAtom = atom<AiGatewayConsentCallbacks>(
 export const openAiGatewayConsentModalAtom = atom(
   null,
   (get, set, callbacks: AiGatewayConsentCallbacks) => {
-    console.log(
-      "[openAiGatewayConsentModalAtom] Setting callbacks and opening modal"
-    );
     set(aiGatewayConsentCallbacksAtom, callbacks);
     set(showAiGatewayConsentModalAtom, true);
   }

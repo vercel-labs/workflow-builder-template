@@ -115,15 +115,8 @@ export function AiGatewayConsentModal() {
   }, [setShowModal, callbacks]);
 
   const handleManualEntry = useCallback(() => {
-    console.log("[AiGatewayConsentModal] handleManualEntry called");
-    console.log(
-      "[AiGatewayConsentModal] onManualEntry exists:",
-      !!callbacks.onManualEntry
-    );
     setShowModal(false);
-    console.log("[AiGatewayConsentModal] Modal closed, calling onManualEntry");
     callbacks.onManualEntry?.();
-    console.log("[AiGatewayConsentModal] onManualEntry completed");
   }, [setShowModal, callbacks]);
 
   return (

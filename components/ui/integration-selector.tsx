@@ -206,7 +206,6 @@ export function IntegrationSelector({
     !aiGatewayStatus?.hasManagedKey;
 
   const handleConsentSuccess = useCallback(async (integrationId: string) => {
-    console.log("[IntegrationSelector] handleConsentSuccess called with:", integrationId);
     await loadIntegrations();
     onChange(integrationId);
     setIntegrationsVersion((v) => v + 1);
@@ -220,18 +219,16 @@ export function IntegrationSelector({
       onAddConnection();
     } else if (shouldUseManagedKeys) {
       // For AI Gateway with managed keys enabled, show consent modal
-      console.log("[IntegrationSelector] Opening global consent modal for type:", integrationType);
       openConsentModal({
         onConsent: handleConsentSuccess,
         onManualEntry: () => {
-          console.log("[IntegrationSelector] onManualEntry callback for type:", integrationType);
           setShowNewDialog(true);
         },
       });
     } else {
       setShowNewDialog(true);
     }
-  }, [onAddConnection, shouldUseManagedKeys, integrationType, openConsentModal, handleConsentSuccess]);
+  }, [onAddConnection, shouldUseManagedKeys, openConsentModal, handleConsentSuccess]);
 
   // Only show loading skeleton if we have no cached data and haven't fetched yet
   if (!hasCachedData && !hasFetched) {

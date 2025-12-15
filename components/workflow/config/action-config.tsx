@@ -354,31 +354,19 @@ export function ActionConfig({
     aiGatewayStatus?.isVercelUser;
 
   const handleConsentSuccess = (integrationId: string) => {
-    console.log(
-      "[ActionConfig] handleConsentSuccess called with:",
-      integrationId
-    );
     onUpdateConfig("integrationId", integrationId);
     setIntegrationsVersion((v) => v + 1);
   };
 
   const handleAddSecondaryConnection = () => {
-    console.log("[ActionConfig] handleAddSecondaryConnection called");
-    console.log("[ActionConfig] shouldUseManagedKeys:", shouldUseManagedKeys);
-    console.log("[ActionConfig] integrationType:", integrationType);
     if (shouldUseManagedKeys) {
-      console.log("[ActionConfig] Opening global consent modal");
       openConsentModal({
         onConsent: handleConsentSuccess,
         onManualEntry: () => {
-          console.log(
-            "[ActionConfig] onManualEntry callback, opening form dialog"
-          );
           setShowAddConnectionDialog(true);
         },
       });
     } else {
-      console.log("[ActionConfig] Opening local form dialog");
       setShowAddConnectionDialog(true);
     }
   };
