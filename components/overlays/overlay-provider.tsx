@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -17,6 +18,9 @@ import type {
 } from "./types";
 
 const OverlayContext = createContext<OverlayContextValue | null>(null);
+
+// Separate context for frozen stack (used during exit animations)
+const FrozenStackContext = createContext<OverlayStackItem[]>([]);
 
 /**
  * Generate a unique ID for overlay instances
@@ -35,6 +39,13 @@ type OverlayProviderProps = {
  */
 export function OverlayProvider({ children }: OverlayProviderProps) {
   const [stack, setStack] = useState<OverlayStackItem[]>([]);
+  const frozenStackRef = useRef<OverlayStackItem[]>([]);
+
+  // Keep frozen stack updated when stack is non-empty
+  // This preserves the last state for exit animations
+  if (stack.length > 0) {
+    frozenStackRef.current = stack;
+  }
 
   const open = useCallback(
     <P,>(
@@ -155,7 +166,11 @@ export function OverlayProvider({ children }: OverlayProviderProps) {
   );
 
   return (
-    <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>
+    <OverlayContext.Provider value={value}>
+      <FrozenStackContext.Provider value={frozenStackRef.current}>
+        {children}
+      </FrozenStackContext.Provider>
+    </OverlayContext.Provider>
   );
 }
 
@@ -173,17 +188,22 @@ export function useOverlay(): OverlayContextValue {
 
 /**
  * Hook to get the current overlay's position in the stack.
- * Returns { index, isFirst, isLast, depth }
+ * Uses frozen stack during exit animations to prevent UI shifts.
+ * Returns { index, isFirst, isLast, depth, showBackButton }
  */
 export function useOverlayPosition(overlayId: string) {
   const { stack } = useOverlay();
-  const index = stack.findIndex((item) => item.id === overlayId);
+  const frozenStack = useContext(FrozenStackContext);
+
+  // Use frozen stack when real stack is empty (during exit animation)
+  const effectiveStack = stack.length > 0 ? stack : frozenStack;
+  const index = effectiveStack.findIndex((item) => item.id === overlayId);
 
   return {
     index,
     isFirst: index === 0,
-    isLast: index === stack.length - 1,
-    depth: stack.length,
+    isLast: index === effectiveStack.length - 1,
+    depth: effectiveStack.length,
     showBackButton: index > 0,
   };
 }
