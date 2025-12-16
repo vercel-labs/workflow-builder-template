@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsTouch } from "@/hooks/use-touch";
 import { cn } from "@/lib/utils";
 import { getAllActions } from "@/plugins";
 
@@ -167,7 +167,7 @@ export function ActionGrid({
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
   const actions = useAllActions();
   const inputRef = useRef<HTMLInputElement>(null);
-  const isMobile = useIsMobile();
+  const isTouch = useIsTouch();
 
   const toggleViewMode = () => {
     const newMode = viewMode === "list" ? "grid" : "list";
@@ -202,10 +202,12 @@ export function ActionGrid({
   };
 
   useEffect(() => {
-    if (isNewlyCreated && !isMobile && inputRef.current) {
+    // Only focus after touch detection is complete (isTouch !== undefined)
+    // and only on non-touch devices to avoid opening the keyboard
+    if (isNewlyCreated && isTouch === false && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isNewlyCreated, isMobile]);
+  }, [isNewlyCreated, isTouch]);
 
   const filteredActions = actions.filter((action) => {
     const searchTerm = filter.toLowerCase();
@@ -255,7 +257,6 @@ export function ActionGrid({
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            autoFocus={isNewlyCreated && !isMobile}
             className="pl-9"
             data-testid="action-search-input"
             disabled={disabled}
