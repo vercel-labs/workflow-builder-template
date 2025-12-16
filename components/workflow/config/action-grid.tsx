@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { getAllActions } from "@/plugins";
 
@@ -166,6 +167,7 @@ export function ActionGrid({
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode);
   const actions = useAllActions();
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const toggleViewMode = () => {
     const newMode = viewMode === "list" ? "grid" : "list";
@@ -253,7 +255,7 @@ export function ActionGrid({
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            autoFocus={isNewlyCreated}
+            autoFocus={isNewlyCreated && !isMobile}
             className="pl-9"
             data-testid="action-search-input"
             disabled={disabled}

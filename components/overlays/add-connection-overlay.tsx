@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Label } from "@/components/ui/label";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   aiGatewayStatusAtom,
   aiGatewayTeamsAtom,
@@ -64,6 +65,7 @@ export function AddConnectionOverlay({
 }: AddConnectionOverlayProps) {
   const { push, closeAll } = useOverlay();
   const [searchQuery, setSearchQuery] = useState("");
+  const isMobile = useIsMobile();
 
   // AI Gateway state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
@@ -138,7 +140,7 @@ export function AddConnectionOverlay({
         <div className="relative">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            autoFocus
+            autoFocus={!isMobile}
             className="pl-9"
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search services..."

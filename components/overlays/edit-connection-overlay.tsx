@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { api, type Integration } from "@/lib/api-client";
 import { getIntegration, getIntegrationLabels } from "@/plugins";
 import { ConfirmOverlay } from "./confirm-overlay";
@@ -52,6 +53,7 @@ function SecretField({
   onChange: (key: string, value: string) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const isMobile = useIsMobile();
   const hasNewValue = value.length > 0;
 
   // Show "Configured" state until user clicks Change
@@ -82,7 +84,7 @@ function SecretField({
       <Label htmlFor={fieldId}>{label}</Label>
       <div className="flex items-center gap-2">
         <Input
-          autoFocus={isEditing}
+          autoFocus={isEditing && !isMobile}
           className="flex-1"
           id={fieldId}
           onChange={(e) => onChange(configKey, e.target.value)}
