@@ -202,10 +202,10 @@ export function ActionGrid({
   };
 
   useEffect(() => {
-    if (isNewlyCreated && inputRef.current) {
+    if (isNewlyCreated && !isMobile && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isNewlyCreated]);
+  }, [isNewlyCreated, isMobile]);
 
   const filteredActions = actions.filter((action) => {
     const searchTerm = filter.toLowerCase();
