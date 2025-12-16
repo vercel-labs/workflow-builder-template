@@ -26,7 +26,6 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -53,7 +52,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
 import { integrationsAtom } from "@/lib/integrations-store";
@@ -97,11 +95,13 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
+import { ConfigurationOverlay } from "../overlays/configuration-overlay";
+import { ConfirmOverlay } from "../overlays/confirm-overlay";
+import { MakePublicOverlay } from "../overlays/make-public-overlay";
 import { useOverlay } from "../overlays/overlay-provider";
 import { WorkflowIssuesOverlay } from "../overlays/workflow-issues-overlay";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
-import { PanelInner } from "./node-config-panel";
 
 type WorkflowToolbarProps = {
   workflowId?: string;
@@ -685,7 +685,6 @@ function useWorkflowState() {
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [showCodeDialog, setShowCodeDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showMakePublicDialog, setShowMakePublicDialog] = useState(false);
   const [generatedCode, _setGeneratedCode] = useState<string>("");
   const [allWorkflows, setAllWorkflows] = useState<
     Array<{
@@ -752,8 +751,6 @@ function useWorkflowState() {
     setShowCodeDialog,
     showExportDialog,
     setShowExportDialog,
-    showMakePublicDialog,
-    setShowMakePublicDialog,
     generatedCode,
     allWorkflows,
     setAllWorkflows,
@@ -774,6 +771,7 @@ function useWorkflowState() {
 
 // Hook for workflow actions
 function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
+  const { open: openOverlay } = useOverlay();
   const {
     currentWorkflowId,
     workflowName,
@@ -794,7 +792,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     setShowRenameDialog,
     setIsDownloading,
     setIsDuplicating,
-    setShowMakePublicDialog,
     generatedCode,
     setActiveTab,
     setNodes,
@@ -961,9 +958,22 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       return;
     }
 
-    // Show confirmation dialog when making public
+    // Show confirmation overlay when making public
     if (newVisibility === "public") {
-      setShowMakePublicDialog(true);
+      openOverlay(MakePublicOverlay, {
+        onConfirm: async () => {
+          try {
+            await api.workflow.update(currentWorkflowId, {
+              visibility: "public",
+            });
+            setWorkflowVisibility("public");
+            toast.success("Workflow is now public");
+          } catch (error) {
+            console.error("Failed to update visibility:", error);
+            toast.error("Failed to update visibility. Please try again.");
+          }
+        },
+      });
       return;
     }
 
@@ -974,24 +984,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
       });
       setWorkflowVisibility(newVisibility);
       toast.success("Workflow is now private");
-    } catch (error) {
-      console.error("Failed to update visibility:", error);
-      toast.error("Failed to update visibility. Please try again.");
-    }
-  };
-
-  const handleConfirmMakePublic = async () => {
-    if (!currentWorkflowId) {
-      return;
-    }
-
-    try {
-      await api.workflow.update(currentWorkflowId, {
-        visibility: "public",
-      });
-      setWorkflowVisibility("public");
-      setShowMakePublicDialog(false);
-      toast.success("Workflow is now public");
     } catch (error) {
       console.error("Failed to update visibility:", error);
       toast.error("Failed to update visibility. Please try again.");
@@ -1037,7 +1029,6 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
     loadWorkflows,
     handleCopyCode,
     handleToggleVisibility,
-    handleConfirmMakePublic,
     handleDuplicate,
   };
 }
@@ -1052,8 +1043,7 @@ function ToolbarActions({
   state: ReturnType<typeof useWorkflowState>;
   actions: ReturnType<typeof useWorkflowActions>;
 }) {
-  const [showPropertiesSheet, setShowPropertiesSheet] = useState(false);
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const { open: openOverlay, push } = useOverlay();
   const [selectedNodeId] = useAtom(selectedNodeAtom);
   const [selectedEdgeId] = useAtom(selectedEdgeAtom);
   const [nodes] = useAtom(nodesAtom);
@@ -1076,13 +1066,23 @@ function ToolbarActions({
     return null;
   }
 
-  const handleDelete = () => {
-    if (selectedNodeId) {
-      deleteNode(selectedNodeId);
-    } else if (selectedEdgeId) {
-      deleteEdge(selectedEdgeId);
-    }
-    setShowDeleteAlert(false);
+  const handleDeleteConfirm = () => {
+    const isNode = Boolean(selectedNodeId);
+    const itemType = isNode ? "Node" : "Connection";
+
+    push(ConfirmOverlay, {
+      title: `Delete ${itemType}`,
+      message: `Are you sure you want to delete this ${itemType.toLowerCase()}? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      confirmVariant: "destructive" as const,
+      onConfirm: () => {
+        if (selectedNodeId) {
+          deleteNode(selectedNodeId);
+        } else if (selectedEdgeId) {
+          deleteEdge(selectedEdgeId);
+        }
+      },
+    });
   };
 
   const handleAddStep = () => {
@@ -1170,9 +1170,9 @@ function ToolbarActions({
       <ButtonGroup className="flex lg:hidden" orientation="vertical">
         <Button
           className="border hover:bg-black/5 dark:hover:bg-white/5"
-          onClick={() => setShowPropertiesSheet(true)}
+          onClick={() => openOverlay(ConfigurationOverlay, {})}
           size="icon"
-          title="Properties"
+          title="Configuration"
           variant="secondary"
         >
           <Settings2 className="size-4" />
@@ -1181,7 +1181,7 @@ function ToolbarActions({
         {hasSelection && (
           <Button
             className="border hover:bg-black/5 dark:hover:bg-white/5"
-            onClick={() => setShowDeleteAlert(true)}
+            onClick={handleDeleteConfirm}
             size="icon"
             title="Delete"
             variant="secondary"
@@ -1190,35 +1190,6 @@ function ToolbarActions({
           </Button>
         )}
       </ButtonGroup>
-
-      {/* Properties Sheet - Mobile Only */}
-      <Sheet onOpenChange={setShowPropertiesSheet} open={showPropertiesSheet}>
-        <SheetContent className="w-full p-0 sm:max-w-full" side="bottom">
-          <div className="h-[80vh]">
-            <PanelInner />
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Delete Alert - Mobile Only */}
-      <AlertDialog onOpenChange={setShowDeleteAlert} open={showDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {selectedNode ? "Node" : "Connection"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this{" "}
-              {selectedNode ? "node" : "connection"}? This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Add Step - Desktop Horizontal */}
       <ButtonGroup className="hidden lg:flex" orientation="horizontal">
@@ -1774,46 +1745,6 @@ function WorkflowDialogsComponent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Make Public Confirmation Dialog */}
-      <AlertDialog
-        onOpenChange={state.setShowMakePublicDialog}
-        open={state.showMakePublicDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Globe className="size-5" />
-              Make Workflow Public?
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  Making this workflow public means anyone with the link can:
-                </p>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  <li>View the workflow structure and steps</li>
-                  <li>See action types and configurations</li>
-                  <li>Duplicate the workflow to their own account</li>
-                </ul>
-                <p className="font-medium text-foreground">
-                  The following will remain private:
-                </p>
-                <ul className="list-inside list-disc space-y-1 text-muted-foreground">
-                  <li>Your integration credentials (API keys, tokens)</li>
-                  <li>Execution logs and run history</li>
-                </ul>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={actions.handleConfirmMakePublic}>
-              Make Public
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

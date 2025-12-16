@@ -47,7 +47,7 @@ export function IntegrationSelector({
   disabled,
   onAddConnection,
 }: IntegrationSelectorProps) {
-  const { open: openOverlay } = useOverlay();
+  const { push } = useOverlay();
   const [globalIntegrations, setGlobalIntegrations] = useAtom(integrationsAtom);
   const integrationsVersion = useAtomValue(integrationsVersionAtom);
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
@@ -201,21 +201,21 @@ export function IntegrationSelector({
   };
 
   const openNewConnectionOverlay = useCallback(() => {
-    openOverlay(ConfigureConnectionOverlay, {
+    push(ConfigureConnectionOverlay, {
       type: integrationType,
       onSuccess: handleNewIntegrationCreated,
     });
-  }, [integrationType, openOverlay, handleNewIntegrationCreated]);
+  }, [integrationType, push, handleNewIntegrationCreated]);
 
   const openEditConnectionOverlay = useCallback(
     (integration: Integration) => {
-      openOverlay(EditConnectionOverlay, {
+      push(EditConnectionOverlay, {
         integration,
         onSuccess: handleIntegrationChange,
         onDelete: handleIntegrationChange,
       });
     },
-    [openOverlay, handleIntegrationChange]
+    [push, handleIntegrationChange]
   );
 
   // Check if AI Gateway managed keys should be used

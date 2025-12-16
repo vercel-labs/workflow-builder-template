@@ -301,7 +301,7 @@ export function ActionConfig({
   const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
   const [category, setCategory] = useState<string>(selectedCategory || "");
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
-  const { open: openOverlay } = useOverlay();
+  const { push } = useOverlay();
 
   // AI Gateway managed keys state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
@@ -363,7 +363,7 @@ export function ActionConfig({
 
   const openConnectionOverlay = () => {
     if (integrationType) {
-      openOverlay(ConfigureConnectionOverlay, {
+      push(ConfigureConnectionOverlay, {
         type: integrationType,
         onSuccess: (integrationId: string) => {
           setIntegrationsVersion((v) => v + 1);

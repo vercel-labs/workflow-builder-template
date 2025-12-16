@@ -739,6 +739,9 @@ const WorkflowEditor = ({ params }: WorkflowPageProps) => {
           <NodeConfigPanel />
         </div>
       )}
+
+      {/* Mobile: NodeConfigPanel renders the overlay trigger button */}
+      {isMobile && <NodeConfigPanel />}
     </div>
   );
 };

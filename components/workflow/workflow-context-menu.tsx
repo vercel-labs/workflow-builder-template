@@ -5,6 +5,8 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { Link2Off, Plus, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef } from "react";
+import { ConfirmOverlay } from "@/components/overlays/confirm-overlay";
+import { useOverlay } from "@/components/overlays/overlay-provider";
 import { cn } from "@/lib/utils";
 import {
   addNodeAtom,
@@ -41,21 +43,42 @@ export function WorkflowContextMenu({
   const addNode = useSetAtom(addNodeAtom);
   const setSelectedNode = useSetAtom(selectedNodeAtom);
   const setActiveTab = useSetAtom(propertiesPanelActiveTabAtom);
+  const { open: openOverlay } = useOverlay();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleDeleteNode = useCallback(() => {
     if (menuState?.nodeId) {
-      deleteNode(menuState.nodeId);
+      const nodeId = menuState.nodeId;
+      onClose();
+      openOverlay(ConfirmOverlay, {
+        title: "Delete Node",
+        message:
+          "Are you sure you want to delete this node? This action cannot be undone.",
+        confirmLabel: "Delete",
+        confirmVariant: "destructive" as const,
+        onConfirm: () => {
+          deleteNode(nodeId);
+        },
+      });
     }
-    onClose();
-  }, [menuState, deleteNode, onClose]);
+  }, [menuState, deleteNode, onClose, openOverlay]);
 
   const handleDeleteEdge = useCallback(() => {
     if (menuState?.edgeId) {
-      deleteEdge(menuState.edgeId);
+      const edgeId = menuState.edgeId;
+      onClose();
+      openOverlay(ConfirmOverlay, {
+        title: "Delete Connection",
+        message:
+          "Are you sure you want to delete this connection? This action cannot be undone.",
+        confirmLabel: "Delete",
+        confirmVariant: "destructive" as const,
+        onConfirm: () => {
+          deleteEdge(edgeId);
+        },
+      });
     }
-    onClose();
-  }, [menuState, deleteEdge, onClose]);
+  }, [menuState, deleteEdge, onClose, openOverlay]);
 
   const handleAddStep = useCallback(() => {
     if (menuState?.flowPosition) {
