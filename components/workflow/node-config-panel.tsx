@@ -51,7 +51,6 @@ import {
 } from "@/lib/workflow-store";
 import { findActionById } from "@/plugins";
 import { Panel } from "../ai-elements/panel";
-import { IntegrationsDialog } from "../settings/integrations-dialog";
 import { Drawer, DrawerContent, DrawerTrigger } from "../ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ActionConfig } from "./config/action-config";
@@ -170,7 +169,6 @@ export const PanelInner = () => {
   const [showDeleteNodeAlert, setShowDeleteNodeAlert] = useState(false);
   const [showDeleteEdgeAlert, setShowDeleteEdgeAlert] = useState(false);
   const [showDeleteRunsAlert, setShowDeleteRunsAlert] = useState(false);
-  const [showIntegrationsDialog, setShowIntegrationsDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useAtom(propertiesPanelActiveTabAtom);
   const refreshRunsRef = useRef<(() => Promise<void>) | null>(null);
@@ -726,11 +724,6 @@ export const PanelInner = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
-        <IntegrationsDialog
-          onOpenChange={setShowIntegrationsDialog}
-          open={showIntegrationsDialog}
-        />
       </>
     );
   }
@@ -1045,11 +1038,6 @@ export const PanelInner = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <IntegrationsDialog
-        onOpenChange={setShowIntegrationsDialog}
-        open={showIntegrationsDialog}
-      />
     </>
   );
 };

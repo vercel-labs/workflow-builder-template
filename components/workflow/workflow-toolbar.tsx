@@ -3,7 +3,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
-  AlertTriangle,
   Check,
   ChevronDown,
   Copy,
@@ -57,10 +56,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { api } from "@/lib/api-client";
 import { authClient, useSession } from "@/lib/auth-client";
-import {
-  integrationsAtom,
-  integrationsVersionAtom,
-} from "@/lib/integrations-store";
+import { integrationsAtom } from "@/lib/integrations-store";
 import type { IntegrationType } from "@/lib/types/integration";
 import {
   addNodeAtom,
@@ -101,8 +97,8 @@ import {
 import { Panel } from "../ai-elements/panel";
 import { DeployButton } from "../deploy-button";
 import { GitHubStarsButton } from "../github-stars-button";
-import { IntegrationFormDialog } from "../settings/integration-form-dialog";
-import { IntegrationIcon } from "../ui/integration-icon";
+import { useOverlay } from "../overlays/overlay-provider";
+import { WorkflowIssuesOverlay } from "../overlays/workflow-issues-overlay";
 import { WorkflowIcon } from "../ui/workflow-icon";
 import { UserMenu } from "../workflows/user-menu";
 import { PanelInner } from "./node-config-panel";
@@ -538,18 +534,8 @@ function useWorkflowHandlers({
   setSelectedExecutionId,
   userIntegrations,
 }: WorkflowHandlerParams) {
+  const { open: openOverlay } = useOverlay();
   const [showUnsavedRunDialog, setShowUnsavedRunDialog] = useState(false);
-  const [showWorkflowIssuesDialog, setShowWorkflowIssuesDialog] =
-    useState(false);
-  const [workflowIssues, setWorkflowIssues] = useState<{
-    brokenReferences: BrokenTemplateReferenceInfo[];
-    missingRequiredFields: MissingRequiredFieldInfo[];
-    missingIntegrations: MissingIntegrationInfo[];
-  }>({
-    brokenReferences: [],
-    missingRequiredFields: [],
-    missingIntegrations: [],
-  });
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup polling interval on unmount
@@ -605,6 +591,21 @@ function useWorkflowHandlers({
     // Don't set executing to false here - let polling handle it
   };
 
+  const handleGoToStep = (nodeId: string, fieldKey?: string) => {
+    setSelectedNodeId(nodeId);
+    setActiveTab("properties");
+    // Focus on the specific field after a short delay to allow the panel to render
+    if (fieldKey) {
+      setTimeout(() => {
+        const element = document.getElementById(fieldKey);
+        if (element) {
+          element.focus();
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+    }
+  };
+
   const handleExecute = async () => {
     // Guard against concurrent executions
     if (isExecuting) {
@@ -616,43 +617,32 @@ function useWorkflowHandlers({
     const missingFields = getMissingRequiredFields(nodes);
     const missingIntegrations = getMissingIntegrations(nodes, userIntegrations);
 
-    // If there are any issues, show the combined dialog
+    // If there are any issues, show the workflow issues overlay
     if (
       brokenRefs.length > 0 ||
       missingFields.length > 0 ||
       missingIntegrations.length > 0
     ) {
-      setWorkflowIssues({
-        brokenReferences: brokenRefs,
-        missingRequiredFields: missingFields,
-        missingIntegrations,
+      openOverlay(WorkflowIssuesOverlay, {
+        issues: {
+          brokenReferences: brokenRefs,
+          missingRequiredFields: missingFields,
+          missingIntegrations,
+        },
+        onGoToStep: handleGoToStep,
+        onRunAnyway: executeWorkflow,
       });
-      setShowWorkflowIssuesDialog(true);
       return;
     }
 
-    await executeWorkflow();
-  };
-
-  const handleExecuteAnyway = async () => {
-    // Guard against concurrent executions
-    if (isExecuting) {
-      return;
-    }
-
-    setShowWorkflowIssuesDialog(false);
     await executeWorkflow();
   };
 
   return {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showWorkflowIssuesDialog,
-    setShowWorkflowIssuesDialog,
-    workflowIssues,
     handleSave,
     handleExecute,
-    handleExecuteAnyway,
   };
 }
 
@@ -821,12 +811,8 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   const {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showWorkflowIssuesDialog,
-    setShowWorkflowIssuesDialog,
-    workflowIssues,
     handleSave,
     handleExecute,
-    handleExecuteAnyway,
   } = useWorkflowHandlers({
     currentWorkflowId,
     nodes,
@@ -1040,12 +1026,8 @@ function useWorkflowActions(state: ReturnType<typeof useWorkflowState>) {
   return {
     showUnsavedRunDialog,
     setShowUnsavedRunDialog,
-    showWorkflowIssuesDialog,
-    setShowWorkflowIssuesDialog,
-    workflowIssues,
     handleSave,
     handleExecute,
-    handleExecuteAnyway,
     handleSaveAndRun,
     handleRunWithoutSaving,
     handleClearWorkflow,
@@ -1559,206 +1541,6 @@ function WorkflowMenuComponent({
   );
 }
 
-// Combined Workflow Issues Dialog Component
-function WorkflowIssuesDialog({
-  state,
-  actions,
-}: {
-  state: ReturnType<typeof useWorkflowState>;
-  actions: ReturnType<typeof useWorkflowActions>;
-}) {
-  const [addingIntegrationType, setAddingIntegrationType] =
-    useState<IntegrationType | null>(null);
-  const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
-  const { brokenReferences, missingRequiredFields, missingIntegrations } =
-    actions.workflowIssues;
-
-  const handleGoToStep = (nodeId: string, fieldKey?: string) => {
-    actions.setShowWorkflowIssuesDialog(false);
-    state.setSelectedNodeId(nodeId);
-    state.setActiveTab("properties");
-    // Focus on the specific field after a short delay to allow the panel to render
-    if (fieldKey) {
-      setTimeout(() => {
-        const element = document.getElementById(fieldKey);
-        if (element) {
-          element.focus();
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 100);
-    }
-  };
-
-  const handleAddIntegration = (integrationType: IntegrationType) => {
-    actions.setShowWorkflowIssuesDialog(false);
-    setAddingIntegrationType(integrationType);
-  };
-
-  const totalIssues =
-    brokenReferences.length +
-    missingRequiredFields.length +
-    missingIntegrations.length;
-
-  return (
-    <>
-      <AlertDialog
-        onOpenChange={actions.setShowWorkflowIssuesDialog}
-        open={actions.showWorkflowIssuesDialog}
-      >
-        <AlertDialogContent className="flex max-h-[80vh] max-w-lg flex-col overflow-hidden">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="size-5 text-orange-500" />
-              Workflow Issues ({totalIssues})
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-muted-foreground text-sm">
-                This workflow has issues that may cause it to fail.
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          <div className="flex-1 space-y-3 overflow-y-auto py-2">
-            {/* Missing Connections Section */}
-            {missingIntegrations.length > 0 && (
-              <div className="space-y-1">
-                <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  Missing Connections
-                </h4>
-                {missingIntegrations.map((missing) => (
-                  <div
-                    className="flex items-center gap-3 py-1"
-                    key={missing.integrationType}
-                  >
-                    <IntegrationIcon
-                      className="size-4 shrink-0"
-                      integration={missing.integrationType}
-                    />
-                    <p className="min-w-0 flex-1 text-sm">
-                      <span className="font-medium">
-                        {missing.integrationLabel}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {" — "}
-                        {missing.nodeNames.length > 3
-                          ? `${missing.nodeNames.slice(0, 3).join(", ")} +${missing.nodeNames.length - 3} more`
-                          : missing.nodeNames.join(", ")}
-                      </span>
-                    </p>
-                    <Button
-                      className="shrink-0"
-                      onClick={() =>
-                        handleAddIntegration(missing.integrationType)
-                      }
-                      size="sm"
-                      variant="outline"
-                    >
-                      Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Broken References Section */}
-            {brokenReferences.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  Broken References
-                </h4>
-                {brokenReferences.map((broken) => (
-                  <div key={broken.nodeId}>
-                    <p className="font-medium text-sm">{broken.nodeLabel}</p>
-                    <div className="mt-1 space-y-0.5">
-                      {broken.brokenReferences.map((ref, idx) => (
-                        <div
-                          className="flex items-center gap-3 py-0.5 pl-3"
-                          key={`${broken.nodeId}-${ref.fieldKey}-${idx}`}
-                        >
-                          <p className="min-w-0 flex-1 text-muted-foreground text-sm">
-                            <span className="font-mono">{ref.displayText}</span>
-                            {" in "}
-                            {ref.fieldLabel}
-                          </p>
-                          <Button
-                            className="shrink-0"
-                            onClick={() =>
-                              handleGoToStep(broken.nodeId, ref.fieldKey)
-                            }
-                            size="sm"
-                            variant="outline"
-                          >
-                            Fix
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Missing Required Fields Section */}
-            {missingRequiredFields.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                  Missing Required Fields
-                </h4>
-                {missingRequiredFields.map((node) => (
-                  <div key={node.nodeId}>
-                    <p className="font-medium text-sm">{node.nodeLabel}</p>
-                    <div className="mt-1 space-y-0.5">
-                      {node.missingFields.map((field) => (
-                        <div
-                          className="flex items-center gap-3 py-0.5 pl-3"
-                          key={`${node.nodeId}-${field.fieldKey}`}
-                        >
-                          <p className="min-w-0 flex-1 text-muted-foreground text-sm">
-                            {field.fieldLabel}
-                          </p>
-                          <Button
-                            className="shrink-0"
-                            onClick={() =>
-                              handleGoToStep(node.nodeId, field.fieldKey)
-                            }
-                            size="sm"
-                            variant="outline"
-                          >
-                            Fix
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <AlertDialogFooter className="sm:justify-between">
-            <Button onClick={actions.handleExecuteAnyway} variant="outline">
-              Run Anyway
-            </Button>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <IntegrationFormDialog
-        mode="create"
-        onClose={() => setAddingIntegrationType(null)}
-        onSuccess={() => {
-          setAddingIntegrationType(null);
-          // Increment version to trigger auto-fix for nodes
-          setIntegrationsVersion((v) => v + 1);
-        }}
-        open={addingIntegrationType !== null}
-        preselectedType={addingIntegrationType ?? undefined}
-      />
-    </>
-  );
-}
-
 // Workflow Dialogs Component
 function WorkflowDialogsComponent({
   state,
@@ -1992,8 +1774,6 @@ function WorkflowDialogsComponent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <WorkflowIssuesDialog actions={actions} state={state} />
 
       {/* Make Public Confirmation Dialog */}
       <AlertDialog

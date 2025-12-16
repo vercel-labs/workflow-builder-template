@@ -3,7 +3,8 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { HelpCircle, Plus, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { IntegrationFormDialog } from "@/components/settings/integration-form-dialog";
+import { ConfigureConnectionOverlay } from "@/components/overlays/add-connection-overlay";
+import { useOverlay } from "@/components/overlays/overlay-provider";
 import { Button } from "@/components/ui/button";
 import { CodeEditor } from "@/components/ui/code-editor";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
@@ -299,8 +300,8 @@ export function ActionConfig({
 
   const selectedCategory = actionType ? getCategoryForAction(actionType) : null;
   const [category, setCategory] = useState<string>(selectedCategory || "");
-  const [showAddConnectionDialog, setShowAddConnectionDialog] = useState(false);
   const setIntegrationsVersion = useSetAtom(integrationsVersionAtom);
+  const { open: openOverlay } = useOverlay();
 
   // AI Gateway managed keys state
   const aiGatewayStatus = useAtomValue(aiGatewayStatusAtom);
@@ -360,16 +361,26 @@ export function ActionConfig({
     setIntegrationsVersion((v) => v + 1);
   };
 
+  const openConnectionOverlay = () => {
+    if (integrationType) {
+      openOverlay(ConfigureConnectionOverlay, {
+        type: integrationType,
+        onSuccess: (integrationId: string) => {
+          setIntegrationsVersion((v) => v + 1);
+          onUpdateConfig("integrationId", integrationId);
+        },
+      });
+    }
+  };
+
   const handleAddSecondaryConnection = () => {
     if (shouldUseManagedKeys) {
       openConsentModal({
         onConsent: handleConsentSuccess,
-        onManualEntry: () => {
-          setShowAddConnectionDialog(true);
-        },
+        onManualEntry: openConnectionOverlay,
       });
     } else {
-      setShowAddConnectionDialog(true);
+      openConnectionOverlay();
     }
   };
 
@@ -466,17 +477,6 @@ export function ActionConfig({
             integrationType={integrationType}
             onChange={(id) => onUpdateConfig("integrationId", id)}
             value={(config?.integrationId as string) || ""}
-          />
-          <IntegrationFormDialog
-            mode="create"
-            onClose={() => setShowAddConnectionDialog(false)}
-            onSuccess={(integrationId) => {
-              setShowAddConnectionDialog(false);
-              setIntegrationsVersion((v) => v + 1);
-              onUpdateConfig("integrationId", integrationId);
-            }}
-            open={showAddConnectionDialog}
-            preselectedType={integrationType}
           />
         </div>
       )}

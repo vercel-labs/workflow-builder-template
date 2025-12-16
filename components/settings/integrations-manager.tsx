@@ -4,21 +4,15 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  DeleteConnectionOverlay,
+  EditConnectionOverlay,
+} from "@/components/overlays/edit-connection-overlay";
+import { useOverlay } from "@/components/overlays/overlay-provider";
 import { Button } from "@/components/ui/button";
 import { IntegrationIcon } from "@/components/ui/integration-icon";
 import { Spinner } from "@/components/ui/spinner";
 import { api, type Integration } from "@/lib/api-client";
 import { getIntegrationLabels } from "@/plugins";
-import { IntegrationFormDialog } from "./integration-form-dialog";
 
 // System integrations that don't have plugins
 const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
@@ -26,30 +20,18 @@ const SYSTEM_INTEGRATION_LABELS: Record<string, string> = {
 };
 
 type IntegrationsManagerProps = {
-  showCreateDialog: boolean;
-  onCreateDialogClose?: () => void;
   onIntegrationChange?: () => void;
   filter?: string;
 };
 
 export function IntegrationsManager({
-  showCreateDialog: externalShowCreateDialog,
-  onCreateDialogClose,
   onIntegrationChange,
   filter = "",
 }: IntegrationsManagerProps) {
+  const { push } = useOverlay();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingIntegration, setEditingIntegration] =
-    useState<Integration | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
-
-  // Sync external dialog state
-  useEffect(() => {
-    setShowCreateDialog(externalShowCreateDialog);
-  }, [externalShowCreateDialog]);
 
   const loadIntegrations = useCallback(async () => {
     try {
@@ -98,17 +80,28 @@ export function IntegrationsManager({
       });
   }, [integrations, filter]);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await api.integration.delete(id);
-      await loadIntegrations();
-      onIntegrationChange?.();
-    } catch (error) {
-      console.error("Failed to delete integration:", error);
-      toast.error("Failed to delete integration");
-    } finally {
-      setDeletingId(null);
-    }
+  const handleEdit = (integration: Integration) => {
+    push(EditConnectionOverlay, {
+      integration,
+      onSuccess: () => {
+        loadIntegrations();
+        onIntegrationChange?.();
+      },
+      onDelete: () => {
+        loadIntegrations();
+        onIntegrationChange?.();
+      },
+    });
+  };
+
+  const handleDelete = (integration: Integration) => {
+    push(DeleteConnectionOverlay, {
+      integration,
+      onSuccess: () => {
+        loadIntegrations();
+        onIntegrationChange?.();
+      },
+    });
   };
 
   const handleTest = async (id: string) => {
@@ -129,17 +122,6 @@ export function IntegrationsManager({
     } finally {
       setTestingId(null);
     }
-  };
-
-  const handleDialogClose = () => {
-    setShowCreateDialog(false);
-    setEditingIntegration(null);
-    onCreateDialogClose?.();
-  };
-
-  const handleDialogSuccess = async () => {
-    await loadIntegrations();
-    onIntegrationChange?.();
   };
 
   if (loading) {
@@ -208,7 +190,7 @@ export function IntegrationsManager({
               </Button>
               <Button
                 className="size-7"
-                onClick={() => setEditingIntegration(integration)}
+                onClick={() => handleEdit(integration)}
                 size="icon"
                 variant="outline"
               >
@@ -216,7 +198,7 @@ export function IntegrationsManager({
               </Button>
               <Button
                 className="size-7"
-                onClick={() => setDeletingId(integration.id)}
+                onClick={() => handleDelete(integration)}
                 size="icon"
                 variant="outline"
               >
@@ -229,50 +211,5 @@ export function IntegrationsManager({
     );
   };
 
-  return (
-    <div className="space-y-1">
-      {renderIntegrationsList()}
-
-      {(showCreateDialog || editingIntegration) && (
-        <IntegrationFormDialog
-          integration={editingIntegration}
-          mode={editingIntegration ? "edit" : "create"}
-          onClose={handleDialogClose}
-          onSuccess={handleDialogSuccess}
-          open
-        />
-      )}
-
-      <AlertDialog
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeletingId(null);
-          }
-        }}
-        open={deletingId !== null}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Connection</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this connection? Workflows using
-              it will fail until a new one is configured.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (deletingId) {
-                  handleDelete(deletingId);
-                }
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
+  return <div className="space-y-1">{renderIntegrationsList()}</div>;
 }
