@@ -406,9 +406,13 @@ export const PanelInner = () => {
     if (selectedNode) {
       let newConfig = { ...selectedNode.data.config, [key]: value };
 
-      // When action type changes, clear the integrationId since it may not be valid for the new action
-      if (key === "actionType" && selectedNode.data.config?.integrationId) {
-        newConfig = { ...newConfig, integrationId: undefined };
+      // When action type changes, clear ALL old config fields to prevent data pollution
+      // Only keep actionType and integrationId (which will be cleared below if needed)
+      if (key === "actionType") {
+        newConfig = {
+          actionType: value,
+          integrationId: undefined, // Will be auto-selected if needed
+        };
       }
 
       updateNodeData({ id: selectedNode.id, data: { config: newConfig } });
