@@ -49,6 +49,7 @@ export {
   getAllDependencies,
   getAllEnvVars,
   getAllIntegrations,
+  getEnvVarsForActions,
   getCredentialMapping,
   getDependenciesForActions,
   getIntegration,
