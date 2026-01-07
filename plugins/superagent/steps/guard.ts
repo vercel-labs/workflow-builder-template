@@ -16,6 +16,7 @@ type GuardResult = {
 
 export type SuperagentGuardCoreInput = {
   text: string;
+  systemPrompt?: string;
 };
 
 export type SuperagentGuardInput = StepInput &
@@ -45,6 +46,7 @@ async function stepHandler(
       },
       body: JSON.stringify({
         text: input.text,
+        ...(input.systemPrompt && { system_prompt: input.systemPrompt }),
       }),
     });
 
