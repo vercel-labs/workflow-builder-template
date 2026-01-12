@@ -19,7 +19,9 @@ type IssuesQueryResponse = {
       title: string;
       url: string;
       priority: number;
-      assigneeId?: string;
+      assignee?: {
+        id: string;
+      };
       state: {
         name: string;
       } | null;
@@ -121,7 +123,9 @@ async function stepHandler(
             title
             url
             priority
-            assigneeId
+            assignee {
+              id
+            }
             state {
               name
             }
@@ -145,7 +149,7 @@ async function stepHandler(
         url: issue.url,
         state: issue.state?.name || "Unknown",
         priority: issue.priority,
-        assigneeId: issue.assigneeId || undefined,
+        assigneeId: issue.assignee?.id || undefined,
       })
     );
 
