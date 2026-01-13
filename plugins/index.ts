@@ -16,6 +16,7 @@
 
 import "./ai-gateway";
 import "./blob";
+import "./deepl";
 import "./clerk";
 import "./fal";
 import "./firecrawl";
