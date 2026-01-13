@@ -37,6 +37,7 @@ import {
   getActionsByCategory,
   getAllIntegrations,
 } from "@/plugins";
+import { RunActorConfigFields } from "@/plugins/apify/steps/run-actor/config";
 import { ActionConfigRenderer } from "./action-config-renderer";
 import { SchemaBuilder, type SchemaField } from "./schema-builder";
 
@@ -541,14 +542,22 @@ export function ActionConfig({
       />
 
       {/* Plugin actions - declarative config fields */}
-      {pluginAction && !SYSTEM_ACTION_IDS.includes(actionType) && (
-        <ActionConfigRenderer
-          config={config}
-          disabled={disabled}
-          fields={pluginAction.configFields}
-          onUpdateConfig={handlePluginUpdateConfig}
-        />
-      )}
+      {pluginAction &&
+        !SYSTEM_ACTION_IDS.includes(actionType) &&
+        (actionType === "apify/run-actor" ? (
+          <RunActorConfigFields
+            config={config}
+            disabled={disabled}
+            onUpdateConfig={handlePluginUpdateConfig}
+          />
+        ) : (
+          <ActionConfigRenderer
+            config={config}
+            disabled={disabled}
+            fields={pluginAction.configFields}
+            onUpdateConfig={handlePluginUpdateConfig}
+          />
+        ))}
     </>
   );
 }

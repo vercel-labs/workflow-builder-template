@@ -6,6 +6,8 @@
 
 import type { generateImageStep } from "../../plugins/ai-gateway/steps/generate-image";
 import type { generateTextStep } from "../../plugins/ai-gateway/steps/generate-text";
+import type { apifyRunActorStep } from "../../plugins/apify/steps/run-actor/step";
+import type { scrapeSingleUrlStep } from "../../plugins/apify/steps/scrape-single-url/step";
 import type { firecrawlScrapeStep } from "../../plugins/firecrawl/steps/scrape";
 import type { firecrawlSearchStep } from "../../plugins/firecrawl/steps/search";
 import type { createTicketStep } from "../../plugins/linear/steps/create-ticket";
@@ -64,6 +66,14 @@ export const stepRegistry: Record<string, StepFunction> = {
     (await import("../../plugins/firecrawl/steps/search")).firecrawlSearchStep(
       input as Parameters<typeof firecrawlSearchStep>[0]
     ),
+  "Run Actor": async (input) =>
+    (
+      await import("../../plugins/apify/steps/run-actor/step")
+    ).apifyRunActorStep(input as Parameters<typeof apifyRunActorStep>[0]),
+  "Scrape Single URL": async (input) =>
+    (
+      await import("../../plugins/apify/steps/scrape-single-url/step")
+    ).scrapeSingleUrlStep(input as Parameters<typeof scrapeSingleUrlStep>[0]),
 };
 
 // Helper to check if a step exists

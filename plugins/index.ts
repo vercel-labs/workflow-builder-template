@@ -15,6 +15,7 @@
  */
 
 import "./ai-gateway";
+import "./apify";
 import "./blob";
 import "./clerk";
 import "./fal";
