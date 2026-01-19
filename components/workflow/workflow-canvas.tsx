@@ -271,6 +271,17 @@ export function WorkflowCanvas() {
 
   const onConnect: OnConnect = useCallback(
     (connection: XYFlowConnection) => {
+      // Check if an edge already exists between these nodes
+      const existingEdge = edges.find(
+        (edge) =>
+          edge.source === connection.source && edge.target === connection.target
+      );
+
+      // Prevent duplicate edges between the same nodes
+      if (existingEdge) {
+        return;
+      }
+
       const newEdge = {
         id: nanoid(),
         ...connection,
@@ -416,17 +427,27 @@ export function WorkflowCanvas() {
 
       // Create connection from the source node to the new node
       const fromSource = connectingHandleType.current === "source";
+      const sourceId = fromSource ? sourceNodeId : newNode.id;
+      const targetId = fromSource ? newNode.id : sourceNodeId;
 
-      const newEdge = {
-        id: nanoid(),
-        source: fromSource ? sourceNodeId : newNode.id,
-        target: fromSource ? newNode.id : sourceNodeId,
-        type: "animated",
-      };
-      setEdges([...edges, newEdge]);
-      setHasUnsavedChanges(true);
-      // Trigger immediate autosave for the new edge
-      triggerAutosave({ immediate: true });
+      // Check if an edge already exists between these nodes
+      const existingEdge = edges.find(
+        (edge) => edge.source === sourceId && edge.target === targetId
+      );
+
+      // Only create edge if it doesn't already exist
+      if (!existingEdge) {
+        const newEdge = {
+          id: nanoid(),
+          source: sourceId,
+          target: targetId,
+          type: "animated",
+        };
+        setEdges([...edges, newEdge]);
+        setHasUnsavedChanges(true);
+        // Trigger immediate autosave for the new edge
+        triggerAutosave({ immediate: true });
+      }
 
       // Set flag to prevent immediate deselection
       justCreatedNodeFromConnection.current = true;
