@@ -86,6 +86,7 @@ Visit [http://localhost:3000](http://localhost:3000) to get started.
 - **Firecrawl**: Scrape URL, Search Web
 - **GitHub**: Create Issue, List Issues, Get Issue, Update Issue
 - **Linear**: Create Ticket, Find Issues
+- **Olostep**: Scrape URL, Search Web, Map Website, AI Answer
 - **Perplexity**: Search Web, Ask Question, Research Topic
 - **Resend**: Send Email
 - **Slack**: Send Slack Message
