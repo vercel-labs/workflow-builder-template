@@ -1305,7 +1305,7 @@ export function generateWorkflowModule(
   const { code } = generateWorkflowCode(nodes, edges, options);
 
   return `/**
- * Generated Workflow: ${workflowName}
+ * Generated Workflow: ${workflowName.replace(/\*\//g, "*\\/").replace(/\r?\n/g, " ")}
  * 
  * This file was automatically generated from a workflow definition.
  * DO NOT EDIT MANUALLY - regenerate from the workflow editor instead.

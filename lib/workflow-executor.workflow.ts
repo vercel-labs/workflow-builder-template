@@ -3,6 +3,7 @@
  * This executor captures step executions through the workflow SDK for better observability
  */
 
+import { evaluateExpression } from "@/lib/condition-evaluator";
 import {
   preValidateConditionExpression,
   validateConditionExpression,
@@ -188,16 +189,10 @@ function evaluateConditionExpression(
         return { result: false, resolvedValues };
       }
 
-      const varNames = Object.keys(evalContext);
-      const varValues = Object.values(evalContext);
-
-      // Safe to evaluate - expression has been validated
-      // Only contains: variables (__v0, __v1), operators, literals, and whitelisted methods
-      const evalFunc = new Function(
-        ...varNames,
-        `return (${transformedExpression});`
+      const result = evaluateExpression(
+        transformedExpression,
+        evalContext
       );
-      const result = evalFunc(...varValues);
       return { result: Boolean(result), resolvedValues };
     } catch (error) {
       console.error("[Condition] Failed to evaluate condition:", error);
