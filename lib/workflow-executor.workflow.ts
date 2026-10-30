@@ -189,10 +189,7 @@ function evaluateConditionExpression(
         return { result: false, resolvedValues };
       }
 
-      const result = evaluateExpression(
-        transformedExpression,
-        evalContext
-      );
+      const result = evaluateExpression(transformedExpression, evalContext);
       return { result: Boolean(result), resolvedValues };
     } catch (error) {
       console.error("[Condition] Failed to evaluate condition:", error);

@@ -23,6 +23,7 @@ const VARIABLE_PATTERN = /^__v\d+$/;
 const IDENTIFIER_START = /[A-Za-z_$]/;
 const IDENTIFIER_PART = /[\w$]/;
 const DIGIT = /\d/;
+const WHITESPACE = /\s/;
 const NUMBER_PATTERN = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
 const HEX_DIGITS = /^[0-9a-fA-F]+$/;
 const SIMPLE_ESCAPES: Record<string, string> = {
@@ -122,7 +123,12 @@ function readEscape(expression: string, start: number): [string, number] {
   if (char === "\r" && expression[start + 1] === "\n") {
     return ["", start + 2];
   }
-  if (char === "\n" || char === "\r" || char === "\u2028" || char === "\u2029") {
+  if (
+    char === "\n" ||
+    char === "\r" ||
+    char === "\u2028" ||
+    char === "\u2029"
+  ) {
     return ["", start + 1];
   }
   return [SIMPLE_ESCAPES[char] ?? char, start + 1];
@@ -148,72 +154,86 @@ function readString(expression: string, start: number): [string, number] {
   return [value, i + 1];
 }
 
+function followsValue(previous: Token | undefined): boolean {
+  return (
+    previous !== undefined &&
+    (previous.type !== "operator" ||
+      previous.value === ")" ||
+      previous.value === "]")
+  );
+}
+
+function readNumber(expression: string, start: number): [Token, number] {
+  const literal = NUMBER_PATTERN.exec(expression.slice(start))?.[0] ?? "";
+  const next = expression[start + literal.length] ?? "";
+  if (!literal || IDENTIFIER_PART.test(next) || next === ".") {
+    throw new Error("Invalid number literal");
+  }
+  return [{ type: "number", value: Number(literal) }, start + literal.length];
+}
+
+function readIdentifier(expression: string, start: number): [Token, number] {
+  let end = start;
+  while (end < expression.length && IDENTIFIER_PART.test(expression[end])) {
+    end += 1;
+  }
+  return [{ type: "identifier", value: expression.slice(start, end) }, end];
+}
+
+function readOperator(expression: string, start: number): [Token, number] {
+  const operator = OPERATORS.find((op) => expression.startsWith(op, start));
+  if (!operator) {
+    throw new Error(`Unexpected character "${expression[start]}"`);
+  }
+  return [{ type: "operator", value: operator }, start + operator.length];
+}
+
+function readToken(
+  expression: string,
+  start: number,
+  previous: Token | undefined
+): [Token, number] {
+  const char = expression[start];
+  if (char === "'" || char === '"') {
+    const [value, next] = readString(expression, start);
+    return [{ type: "string", value }, next];
+  }
+  const startsNumber =
+    DIGIT.test(char) ||
+    (char === "." &&
+      !followsValue(previous) &&
+      DIGIT.test(expression[start + 1] ?? ""));
+  if (startsNumber) {
+    return readNumber(expression, start);
+  }
+  if (IDENTIFIER_START.test(char)) {
+    return readIdentifier(expression, start);
+  }
+  return readOperator(expression, start);
+}
+
 function tokenize(expression: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;
-
   while (i < expression.length) {
-    const char = expression[i];
-
-    if (/\s/.test(char)) {
+    if (WHITESPACE.test(expression[i])) {
       i += 1;
       continue;
     }
-
-    if (char === "'" || char === '"') {
-      const [value, next] = readString(expression, i);
-      tokens.push({ type: "string", value });
-      i = next;
-      continue;
-    }
-
-    const previous = tokens.at(-1);
-    const followsValue =
-      previous !== undefined &&
-      (previous.type !== "operator" ||
-        previous.value === ")" ||
-        previous.value === "]");
-    const startsNumber =
-      DIGIT.test(char) ||
-      (char === "." && !followsValue && DIGIT.test(expression[i + 1] ?? ""));
-
-    if (startsNumber) {
-      const match = NUMBER_PATTERN.exec(expression.slice(i));
-      const literal = match?.[0] ?? "";
-      const next = expression[i + literal.length] ?? "";
-      if (!literal || IDENTIFIER_PART.test(next) || next === ".") {
-        throw new Error("Invalid number literal");
-      }
-      tokens.push({ type: "number", value: Number(literal) });
-      i += literal.length;
-      continue;
-    }
-
-    if (IDENTIFIER_START.test(char)) {
-      let end = i;
-      while (end < expression.length && IDENTIFIER_PART.test(expression[end])) {
-        end += 1;
-      }
-      tokens.push({ type: "identifier", value: expression.slice(i, end) });
-      i = end;
-      continue;
-    }
-
-    const operator = OPERATORS.find((op) => expression.startsWith(op, i));
-    if (!operator) {
-      throw new Error(`Unexpected character "${char}"`);
-    }
-    tokens.push({ type: "operator", value: operator });
-    i += operator.length;
+    const [token, next] = readToken(expression, i, tokens.at(-1));
+    tokens.push(token);
+    i = next;
   }
-
   return tokens;
 }
 
 class Parser {
   private position = 0;
+  private readonly tokens: Token[];
 
-  constructor(private readonly tokens: Token[]) {}
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
 
   parse(): Node {
     const node = this.parseConditional();
@@ -316,49 +336,62 @@ class Parser {
     throw new Error(`Unexpected "${token.value}"`);
   }
 
+  private parseArguments(): Node[] {
+    const args: Node[] = [];
+    while (!this.isOperator(")")) {
+      args.push(this.parseConditional());
+      if (!this.isOperator(")")) {
+        this.expectOperator(",");
+      }
+    }
+    this.position += 1;
+    return args;
+  }
+
+  private parseDotAccess(object: Node): Node {
+    const name = this.peek();
+    if (name?.type !== "identifier") {
+      throw new Error("Expected property name after '.'");
+    }
+    this.position += 1;
+
+    if (this.isOperator("(")) {
+      this.position += 1;
+      const args = this.parseArguments();
+      if (!ALLOWED_METHODS.has(name.value)) {
+        throw new Error(`Method "${name.value}" is not allowed`);
+      }
+      return { type: "call", object, method: name.value, args };
+    }
+
+    if (BLOCKED_PROPERTIES.has(name.value)) {
+      throw new Error(`Property "${name.value}" is not allowed`);
+    }
+    return { type: "member", object, property: name.value };
+  }
+
+  private parseIndexAccess(object: Node): Node {
+    const key = this.peek();
+    if (key?.type !== "number" && key?.type !== "string") {
+      throw new Error("Only numeric indices or string literals are allowed");
+    }
+    this.position += 1;
+    this.expectOperator("]");
+    const property = String(key.value);
+    if (BLOCKED_PROPERTIES.has(property)) {
+      throw new Error(`Property "${property}" is not allowed`);
+    }
+    return { type: "member", object, property };
+  }
+
   private parsePostfix(base: Node): Node {
     let node = base;
-
-    while (true) {
-      if (this.isOperator(".")) {
-        this.position += 1;
-        const name = this.peek();
-        if (name?.type !== "identifier") {
-          throw new Error("Expected property name after '.'");
-        }
-        this.position += 1;
-
-        if (this.isOperator("(")) {
-          this.position += 1;
-          const args: Node[] = [];
-          while (!this.isOperator(")")) {
-            args.push(this.parseConditional());
-            if (!this.isOperator(")")) {
-              this.expectOperator(",");
-            }
-          }
-          this.position += 1;
-          node = { type: "call", object: node, method: name.value, args };
-        } else {
-          node = { type: "member", object: node, property: name.value };
-        }
-        continue;
-      }
-
-      if (this.isOperator("[")) {
-        this.position += 1;
-        const key = this.peek();
-        if (key?.type !== "number" && key?.type !== "string") {
-          throw new Error("Only numeric indices or string literals are allowed");
-        }
-        this.position += 1;
-        this.expectOperator("]");
-        node = { type: "member", object: node, property: String(key.value) };
-        continue;
-      }
-
-      return node;
+    while (this.isOperator(".") || this.isOperator("[")) {
+      const isDot = this.isOperator(".");
+      this.position += 1;
+      node = isDot ? this.parseDotAccess(node) : this.parseIndexAccess(node);
     }
+    return node;
   }
 }
 
@@ -367,15 +400,16 @@ function readProperty(object: unknown, property: string): unknown {
     throw new Error(`Property "${property}" is not allowed`);
   }
   if (object === null || object === undefined) {
-    return undefined;
+    return;
   }
-  if (typeof object === "string" || Array.isArray(object)) {
-    if (property === "length") {
-      return object.length;
-    }
+  if (
+    (typeof object === "string" || Array.isArray(object)) &&
+    property === "length"
+  ) {
+    return object.length;
   }
   if (typeof object !== "object" && typeof object !== "string") {
-    return undefined;
+    return;
   }
   return Object.hasOwn(object as object, property)
     ? (object as Record<string, unknown>)[property]
@@ -394,7 +428,7 @@ function callMethod(target: unknown, method: string, args: unknown[]): unknown {
     return target.includes(args[0], position);
   }
   if (typeof target !== "string") {
-    return undefined;
+    return;
   }
   switch (method) {
     case "includes":
@@ -412,7 +446,11 @@ function callMethod(target: unknown, method: string, args: unknown[]): unknown {
   }
 }
 
-function evaluateBinary(operator: string, left: unknown, right: unknown): unknown {
+function evaluateBinary(
+  operator: string,
+  left: unknown,
+  right: unknown
+): unknown {
   // biome-ignore lint/suspicious/noExplicitAny: operands are user data
   const l = left as any;
   // biome-ignore lint/suspicious/noExplicitAny: operands are user data
