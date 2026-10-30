@@ -64,7 +64,9 @@ export function IntegrationsManager({
           integration.type,
       }))
       .filter((integration) => {
-        if (!filter) return true;
+        if (!filter) {
+          return true;
+        }
         return (
           integration.label.toLowerCase().includes(filterLower) ||
           integration.name.toLowerCase().includes(filterLower) ||
