@@ -1,11 +1,16 @@
 import { findActionById, flattenConfigFields } from "@/plugins";
+import { generateConditionSource } from "./condition-evaluator";
 import {
   analyzeNodeUsage,
   buildAccessPath,
+  buildTemplateBody,
   getStepInfo,
   removeInvisibleChars,
   TEMPLATE_PATTERN,
+  toCommentText,
   toFriendlyVarName,
+  toNumberLiteral,
+  toStringLiteral,
   toTypeScriptLiteral,
 } from "./workflow-codegen-shared";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
@@ -101,52 +106,6 @@ export function generateWorkflowCode(
     nodeIdToVarName.set(node.id, varName);
   }
 
-  // Helper to process @nodeId:DisplayName.field format for template strings
-  function processAtFormat(trimmed: string, match: string): string {
-    const withoutAt = trimmed.substring(1);
-    const colonIndex = withoutAt.indexOf(":");
-    if (colonIndex === -1) {
-      return match;
-    }
-
-    const nodeId = withoutAt.substring(0, colonIndex);
-    const rest = withoutAt.substring(colonIndex + 1);
-    const dotIndex = rest.indexOf(".");
-    const fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
-
-    const varName = nodeIdToVarName.get(nodeId);
-    if (!varName) {
-      return match; // Node not found, keep original
-    }
-
-    if (!fieldPath) {
-      return `\${${varName}}`;
-    }
-
-    const accessPath = buildAccessPath(fieldPath);
-    return `\${${varName}${accessPath}}`;
-  }
-
-  // Helper to process $nodeId.field format for template strings
-  function processDollarFormat(trimmed: string, match: string): string {
-    const withoutDollar = trimmed.substring(1);
-    const parts = withoutDollar.split(".");
-    const nodeId = parts[0];
-    const fieldPath = parts.slice(1).join(".");
-
-    const varName = nodeIdToVarName.get(nodeId);
-    if (!varName) {
-      return match; // Node not found, keep original
-    }
-
-    if (!fieldPath) {
-      return `\${${varName}}`;
-    }
-
-    const accessPath = buildAccessPath(fieldPath);
-    return `\${${varName}${accessPath}}`;
-  }
-
   // Helper to process @nodeId:DisplayName.field format for JavaScript expressions (not template strings)
   function processAtFormatForExpression(
     trimmed: string,
@@ -199,53 +158,53 @@ export function generateWorkflowCode(
     return `${varName}${accessPath}`;
   }
 
-  // Helper to convert template variables to JavaScript expressions for template strings
-  function convertTemplateToJS(template: string): string {
-    if (!template || typeof template !== "string") {
-      return template;
+  // Resolve a {{...}} reference to a JavaScript expression, or null when unknown
+  function resolveReference(reference: string): string | null {
+    const unresolved = "\u0000";
+    let expression = unresolved;
+    if (reference.startsWith("@")) {
+      expression = processAtFormatForExpression(reference, unresolved);
+    } else if (reference.startsWith("$")) {
+      expression = processDollarFormatForExpression(reference, unresolved);
     }
-
-    return template.replace(TEMPLATE_PATTERN, (match, expression) => {
-      const trimmed = expression.trim();
-
-      if (trimmed.startsWith("@")) {
-        return processAtFormat(trimmed, match);
-      }
-
-      if (trimmed.startsWith("$")) {
-        return processDollarFormat(trimmed, match);
-      }
-
-      return match;
-    });
+    return expression === unresolved ? null : expression;
   }
 
-  // Helper to convert template variables to JavaScript expressions (not template literal syntax)
+  // Convert a workflow template to the body of a safe template literal
+  function convertTemplateToJS(template: string): string {
+    return buildTemplateBody(template, resolveReference);
+  }
+
+  // Emit a workflow template as a template literal expression
+  function templateValue(template: string): string {
+    return `\`${convertTemplateToJS(template)}\``;
+  }
+
+  // Convert a condition to a JavaScript expression. The source is rebuilt
+  // from the parsed tokens; unsupported or empty conditions become `false`,
+  // matching how the executor treats them.
   function convertConditionToJS(condition: string): string {
     if (!condition || typeof condition !== "string") {
-      return condition;
+      return "false";
     }
 
-    // First remove invisible characters (non-breaking spaces, etc.)
-    const cleaned = removeInvisibleChars(condition);
-
-    // Then convert template references
-    const converted = cleaned.replace(TEMPLATE_PATTERN, (match, expression) => {
-      const trimmed = expression.trim();
-
-      if (trimmed.startsWith("@")) {
-        return processAtFormatForExpression(trimmed, match);
+    const variables: string[] = [];
+    const skeleton = removeInvisibleChars(condition).replace(
+      new RegExp(TEMPLATE_PATTERN.source, "g"),
+      (match, reference: string) => {
+        const resolved = resolveReference(reference.trim());
+        if (!resolved) {
+          return match;
+        }
+        variables.push(resolved);
+        return `__v${variables.length - 1}`;
       }
+    );
 
-      if (trimmed.startsWith("$")) {
-        return processDollarFormatForExpression(trimmed, match);
-      }
-
-      return match;
-    });
-
-    // Final cleanup to ensure no non-breaking spaces remain
-    return removeInvisibleChars(converted);
+    return (
+      generateConditionSource(skeleton, variables) ??
+      "false /* unsupported condition */"
+    );
   }
 
   // Helper functions to generate code for different action types
@@ -264,26 +223,9 @@ export function generateWorkflowCode(
     const emailSubject = (config.emailSubject as string) || "Notification";
     const emailBody = (config.emailBody as string) || "No content";
 
-    const convertedEmailTo = convertTemplateToJS(emailTo);
-    const convertedSubject = convertTemplateToJS(emailSubject);
-    const convertedBody = convertTemplateToJS(emailBody);
-
-    // Check if template references are used (converted string contains ${)
-    const hasTemplateRefs = (str: string) => str.includes("${");
-
-    // Escape template expressions for the outer template literal (use $$ to escape $)
-    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
-
-    // Build values - use template literals if references exist, otherwise use string literals
-    const emailToValue = hasTemplateRefs(convertedEmailTo)
-      ? `\`${escapeForOuterTemplate(convertedEmailTo).replace(/`/g, "\\`")}\``
-      : `'${emailTo.replace(/'/g, "\\'")}'`;
-    const subjectValue = hasTemplateRefs(convertedSubject)
-      ? `\`${escapeForOuterTemplate(convertedSubject).replace(/`/g, "\\`")}\``
-      : `'${emailSubject.replace(/'/g, "\\'")}'`;
-    const bodyValue = hasTemplateRefs(convertedBody)
-      ? `\`${escapeForOuterTemplate(convertedBody).replace(/`/g, "\\`")}\``
-      : `'${emailBody.replace(/'/g, "\\'")}'`;
+    const emailToValue = templateValue(emailTo);
+    const subjectValue = templateValue(emailSubject);
+    const bodyValue = templateValue(emailBody);
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -308,17 +250,8 @@ export function generateWorkflowCode(
     const ticketTitle = (config.ticketTitle as string) || "New Ticket";
     const ticketDescription = (config.ticketDescription as string) || "";
 
-    const convertedTitle = convertTemplateToJS(ticketTitle);
-    const convertedDescription = convertTemplateToJS(ticketDescription);
-    const hasTemplateRefs = (str: string) => str.includes("${");
-    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
-
-    const titleValue = hasTemplateRefs(convertedTitle)
-      ? `\`${escapeForOuterTemplate(convertedTitle).replace(/`/g, "\\`")}\``
-      : `'${ticketTitle.replace(/'/g, "\\'")}'`;
-    const descValue = hasTemplateRefs(convertedDescription)
-      ? `\`${escapeForOuterTemplate(convertedDescription).replace(/`/g, "\\`")}\``
-      : `'${ticketDescription.replace(/'/g, "\\'")}'`;
+    const titleValue = templateValue(ticketTitle);
+    const descValue = templateValue(ticketDescription);
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -352,28 +285,21 @@ export function generateWorkflowCode(
 
     // dataSource as an object
     if (dataSource) {
-      lines.push(`${indent}  dataSource: { name: "${dataSource}" },`);
+      lines.push(
+        `${indent}  dataSource: { name: ${toStringLiteral(dataSource)} },`
+      );
     } else {
       lines.push(`${indent}  dataSource: {},`);
     }
 
     // query: SQL query if provided, otherwise table name
     if (dbQuery) {
-      // Convert template references in SQL query
-      const convertedQuery = convertTemplateToJS(dbQuery);
-      const hasTemplateRefs = convertedQuery.includes("${");
-
-      // Escape backticks and template literal syntax for SQL query
-      const escapeForOuterTemplate = (str: string) =>
-        str.replace(/\$\{/g, "$${");
-      const queryValue = hasTemplateRefs
-        ? `\`${escapeForOuterTemplate(convertedQuery).replace(/`/g, "\\`")}\``
-        : `\`${dbQuery.replace(/`/g, "\\`")}\``;
+      const queryValue = templateValue(dbQuery);
 
       lines.push(`${indent}  query: ${queryValue},`);
     } else {
       // Use table name as query string
-      lines.push(`${indent}  query: "${tableName}",`);
+      lines.push(`${indent}  query: ${toStringLiteral(tableName)},`);
     }
 
     lines.push(`${indent}});`);
@@ -397,8 +323,8 @@ export function generateWorkflowCode(
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
-      `${indent}  url: '${endpoint}',`,
-      `${indent}  method: '${method}',`,
+      `${indent}  url: ${toStringLiteral(endpoint)},`,
+      `${indent}  method: ${toStringLiteral(method)},`,
       `${indent}  body: {},`,
       `${indent}});`,
     ];
@@ -428,14 +354,7 @@ export function generateWorkflowCode(
 
   // Helper to generate prompt value with template handling
   function generatePromptValue(aiPrompt: string): string {
-    const convertedPrompt = convertTemplateToJS(aiPrompt);
-    const hasTemplateRefs = convertedPrompt.includes("${");
-    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
-
-    if (hasTemplateRefs) {
-      return `\`${escapeForOuterTemplate(convertedPrompt).replace(/`/g, "\\`")}\``;
-    }
-    return `\`${aiPrompt.replace(/`/g, "\\`")}\``;
+    return templateValue(aiPrompt);
   }
 
   function generateAiTextActionCode(
@@ -459,7 +378,7 @@ export function generateWorkflowCode(
     const lines = [
       `${indent}// Generate text using AI`,
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
-      `${indent}  model: "${aiModel}",`,
+      `${indent}  model: ${toStringLiteral(aiModel)},`,
       `${indent}  prompt: ${promptValue},`,
     ];
 
@@ -491,8 +410,8 @@ export function generateWorkflowCode(
     return [
       `${indent}// Generate image using AI`,
       `${indent}const ${varName} = await generateImage({`,
-      `${indent}  model: "${imageModel}",`,
-      `${indent}  prompt: \`${imagePrompt}\`,`,
+      `${indent}  model: ${toStringLiteral(imageModel)},`,
+      `${indent}  prompt: ${templateValue(imagePrompt)},`,
       `${indent}  size: "1024x1024",`,
       `${indent}});`,
     ];
@@ -512,17 +431,8 @@ export function generateWorkflowCode(
     const slackChannel = (config.slackChannel as string) || "#general";
     const slackMessage = (config.slackMessage as string) || "Message content";
 
-    const convertedChannel = convertTemplateToJS(slackChannel);
-    const convertedMessage = convertTemplateToJS(slackMessage);
-    const hasTemplateRefs = (str: string) => str.includes("${");
-    const escapeForOuterTemplate = (str: string) => str.replace(/\$\{/g, "$${");
-
-    const channelValue = hasTemplateRefs(convertedChannel)
-      ? `\`${escapeForOuterTemplate(convertedChannel).replace(/`/g, "\\`")}\``
-      : `"${slackChannel}"`;
-    const messageValue = hasTemplateRefs(convertedMessage)
-      ? `\`${escapeForOuterTemplate(convertedMessage).replace(/`/g, "\\`")}\``
-      : `"${slackMessage}"`;
+    const channelValue = templateValue(slackChannel);
+    const messageValue = templateValue(slackMessage);
 
     return [
       `${indent}const ${varName} = await ${stepInfo.functionName}({`,
@@ -533,12 +443,7 @@ export function generateWorkflowCode(
   }
 
   function formatTemplateValue(value: string): string {
-    const converted = convertTemplateToJS(value);
-    const hasTemplateRefs = converted.includes("${");
-    const escaped = converted.replace(/\$\{/g, "$${").replace(/`/g, "\\`");
-    return hasTemplateRefs
-      ? `\`${escaped}\``
-      : `\`${value.replace(/`/g, "\\`")}\``;
+    return templateValue(value);
   }
 
   function generateFirecrawlActionCode(
@@ -568,7 +473,7 @@ export function generateWorkflowCode(
       lines.push(`${indent}  query: ${formatTemplateValue(query)},`);
     }
     if (limit) {
-      lines.push(`${indent}  limit: ${limit},`);
+      lines.push(`${indent}  limit: ${toNumberLiteral(limit)},`);
     }
 
     lines.push(`${indent}});`);
@@ -640,13 +545,16 @@ export function generateWorkflowCode(
         `${indent}  ${key}: ${formatTemplateValue(String(value))},`,
       "template-textarea": () =>
         `${indent}  ${key}: ${formatTemplateValue(String(value))},`,
-      number: () => `${indent}  ${key}: ${value},`,
-      select: () => `${indent}  ${key}: "${value}",`,
-      "schema-builder": () => `${indent}  ${key}: ${JSON.stringify(value)},`,
+      number: () => `${indent}  ${key}: ${toNumberLiteral(value)},`,
+      select: () => `${indent}  ${key}: ${toStringLiteral(value)},`,
+      "schema-builder": () =>
+        `${indent}  ${key}: ${toTypeScriptLiteral(value)},`,
     };
 
     const formatter = fieldTypeFormatters[fieldType];
-    return formatter ? formatter() : `${indent}  ${key}: "${value}",`;
+    return formatter
+      ? formatter()
+      : `${indent}  ${key}: ${toStringLiteral(value)},`;
   }
 
   /**
@@ -709,10 +617,12 @@ export function generateWorkflowCode(
 
     // Use label if available, otherwise fall back to action type
     const actionLabel = node.data.label || actionType || "Unknown Action";
-    const lines: string[] = [`${indent}// Action: ${actionLabel}`];
+    const lines: string[] = [
+      `${indent}// Action: ${toCommentText(actionLabel)}`,
+    ];
 
     if (node.data.description) {
-      lines.push(`${indent}// ${node.data.description}`);
+      lines.push(`${indent}// ${toCommentText(node.data.description)}`);
     }
 
     // Check if this node's output is used
@@ -818,14 +728,18 @@ export function generateWorkflowCode(
         lines.push(...wrapActionCall(pluginCode));
       } else if (outputIsUsed) {
         // Unknown action type - generate placeholder
-        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
         lines.push(
-          `${indent}const ${varName} = { status: 'pending', actionType: "${actionType}" };`
+          `${indent}// TODO: Implement action type ${toCommentText(actionType)}`
+        );
+        lines.push(
+          `${indent}const ${varName} = { status: 'pending', actionType: ${toStringLiteral(actionType)} };`
         );
       } else {
-        lines.push(`${indent}// TODO: Implement action type "${actionType}"`);
         lines.push(
-          `${indent}void ({ status: 'pending', actionType: "${actionType}" });`
+          `${indent}// TODO: Implement action type ${toCommentText(actionType)}`
+        );
+        lines.push(
+          `${indent}void ({ status: 'pending', actionType: ${toStringLiteral(actionType)} });`
         );
       }
     }
@@ -838,10 +752,12 @@ export function generateWorkflowCode(
     nodeId: string,
     indent: string
   ): string[] {
-    const lines: string[] = [`${indent}// Condition: ${node.data.label}`];
+    const lines: string[] = [
+      `${indent}// Condition: ${toCommentText(node.data.label)}`,
+    ];
 
     if (node.data.description) {
-      lines.push(`${indent}// ${node.data.description}`);
+      lines.push(`${indent}// ${toCommentText(node.data.description)}`);
     }
 
     const condition = node.data.config?.condition as string;
@@ -852,9 +768,7 @@ export function generateWorkflowCode(
       const falseNode = nextNodes[1];
 
       // Convert template references in condition to JavaScript expressions (not template literal syntax)
-      const convertedCondition = condition
-        ? convertConditionToJS(condition)
-        : "true";
+      const convertedCondition = convertConditionToJS(condition);
 
       lines.push(`${indent}if (${convertedCondition}) {`);
       if (trueNode) {
@@ -957,14 +871,14 @@ export function generateWorkflowCode(
     indent: string,
     branchVisited: Set<string>
   ): string[] {
-    const lines: string[] = [`${indent}// Condition: ${node.data.label}`];
+    const lines: string[] = [
+      `${indent}// Condition: ${toCommentText(node.data.label)}`,
+    ];
     const condition = node.data.config?.condition as string;
     const nextNodes = edgesBySource.get(nodeId) || [];
 
     if (nextNodes.length > 0) {
-      const convertedCondition = condition
-        ? convertConditionToJS(condition)
-        : "true";
+      const convertedCondition = convertConditionToJS(condition);
 
       lines.push(`${indent}if (${convertedCondition}) {`);
       if (nextNodes[0]) {
@@ -1000,7 +914,7 @@ export function generateWorkflowCode(
       `import { ${stepInfo.functionName} } from '${stepInfo.importPath}';`
     );
 
-    const lines: string[] = [`${indent}// ${actionLabel}`];
+    const lines: string[] = [`${indent}// ${toCommentText(actionLabel)}`];
     if (configParams.length > 0) {
       lines.push(`${indent}await ${stepInfo.functionName}({`);
       lines.push(...configParams);
@@ -1222,7 +1136,7 @@ export function generateWorkflowCode(
   // Generate code for each node in the workflow
   function generateNodeCode(nodeId: string, indent = "  "): string[] {
     if (visited.has(nodeId)) {
-      return [`${indent}// Already processed: ${nodeId}`];
+      return [`${indent}// Already processed: ${toCommentText(nodeId)}`];
     }
 
     visited.add(nodeId);
@@ -1263,7 +1177,9 @@ export function generateWorkflowCode(
       }
 
       default:
-        lines.push(`${indent}// Unknown node type: ${node.data.type}`);
+        lines.push(
+          `${indent}// Unknown node type: ${toCommentText(node.data.type)}`
+        );
         break;
     }
 
@@ -1305,7 +1221,7 @@ export function generateWorkflowModule(
   const { code } = generateWorkflowCode(nodes, edges, options);
 
   return `/**
- * Generated Workflow: ${workflowName}
+ * Generated Workflow: ${workflowName.replace(/\*\//g, "*\\/").replace(/\r?\n/g, " ")}
  * 
  * This file was automatically generated from a workflow definition.
  * DO NOT EDIT MANUALLY - regenerate from the workflow editor instead.

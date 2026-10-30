@@ -14,14 +14,18 @@ const SYSTEM_CODEGEN_TEMPLATES: Record<string, string> = {
 };
 
 import {
-  ARRAY_INDEX_PATTERN,
   analyzeNodeUsage,
   buildEdgeMap,
-  escapeForTemplateLiteral,
+  buildSafeAccessPath,
+  buildTemplateBody,
   findTriggerNodes,
   sanitizeFunctionName,
   sanitizeStepName,
   sanitizeVarName,
+  toCommentText,
+  toJsonLiteral,
+  toNumberLiteral,
+  toStringLiteral,
 } from "./workflow-codegen-shared";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
@@ -63,99 +67,42 @@ function loadStepImplementation(actionType: string): string | null {
 }
 
 /**
- * Process new format ID references (@nodeId:DisplayName)
+ * Resolve a {{@nodeId:Label.field}} or {{$nodeId.field}} reference to an
+ * expression over the generated `outputs` map
  */
-function processNewFormatID(trimmed: string, match: string): string {
-  const withoutAt = trimmed.substring(1);
-  const colonIndex = withoutAt.indexOf(":");
+function resolveReference(reference: string): string | null {
+  let nodeId: string;
+  let fieldPath: string;
 
-  if (colonIndex === -1) {
-    return match; // Invalid format, keep original
+  if (reference.startsWith("@")) {
+    const withoutAt = reference.substring(1);
+    const colonIndex = withoutAt.indexOf(":");
+    if (colonIndex === -1) {
+      return null;
+    }
+    nodeId = withoutAt.substring(0, colonIndex);
+    const rest = withoutAt.substring(colonIndex + 1);
+    const dotIndex = rest.indexOf(".");
+    fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
+  } else if (reference.startsWith("$")) {
+    const parts = reference.substring(1).split(".");
+    nodeId = parts[0];
+    fieldPath = parts.slice(1).join(".");
+  } else {
+    return null;
   }
-
-  const nodeId = withoutAt.substring(0, colonIndex);
-  const rest = withoutAt.substring(colonIndex + 1);
-  const dotIndex = rest.indexOf(".");
-  const fieldPath = dotIndex !== -1 ? rest.substring(dotIndex + 1) : "";
 
   const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
-
-  if (!fieldPath) {
-    return `\${outputs?.['${sanitizedNodeId}']?.data}`;
-  }
-
-  const accessPath = fieldPath
-    .split(".")
-    .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_INDEX_PATTERN);
-      if (arrayMatch) {
-        return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
-      }
-      return `?.${part}`;
-    })
-    .join("");
-
-  return `\${outputs?.['${sanitizedNodeId}']?.data${accessPath}}`;
+  const base = `outputs?.['${sanitizedNodeId}']?.data`;
+  return fieldPath ? `${base}${buildSafeAccessPath(fieldPath, true)}` : base;
 }
 
 /**
- * Process legacy dollar references ($nodeId)
- */
-function processLegacyDollarRef(trimmed: string): string {
-  const withoutDollar = trimmed.substring(1);
-
-  if (!(withoutDollar.includes(".") || withoutDollar.includes("["))) {
-    const sanitizedNodeId = withoutDollar.replace(/[^a-zA-Z0-9]/g, "_");
-    return `\${outputs?.['${sanitizedNodeId}']?.data}`;
-  }
-
-  const parts = withoutDollar.split(".");
-  const nodeId = parts[0];
-  const sanitizedNodeId = nodeId.replace(/[^a-zA-Z0-9]/g, "_");
-  const fieldPath = parts.slice(1).join(".");
-
-  if (!fieldPath) {
-    return `\${outputs?.['${sanitizedNodeId}']?.data}`;
-  }
-
-  const accessPath = fieldPath
-    .split(".")
-    .map((part: string) => {
-      const arrayMatch = part.match(ARRAY_INDEX_PATTERN);
-      if (arrayMatch) {
-        return `?.${arrayMatch[1]}?.[${arrayMatch[2]}]`;
-      }
-      return `?.${part}`;
-    })
-    .join("");
-
-  return `\${outputs?.['${sanitizedNodeId}']?.data${accessPath}}`;
-}
-
-/**
- * Convert template variables to JavaScript expressions
+ * Convert a workflow template to the body of a safe template literal
  * Converts {{@nodeId:DisplayName.field}} to ${outputs?.['nodeId']?.data?.field}
  */
 function convertTemplateToJS(template: string): string {
-  if (!template || typeof template !== "string") {
-    return template;
-  }
-
-  const pattern = /\{\{([^}]+)\}\}/g;
-
-  return template.replace(pattern, (match, expression) => {
-    const trimmed = expression.trim();
-
-    if (trimmed.startsWith("@")) {
-      return processNewFormatID(trimmed, match);
-    }
-
-    if (trimmed.startsWith("$")) {
-      return processLegacyDollarRef(trimmed);
-    }
-
-    return match;
-  });
+  return buildTemplateBody(template, resolveReference);
 }
 
 // Helper to analyze which node outputs are used (extended from shared for SDK)
@@ -265,7 +212,7 @@ export function generateWorkflowSDKCode(
       "apiKey: process.env.LINEAR_API_KEY!",
     ];
     if (config.teamId) {
-      params.push(`teamId: "${config.teamId}"`);
+      params.push(`teamId: ${toStringLiteral(config.teamId)}`);
     }
     return params;
   }
@@ -293,7 +240,7 @@ export function generateWorkflowSDKCode(
     }
 
     return [
-      `model: "${modelString}"`,
+      `model: ${toStringLiteral(modelString)}`,
       `prompt: \`${convertTemplateToJS((config.aiPrompt as string) || "")}\``,
       "apiKey: process.env.OPENAI_API_KEY!",
     ];
@@ -306,7 +253,7 @@ export function generateWorkflowSDKCode(
     const imageModel =
       (config.imageModel as string) || "google/imagen-4.0-generate";
     return [
-      `model: "${imageModel}"`,
+      `model: ${toStringLiteral(imageModel)}`,
       `prompt: \`${convertTemplateToJS((config.imagePrompt as string) || "")}\``,
       'size: "1024x1024"',
       "providerOptions: { openai: { apiKey: process.env.AI_GATEWAY_API_KEY! } }",
@@ -321,19 +268,19 @@ export function generateWorkflowSDKCode(
 
   function buildHttpParams(config: Record<string, unknown>): string[] {
     const params = [
-      `url: "${config.endpoint || "https://api.example.com/endpoint"}"`,
-      `method: "${config.httpMethod || "POST"}"`,
-      `headers: ${config.httpHeaders || "{}"}`,
+      `url: ${toStringLiteral(config.endpoint || "https://api.example.com/endpoint")}`,
+      `method: ${toStringLiteral(config.httpMethod || "POST")}`,
+      `headers: ${toJsonLiteral(config.httpHeaders, "{}")}`,
     ];
     if (config.httpBody) {
-      params.push(`body: ${config.httpBody}`);
+      params.push(`body: ${toJsonLiteral(config.httpBody, "undefined")}`);
     }
     return params;
   }
 
   function buildConditionParams(config: Record<string, unknown>): string[] {
     return [
-      `condition: ${convertTemplateToJS((config.condition as string) || "true")}`,
+      `condition: \`${convertTemplateToJS((config.condition as string) || "true")}\``,
     ];
   }
 
@@ -365,7 +312,7 @@ export function generateWorkflowSDKCode(
       );
     }
     if (config.limit) {
-      params.push(`limit: ${config.limit}`);
+      params.push(`limit: ${toNumberLiteral(config.limit)}`);
     }
 
     return params;
@@ -552,7 +499,7 @@ ${stepBody}
     return [
       `${indent}// Triggered`,
       `${indent}let ${varName} = input;`,
-      `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: '${label}', data: ${varName} };`,
+      `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: ${toStringLiteral(label)}, data: ${varName} };`,
     ];
   }
 
@@ -568,7 +515,7 @@ ${stepBody}
     const stepFnName =
       nodeToStepName.get(nodeId) || sanitizeStepName(nodeLabel);
 
-    const lines: string[] = [`${indent}// ${nodeLabel}`];
+    const lines: string[] = [`${indent}// ${toCommentText(nodeLabel)}`];
 
     // Check if this node's output is used by any downstream node
     const outputIsUsed = usedNodeOutputs.has(nodeId);
@@ -579,7 +526,7 @@ ${stepBody}
         `${indent}const ${varName} = await ${stepFnName}({ ...input, outputs });`
       );
       lines.push(
-        `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: '${nodeLabel}', data: ${varName} };`
+        `${indent}outputs['${sanitizeVarName(nodeId)}'] = { label: ${toStringLiteral(nodeLabel)}, data: ${varName} };`
       );
     } else {
       // If output not used, don't store the result in a variable
@@ -603,9 +550,9 @@ ${stepBody}
     const lines: string[] = [];
 
     if (nextNodes.length > 0) {
-      lines.push(`${indent}// ${node.data.label}`);
+      lines.push(`${indent}// ${toCommentText(node.data.label)}`);
       lines.push(
-        `${indent}const ${conditionVarName} = \`${escapeForTemplateLiteral(convertedCondition)}\`;`
+        `${indent}const ${conditionVarName} = \`${convertedCondition}\`;`
       );
       lines.push(`${indent}if (${conditionVarName}) {`);
 
@@ -673,7 +620,9 @@ ${stepBody}
       }
 
       default:
-        lines.push(`${indent}// Unknown node type: ${node.data.type}`);
+        lines.push(
+          `${indent}// Unknown node type: ${toCommentText(node.data.type)}`
+        );
         break;
     }
 
