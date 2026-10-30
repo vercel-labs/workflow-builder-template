@@ -1,4 +1,5 @@
 import { findActionById, flattenConfigFields } from "@/plugins";
+import { generateConditionSource } from "./condition-evaluator";
 import {
   analyzeNodeUsage,
   buildAccessPath,
@@ -12,7 +13,6 @@ import {
   toStringLiteral,
   toTypeScriptLiteral,
 } from "./workflow-codegen-shared";
-import { generateConditionSource } from "./condition-evaluator";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 type CodeGenOptions = {
@@ -285,7 +285,9 @@ export function generateWorkflowCode(
 
     // dataSource as an object
     if (dataSource) {
-      lines.push(`${indent}  dataSource: { name: ${toStringLiteral(dataSource)} },`);
+      lines.push(
+        `${indent}  dataSource: { name: ${toStringLiteral(dataSource)} },`
+      );
     } else {
       lines.push(`${indent}  dataSource: {},`);
     }

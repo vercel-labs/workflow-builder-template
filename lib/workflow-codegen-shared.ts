@@ -331,10 +331,7 @@ export function getStepInfo(actionType: string): {
  * Escape plain text for the body of a generated template literal
  */
 export function escapeTemplateText(str: string): string {
-  return str
-    .replace(/\\/g, "\\\\")
-    .replace(/`/g, "\\`")
-    .replace(/\$/g, "\\$");
+  return str.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 }
 
 /**
@@ -352,7 +349,9 @@ export function buildTemplateBody(
 
   let body = "";
   let lastIndex = 0;
-  for (const match of template.matchAll(new RegExp(TEMPLATE_PATTERN.source, "g"))) {
+  for (const match of template.matchAll(
+    new RegExp(TEMPLATE_PATTERN.source, "g")
+  )) {
     const index = match.index ?? 0;
     body += escapeTemplateText(template.slice(lastIndex, index));
     const expression = resolve(match[1].trim());
