@@ -525,3 +525,70 @@ export function isSupportedConditionExpression(expression: string): boolean {
     return false;
   }
 }
+
+/**
+ * Emit JavaScript source for a supported condition, rebuilt from its tokens.
+ * Each `__vN` variable is replaced with `variables[N]`; string and number
+ * literals are re-encoded, so nothing from the original text is copied as-is.
+ * Returns null when the expression is not supported.
+ */
+export function generateConditionSource(
+  expression: string,
+  variables: string[]
+): string | null {
+  let tokens: Token[];
+  try {
+    tokens = tokenize(expression);
+    new Parser(tokens).parse();
+  } catch {
+    return null;
+  }
+
+  const parts: string[] = [];
+  for (const [index, token] of tokens.entries()) {
+    const previous = tokens[index - 1];
+    const isProperty =
+      previous?.type === "operator" && previous.value === ".";
+
+    if (token.type === "string") {
+      parts.push(JSON.stringify(token.value));
+    } else if (token.type === "number") {
+      parts.push(String(token.value));
+    } else if (
+      token.type === "identifier" &&
+      !isProperty &&
+      VARIABLE_PATTERN.test(token.value)
+    ) {
+      const variable = variables[Number(token.value.slice(3))];
+      if (variable === undefined) {
+        return null;
+      }
+      parts.push(variable);
+    } else {
+      parts.push(token.value);
+    }
+  }
+  return joinTokens(tokens, parts);
+}
+
+const NO_SPACE_BEFORE = new Set([".", ")", "]", ","]);
+const NO_SPACE_AFTER = new Set([".", "(", "[", "!"]);
+
+// Join emitted tokens with spacing that keeps member access and calls tight
+// and never merges two tokens into a different one (for example "- -")
+function joinTokens(tokens: Token[], parts: string[]): string {
+  let source = "";
+  for (const [index, part] of parts.entries()) {
+    const current = tokens[index];
+    const previous = tokens[index - 1];
+    const tight =
+      previous === undefined ||
+      (current.type === "operator" &&
+        (NO_SPACE_BEFORE.has(current.value) ||
+          current.value === "[" ||
+          (current.value === "(" && previous.type === "identifier"))) ||
+      (previous.type === "operator" && NO_SPACE_AFTER.has(previous.value));
+    source += (tight ? "" : " ") + part;
+  }
+  return source;
+}

@@ -12,7 +12,7 @@ import {
   toStringLiteral,
   toTypeScriptLiteral,
 } from "./workflow-codegen-shared";
-import { isSupportedConditionExpression } from "./condition-evaluator";
+import { generateConditionSource } from "./condition-evaluator";
 import type { WorkflowEdge, WorkflowNode } from "./workflow-store";
 
 type CodeGenOptions = {
@@ -180,35 +180,31 @@ export function generateWorkflowCode(
     return `\`${convertTemplateToJS(template)}\``;
   }
 
-  // Convert a condition to a JavaScript expression. Only conditions that fit
-  // the supported grammar are emitted; anything else becomes `false`.
+  // Convert a condition to a JavaScript expression. The source is rebuilt
+  // from the parsed tokens; unsupported or empty conditions become `false`,
+  // matching how the executor treats them.
   function convertConditionToJS(condition: string): string {
     if (!condition || typeof condition !== "string") {
-      return "true";
+      return "false";
     }
 
-    const cleaned = removeInvisibleChars(condition);
-    let skeleton = "";
-    let expression = "";
-    let lastIndex = 0;
-    let varIndex = 0;
-    for (const match of cleaned.matchAll(
-      new RegExp(TEMPLATE_PATTERN.source, "g")
-    )) {
-      const index = match.index ?? 0;
-      const text = cleaned.slice(lastIndex, index);
-      const resolved = resolveReference(match[1].trim());
-      skeleton += text + (resolved ? `__v${varIndex++}` : match[0]);
-      expression += text + (resolved ?? match[0]);
-      lastIndex = index + match[0].length;
-    }
-    skeleton += cleaned.slice(lastIndex);
-    expression += cleaned.slice(lastIndex);
+    const variables: string[] = [];
+    const skeleton = removeInvisibleChars(condition).replace(
+      new RegExp(TEMPLATE_PATTERN.source, "g"),
+      (match, reference: string) => {
+        const resolved = resolveReference(reference.trim());
+        if (!resolved) {
+          return match;
+        }
+        variables.push(resolved);
+        return `__v${variables.length - 1}`;
+      }
+    );
 
-    if (!isSupportedConditionExpression(skeleton)) {
-      return "false /* unsupported condition */";
-    }
-    return expression;
+    return (
+      generateConditionSource(skeleton, variables) ??
+      "false /* unsupported condition */"
+    );
   }
 
   // Helper functions to generate code for different action types
@@ -1138,7 +1134,7 @@ export function generateWorkflowCode(
   // Generate code for each node in the workflow
   function generateNodeCode(nodeId: string, indent = "  "): string[] {
     if (visited.has(nodeId)) {
-      return [`${indent}// Already processed: ${nodeId}`];
+      return [`${indent}// Already processed: ${toCommentText(nodeId)}`];
     }
 
     visited.add(nodeId);
@@ -1179,7 +1175,9 @@ export function generateWorkflowCode(
       }
 
       default:
-        lines.push(`${indent}// Unknown node type: ${node.data.type}`);
+        lines.push(
+          `${indent}// Unknown node type: ${toCommentText(node.data.type)}`
+        );
         break;
     }
 
