@@ -23,6 +23,17 @@ const VARIABLE_PATTERN = /^__v\d+$/;
 const IDENTIFIER_START = /[A-Za-z_$]/;
 const IDENTIFIER_PART = /[\w$]/;
 const DIGIT = /\d/;
+const NUMBER_PATTERN = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
+const HEX_DIGITS = /^[0-9a-fA-F]+$/;
+const SIMPLE_ESCAPES: Record<string, string> = {
+  n: "\n",
+  t: "\t",
+  r: "\r",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+  "0": "\0",
+};
 
 const OPERATORS = [
   "===",
@@ -84,16 +95,48 @@ const BINARY_PRECEDENCE: Record<string, number> = {
   "%": 6,
 };
 
+function readHexEscape(hex: string): string {
+  if (!HEX_DIGITS.test(hex)) {
+    throw new Error("Invalid escape sequence");
+  }
+  return String.fromCodePoint(Number.parseInt(hex, 16));
+}
+
+// Decode the escape that starts after a backslash, matching JavaScript
+function readEscape(expression: string, start: number): [string, number] {
+  const char = expression[start];
+
+  if (char === "x") {
+    return [readHexEscape(expression.slice(start + 1, start + 3)), start + 3];
+  }
+  if (char === "u" && expression[start + 1] === "{") {
+    const close = expression.indexOf("}", start + 2);
+    if (close === -1) {
+      throw new Error("Invalid escape sequence");
+    }
+    return [readHexEscape(expression.slice(start + 2, close)), close + 1];
+  }
+  if (char === "u") {
+    return [readHexEscape(expression.slice(start + 1, start + 5)), start + 5];
+  }
+  if (char === "\r" && expression[start + 1] === "\n") {
+    return ["", start + 2];
+  }
+  if (char === "\n" || char === "\r" || char === "\u2028" || char === "\u2029") {
+    return ["", start + 1];
+  }
+  return [SIMPLE_ESCAPES[char] ?? char, start + 1];
+}
+
 function readString(expression: string, start: number): [string, number] {
   const quote = expression[start];
   let value = "";
   let i = start + 1;
   while (i < expression.length && expression[i] !== quote) {
     if (expression[i] === "\\" && i + 1 < expression.length) {
-      const next = expression[i + 1];
-      const escapes: Record<string, string> = { n: "\n", t: "\t", r: "\r" };
-      value += escapes[next] ?? next;
-      i += 2;
+      const [decoded, next] = readEscape(expression, i + 1);
+      value += decoded;
+      i = next;
     } else {
       value += expression[i];
       i += 1;
@@ -124,13 +167,25 @@ function tokenize(expression: string): Token[] {
       continue;
     }
 
-    if (DIGIT.test(char)) {
-      let end = i;
-      while (end < expression.length && /[\d.]/.test(expression[end])) {
-        end += 1;
+    const previous = tokens.at(-1);
+    const followsValue =
+      previous !== undefined &&
+      (previous.type !== "operator" ||
+        previous.value === ")" ||
+        previous.value === "]");
+    const startsNumber =
+      DIGIT.test(char) ||
+      (char === "." && !followsValue && DIGIT.test(expression[i + 1] ?? ""));
+
+    if (startsNumber) {
+      const match = NUMBER_PATTERN.exec(expression.slice(i));
+      const literal = match?.[0] ?? "";
+      const next = expression[i + literal.length] ?? "";
+      if (!literal || IDENTIFIER_PART.test(next) || next === ".") {
+        throw new Error("Invalid number literal");
       }
-      tokens.push({ type: "number", value: Number(expression.slice(i, end)) });
-      i = end;
+      tokens.push({ type: "number", value: Number(literal) });
+      i += literal.length;
       continue;
     }
 
@@ -334,19 +389,20 @@ function callMethod(target: unknown, method: string, args: unknown[]): unknown {
   if (method === "toString") {
     return String(target);
   }
+  const position = args[1] === undefined ? undefined : Number(args[1]);
   if (method === "includes" && Array.isArray(target)) {
-    return target.includes(args[0]);
+    return target.includes(args[0], position);
   }
   if (typeof target !== "string") {
     return undefined;
   }
   switch (method) {
     case "includes":
-      return target.includes(String(args[0]));
+      return target.includes(String(args[0]), position);
     case "startsWith":
-      return target.startsWith(String(args[0]));
+      return target.startsWith(String(args[0]), position);
     case "endsWith":
-      return target.endsWith(String(args[0]));
+      return target.endsWith(String(args[0]), position);
     case "toLowerCase":
       return target.toLowerCase();
     case "toUpperCase":
