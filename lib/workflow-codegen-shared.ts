@@ -112,16 +112,7 @@ export function findTriggerNodes(
  * Helper to build access path from field path
  */
 export function buildAccessPath(fieldPath: string): string {
-  return fieldPath
-    .split(".")
-    .map((part: string) => {
-      const arrayMatch = ARRAY_INDEX_PATTERN.exec(part);
-      if (arrayMatch) {
-        return `.${arrayMatch[1]}[${arrayMatch[2]}]`;
-      }
-      return `.${part}`;
-    })
-    .join("");
+  return buildSafeAccessPath(fieldPath);
 }
 
 /**
@@ -334,4 +325,102 @@ export function getStepInfo(actionType: string): {
     functionName: "unknownStep",
     importPath: "./steps/unknown-step",
   };
+}
+
+/**
+ * Escape plain text for the body of a generated template literal
+ */
+export function escapeTemplateText(str: string): string {
+  return str
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
+}
+
+/**
+ * Build the body of a generated template literal from a workflow template.
+ * Text outside {{...}} is escaped; each reference becomes `${expression}`
+ * when `resolve` returns one, and stays as escaped text otherwise.
+ */
+export function buildTemplateBody(
+  template: string,
+  resolve: (reference: string) => string | null
+): string {
+  if (!template || typeof template !== "string") {
+    return "";
+  }
+
+  let body = "";
+  let lastIndex = 0;
+  for (const match of template.matchAll(new RegExp(TEMPLATE_PATTERN.source, "g"))) {
+    const index = match.index ?? 0;
+    body += escapeTemplateText(template.slice(lastIndex, index));
+    const expression = resolve(match[1].trim());
+    body += expression ? `\${${expression}}` : escapeTemplateText(match[0]);
+    lastIndex = index + match[0].length;
+  }
+  body += escapeTemplateText(template.slice(lastIndex));
+  return body;
+}
+
+/**
+ * Build a property access path that is always valid code, using bracket
+ * notation for anything that is not a plain identifier
+ */
+export function buildSafeAccessPath(
+  fieldPath: string,
+  optional = false
+): string {
+  const dot = optional ? "?." : ".";
+  const bracket = optional ? "?.[" : "[";
+  return fieldPath
+    .split(".")
+    .map((part) => {
+      const arrayMatch = ARRAY_INDEX_PATTERN.exec(part);
+      if (arrayMatch) {
+        return `${buildSafeAccessPath(arrayMatch[1], optional)}${bracket}${arrayMatch[2]}]`;
+      }
+      return VALID_IDENTIFIER_PATTERN.test(part)
+        ? `${dot}${part}`
+        : `${bracket}${JSON.stringify(part)}]`;
+    })
+    .join("");
+}
+
+/**
+ * Make text safe to place inside a generated // or block comment
+ */
+export function toCommentText(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
+    .replace(/\*\//g, "*\\/");
+}
+
+/**
+ * Emit a value as a double-quoted string literal
+ */
+export function toStringLiteral(value: unknown): string {
+  return JSON.stringify(String(value ?? ""));
+}
+
+/**
+ * Emit a value as a numeric literal, or undefined when it is not a finite number
+ */
+export function toNumberLiteral(value: unknown): string {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(number) : "undefined";
+}
+
+/**
+ * Emit a JSON string from config as a code literal, or the fallback when invalid
+ */
+export function toJsonLiteral(value: unknown, fallback: string): string {
+  if (typeof value !== "string" || value.trim() === "") {
+    return fallback;
+  }
+  try {
+    return toTypeScriptLiteral(JSON.parse(value));
+  } catch {
+    return fallback;
+  }
 }

@@ -283,8 +283,14 @@ class Parser {
             }
           }
           this.position += 1;
+          if (!ALLOWED_METHODS.has(name.value)) {
+            throw new Error(`Method "${name.value}" is not allowed`);
+          }
           node = { type: "call", object: node, method: name.value, args };
         } else {
+          if (BLOCKED_PROPERTIES.has(name.value)) {
+            throw new Error(`Property "${name.value}" is not allowed`);
+          }
           node = { type: "member", object: node, property: name.value };
         }
         continue;
@@ -299,6 +305,9 @@ class Parser {
         this.position += 1;
         this.expectOperator("]");
         node = { type: "member", object: node, property: String(key.value) };
+        if (BLOCKED_PROPERTIES.has(String(key.value))) {
+          throw new Error(`Property "${key.value}" is not allowed`);
+        }
         continue;
       }
 
@@ -447,4 +456,16 @@ export function evaluateExpression(
 ): unknown {
   const ast = new Parser(tokenize(expression)).parse();
   return evaluateNode(ast, variables);
+}
+
+/**
+ * Check whether an expression fits the supported condition grammar
+ */
+export function isSupportedConditionExpression(expression: string): boolean {
+  try {
+    new Parser(tokenize(expression)).parse();
+    return true;
+  } catch {
+    return false;
+  }
 }
