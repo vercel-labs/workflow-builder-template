@@ -119,7 +119,7 @@ export async function POST(request: Request) {
   files["app/page.tsx"] = `export default function Home() {
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Workflow: ${workflow.name}</h1>
+      <h1 className="text-2xl font-bold mb-4">Workflow: {${JSON.stringify(workflow.name)}}</h1>
       <p className="mb-4 text-gray-600">API endpoint:</p>
       <ul className="list-disc pl-6 space-y-2">
         <li>
