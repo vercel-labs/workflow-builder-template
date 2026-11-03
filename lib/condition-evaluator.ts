@@ -581,7 +581,12 @@ export function generateConditionSource(
     if (token.type === "string") {
       parts.push(JSON.stringify(token.value));
     } else if (token.type === "number") {
-      parts.push(String(token.value));
+      // Parenthesize before member access so `1 .toString()` stays valid
+      const next = tokens[index + 1];
+      const literal = String(token.value);
+      parts.push(
+        next?.type === "operator" && next.value === "." ? `(${literal})` : literal
+      );
     } else if (
       token.type === "identifier" &&
       !isProperty &&
