@@ -581,12 +581,7 @@ export function generateConditionSource(
     if (token.type === "string") {
       parts.push(JSON.stringify(token.value));
     } else if (token.type === "number") {
-      // Parenthesize before member access so `1 .toString()` stays valid
-      const next = tokens[index + 1];
-      const literal = String(token.value);
-      parts.push(
-        next?.type === "operator" && next.value === "." ? `(${literal})` : literal
-      );
+      parts.push(emitNumber(token, tokens[index + 1]));
     } else if (
       token.type === "identifier" &&
       !isProperty &&
@@ -602,6 +597,14 @@ export function generateConditionSource(
     }
   }
   return joinTokens(tokens, parts);
+}
+
+// Parenthesize a number before member access so `1 .toString()` stays valid
+function emitNumber(token: Token, next: Token | undefined): string {
+  const literal = String(token.value);
+  return next?.type === "operator" && next.value === "."
+    ? `(${literal})`
+    : literal;
 }
 
 const NO_SPACE_BEFORE = new Set([".", ")", "]", ","]);
