@@ -60,7 +60,7 @@ const containerVariants: Variants = {
 /**
  * Variants for drawer container
  */
-const drawerContainerVariants: Variants = {
+const _drawerContainerVariants: Variants = {
   hidden: {
     y: "100%",
     opacity: 0.5,
@@ -88,8 +88,12 @@ function getOverlayXPosition(
   isCurrent: boolean,
   isPrevious: boolean
 ): "0%" | "-35%" | "100%" {
-  if (isCurrent) return "0%";
-  if (isPrevious) return "-35%";
+  if (isCurrent) {
+    return "0%";
+  }
+  if (isPrevious) {
+    return "-35%";
+  }
   return "100%";
 }
 
@@ -151,6 +155,7 @@ function DesktopOverlayContainer() {
   });
 
   // Measure content height when it changes, reset on fresh open
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the stack changes
   useLayoutEffect(() => {
     const isFreshOpen = isOpen && !wasOpenRef.current;
     wasOpenRef.current = isOpen;
@@ -169,7 +174,7 @@ function DesktopOverlayContainer() {
   }, [stack, isOpen]);
 
   // Use live stack for options checks (only when open)
-  const currentItem = stack[stack.length - 1];
+  const currentItem = stack.at(-1);
   const springTransition = shouldReduceMotion ? { duration: 0.01 } : iosSpring;
   const isPushing = direction === 1;
 
@@ -225,7 +230,7 @@ function DesktopOverlayContainer() {
             {/* Dialog container */}
             <motion.div
               animate="visible"
-              className="fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 px-4"
+              className="-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50 w-full max-w-lg px-4"
               exit="exit"
               initial="hidden"
               variants={containerVariants}
@@ -311,6 +316,7 @@ function MobileOverlayContainer() {
   const currentIndex = renderStack.length - 1;
 
   // Measure content height when it changes, reset on fresh open
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the stack changes
   useLayoutEffect(() => {
     const isFreshOpen = isOpen && !wasOpenRef.current;
     wasOpenRef.current = isOpen;
@@ -329,7 +335,7 @@ function MobileOverlayContainer() {
   }, [stack, isOpen]);
 
   // Use live stack for options checks (only when open)
-  const currentItem = stack[stack.length - 1];
+  const currentItem = stack.at(-1);
   const renderCurrentItem = renderStack[currentIndex];
   const springTransition = shouldReduceMotion ? { duration: 0.01 } : iosSpring;
   const isPushing = direction === 1;

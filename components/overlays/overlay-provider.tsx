@@ -94,7 +94,7 @@ export function OverlayProvider({ children }: OverlayProviderProps) {
         return [];
       }
       // Pop the top item and call its onClose
-      const poppedItem = prev[prev.length - 1];
+      const poppedItem = prev.at(-1);
       poppedItem?.options.onClose?.();
       return prev.slice(0, -1);
     });
@@ -118,7 +118,7 @@ export function OverlayProvider({ children }: OverlayProviderProps) {
           return [item];
         }
         // Replace the top item
-        const poppedItem = prev[prev.length - 1];
+        const poppedItem = prev.at(-1);
         poppedItem?.options.onClose?.();
         return [...prev.slice(0, -1), item];
       });
@@ -140,7 +140,9 @@ export function OverlayProvider({ children }: OverlayProviderProps) {
   const close = useCallback((id: string) => {
     setStack((prev) => {
       const index = prev.findIndex((item) => item.id === id);
-      if (index === -1) return prev;
+      if (index === -1) {
+        return prev;
+      }
 
       // Call onClose for all items from this index onwards
       for (let i = index; i < prev.length; i++) {

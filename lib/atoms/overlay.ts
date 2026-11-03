@@ -45,7 +45,7 @@ function generateOverlayId(): string {
  */
 export const openOverlayAtom = atom(
   null,
-  (get, set, params: OpenOverlayParams) => {
+  (_get, set, params: OpenOverlayParams) => {
     const id = generateOverlayId();
     const item: OverlayStackItem = {
       id,
@@ -104,7 +104,7 @@ export const popOverlayAtom = atom(null, (get, set) => {
     return;
   }
   // Pop the top item and call its onClose
-  const poppedItem = stack[stack.length - 1];
+  const poppedItem = stack.at(-1);
   poppedItem?.options.onClose?.();
   set(overlayStackAtom, stack.slice(0, -1));
 });
@@ -137,7 +137,7 @@ export const replaceOverlayAtom = atom(
       set(overlayStackAtom, [item]);
     } else {
       // Call onClose for the replaced item
-      const poppedItem = stack[stack.length - 1];
+      const poppedItem = stack.at(-1);
       poppedItem?.options.onClose?.();
       set(overlayStackAtom, [...stack.slice(0, -1), item]);
     }
@@ -175,7 +175,9 @@ export const closeAllOverlaysAtom = atom(null, (get, set) => {
 export const closeOverlayAtom = atom(null, (get, set, id: string) => {
   const stack = get(overlayStackAtom);
   const index = stack.findIndex((item) => item.id === id);
-  if (index === -1) return;
+  if (index === -1) {
+    return;
+  }
 
   // Call onClose for all items from this index onwards
   for (let i = index; i < stack.length; i++) {

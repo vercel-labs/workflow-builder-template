@@ -132,7 +132,9 @@ const VIEW_MODE_KEY = "workflow-action-grid-view-mode";
 type ViewMode = "list" | "grid";
 
 function getInitialHiddenGroups(): Set<string> {
-  if (typeof window === "undefined") return new Set();
+  if (typeof window === "undefined") {
+    return new Set();
+  }
   try {
     const stored = localStorage.getItem(HIDDEN_GROUPS_KEY);
     return stored ? new Set(JSON.parse(stored)) : new Set();
@@ -142,7 +144,9 @@ function getInitialHiddenGroups(): Set<string> {
 }
 
 function getInitialViewMode(): ViewMode {
-  if (typeof window === "undefined") return "list";
+  if (typeof window === "undefined") {
+    return "list";
+  }
   try {
     const stored = localStorage.getItem(VIEW_MODE_KEY);
     return stored === "grid" ? "grid" : "list";
@@ -232,8 +236,12 @@ export function ActionGrid({
 
     // Sort categories: System first, then alphabetically
     const sortedCategories = Object.keys(groups).sort((a, b) => {
-      if (a === "System") return -1;
-      if (b === "System") return 1;
+      if (a === "System") {
+        return -1;
+      }
+      if (b === "System") {
+        return 1;
+      }
       return a.localeCompare(b);
     });
 
@@ -245,7 +253,9 @@ export function ActionGrid({
 
   // Filter groups based on hidden state
   const visibleGroups = useMemo(() => {
-    if (showHidden) return groupedActions;
+    if (showHidden) {
+      return groupedActions;
+    }
     return groupedActions.filter((g) => !hiddenGroups.has(g.category));
   }, [groupedActions, hiddenGroups, showHidden]);
 
@@ -255,7 +265,7 @@ export function ActionGrid({
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex shrink-0 gap-2">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
           <Input
             className="pl-9"
             data-testid="action-search-input"
