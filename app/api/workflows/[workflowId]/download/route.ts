@@ -324,7 +324,7 @@ Deploy your workflow to Vercel:
 vercel deploy
 \`\`\`
 
-For more information, visit the [Workflow documentation](https://workflow.is).
+For more information, visit the [Workflow SDK documentation](https://workflow-sdk.dev/docs).
 `;
 
     // Add .env.example file (dynamically generated from plugin registry)

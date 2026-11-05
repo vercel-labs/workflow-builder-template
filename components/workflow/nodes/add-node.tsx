@@ -19,11 +19,11 @@ export function AddNode({ data }: NodeProps & { data?: AddNodeData }) {
           Powered by{" "}
           <a
             className="underline underline-offset-2 transition duration-200 ease-out hover:text-foreground"
-            href="https://useworkflow.dev/"
+            href="https://workflow-sdk.dev/"
             rel="noopener noreferrer"
             target="_blank"
           >
-            Workflow
+            Workflow SDK
           </a>
           ,{" "}
           <a
