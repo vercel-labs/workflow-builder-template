@@ -1,9 +1,6 @@
 import "server-only";
 
-import {
-  createGateway,
-  experimental_generateImage as generateImage,
-} from "ai";
+import { createGateway, generateImage } from "ai";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
 import { getErrorMessageAsync } from "@/lib/utils";

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createGateway, generateObject, generateText } from "ai";
+import { createGateway, generateText, Output } from "ai";
 import { z } from "zod";
 import { fetchCredentials } from "@/lib/credential-fetcher";
 import { type StepInput, withStepLogging } from "@/lib/steps/step-handler";
@@ -105,13 +105,13 @@ async function stepHandler(
       const schema = JSON.parse(input.aiSchema) as SchemaField[];
       const zodSchema = buildZodSchema(schema);
 
-      const { object } = await generateObject({
+      const { output } = await generateText({
         model: gateway(modelString),
         prompt: promptText,
-        schema: zodSchema,
+        output: Output.object({ schema: zodSchema }),
       });
 
-      return { success: true, object };
+      return { success: true, object: output };
     }
 
     const { text } = await generateText({

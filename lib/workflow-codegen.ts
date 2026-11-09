@@ -399,9 +399,7 @@ export function generateWorkflowCode(
     indent: string,
     varName: string
   ): string[] {
-    imports.add(
-      "import { experimental_generateImage as generateImage } from 'ai';"
-    );
+    imports.add("import { generateImage } from 'ai';");
     const imagePrompt =
       (node.data.config?.imagePrompt as string) || "A beautiful landscape";
     const imageModel =
