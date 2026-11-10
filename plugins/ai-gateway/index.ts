@@ -33,7 +33,7 @@ const aiGatewayPlugin: IntegrationPlugin = {
   },
 
   dependencies: {
-    ai: "^5.0.86",
+    ai: "^7.0.166",
     openai: "^6.8.0",
     "@google/genai": "^1.28.0",
     zod: "^4.1.12",

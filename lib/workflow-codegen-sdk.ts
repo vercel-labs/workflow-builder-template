@@ -247,9 +247,7 @@ export function generateWorkflowSDKCode(
   }
 
   function buildAIImageParams(config: Record<string, unknown>): string[] {
-    imports.add(
-      "import { experimental_generateImage as generateImage } from 'ai';"
-    );
+    imports.add("import { generateImage } from 'ai';");
     const imageModel =
       (config.imageModel as string) || "google/imagen-4.0-generate";
     return [
