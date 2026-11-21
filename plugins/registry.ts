@@ -434,6 +434,34 @@ export function getDependenciesForActions(
 }
 
 /**
+ * Get environment variables for specific action IDs
+ */
+export function getEnvVarsForActions(
+  actionIds: string[]
+): Array<{ name: string; description: string }> {
+  const envVars: Array<{ name: string; description: string }> = [];
+  const integrations = new Set<IntegrationType>();
+
+  // Find which integrations are used
+  for (const actionId of actionIds) {
+    const action = findActionById(actionId);
+    if (action) {
+      integrations.add(action.integration);
+    }
+  }
+
+  // Get env vars for those integrations only
+  for (const integrationType of integrations) {
+    const plugin = integrationRegistry.get(integrationType);
+    if (plugin) {
+      envVars.push(...getPluginEnvVars(plugin));
+    }
+  }
+
+  return envVars;
+}
+
+/**
  * Get environment variables for a single plugin (from formFields)
  */
 export function getPluginEnvVars(

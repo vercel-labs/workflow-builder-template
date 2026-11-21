@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { workflows } from "@/lib/db/schema";
 import { generateWorkflowModule } from "@/lib/workflow-codegen";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-store";
-import { getAllEnvVars, getDependenciesForActions } from "@/plugins";
+import { getDependenciesForActions, getEnvVarsForActions } from "@/plugins";
 
 // Path to the Next.js boilerplate directory
 const BOILERPLATE_PATH = join(process.cwd(), "lib", "next-boilerplate");
@@ -154,9 +154,9 @@ function getIntegrationDependencies(
 }
 
 /**
- * Generate .env.example content based on registered integrations
+ * Generate .env.example content based on workflow nodes
  */
-function generateEnvExample(): string {
+function generateEnvExample(nodes: WorkflowNode[]): string {
   const lines = ["# Add your environment variables here"];
 
   // Add system integration env vars
@@ -164,8 +164,14 @@ function generateEnvExample(): string {
   lines.push("# For database integrations");
   lines.push("DATABASE_URL=your_database_url");
 
-  // Add plugin env vars from registry
-  const envVars = getAllEnvVars();
+  // Extract action IDs from workflow nodes
+  const actionIds = nodes
+    .filter((node) => node.data.type === "action")
+    .map((node) => node.data.config?.actionType as string)
+    .filter(Boolean);
+
+  // Get only env vars for used integrations
+  const envVars = getEnvVarsForActions(actionIds);
   const groupedByPrefix: Record<
     string,
     Array<{ name: string; description: string }>
@@ -328,7 +334,7 @@ For more information, visit the [Workflow documentation](https://workflow.is).
 `;
 
     // Add .env.example file (dynamically generated from plugin registry)
-    allFiles[".env.example"] = generateEnvExample();
+    allFiles[".env.example"] = generateEnvExample(workflow.nodes as WorkflowNode[]);
 
     return NextResponse.json({
       success: true,
