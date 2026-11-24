@@ -1015,9 +1015,9 @@ function ToolbarActions({
     const position = screenToFlowPosition({ x: centerX, y: centerY });
 
     // Adjust for node dimensions to center it properly
-    // Action node is 192px wide and 192px tall (w-48 h-48 in Tailwind)
-    const nodeWidth = 192;
-    const nodeHeight = 192;
+    // Action node is at least 200px wide and 64px tall
+    const nodeWidth = 200;
+    const nodeHeight = 64;
     position.x -= nodeWidth / 2;
     position.y -= nodeHeight / 2;
 

@@ -82,7 +82,7 @@ export function WorkflowContextMenu({
 
   const handleAddStep = useCallback(() => {
     if (menuState?.flowPosition) {
-      const nodeHeight = 192;
+      const nodeHeight = 64;
       const newNode: WorkflowNode = {
         id: nanoid(),
         type: "action",

@@ -36,7 +36,7 @@ export const TriggerNode = memo(({ data, selected }: TriggerNodeProps) => {
   return (
     <Node
       className={cn(
-        "flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
+        "relative flex h-auto w-auto min-w-[200px] flex-col transition-all duration-150 ease-out",
         selected && "border-primary"
       )}
       handles={{ target: false, source: true }}
@@ -46,7 +46,7 @@ export const TriggerNode = memo(({ data, selected }: TriggerNodeProps) => {
       {status && status !== "idle" && status !== "running" && (
         <div
           className={cn(
-            "absolute top-2 right-2 rounded-full p-1",
+            "absolute top-2 right-2 z-10 rounded-full p-1",
             status === "success" && "bg-green-500/50",
             status === "error" && "bg-red-500/50"
           )}
@@ -60,12 +60,16 @@ export const TriggerNode = memo(({ data, selected }: TriggerNodeProps) => {
         </div>
       )}
 
-      <div className="flex flex-col items-center justify-center gap-3 p-6">
-        <TriggerIcon className="size-12 text-blue-500" strokeWidth={1.5} />
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-base">{displayTitle}</NodeTitle>
+      <div className="flex flex-row items-center gap-2.5 p-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
+          <TriggerIcon className="size-5 text-blue-500" strokeWidth={2} />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <NodeTitle className="font-semibold text-sm leading-tight">
+            {displayTitle}
+          </NodeTitle>
           {displayDescription && (
-            <NodeDescription className="text-xs">
+            <NodeDescription className="text-xs leading-tight">
               {displayDescription}
             </NodeDescription>
           )}

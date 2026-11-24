@@ -381,8 +381,8 @@ export function WorkflowCanvas() {
       });
 
       // Center the node vertically at the cursor position
-      // Node height is 192px (h-48 in Tailwind)
-      const nodeHeight = 192;
+      // Node height is 64px (p-3 padding around a size-10 icon)
+      const nodeHeight = 64;
       position.y -= nodeHeight / 2;
 
       const newNode: WorkflowNode = {

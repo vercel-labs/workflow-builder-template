@@ -38,6 +38,8 @@ export const isWorkflowOwnerAtom = atom<boolean>(true); // Whether current user 
 // UI state atoms
 export const propertiesPanelActiveTabAtom = atom<string>("properties");
 export const showMinimapAtom = atom(false);
+export type CanvasInteractionMode = "pan" | "select";
+export const canvasInteractionModeAtom = atom<CanvasInteractionMode>("pan");
 export const selectedExecutionIdAtom = atom<string | null>(null);
 export const rightPanelWidthAtom = atom<string | null>(null);
 export const isPanelAnimatingAtom = atom<boolean>(false);

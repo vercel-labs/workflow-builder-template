@@ -187,6 +187,12 @@
   cursor: grabbing !important;
 }
 
+/* Select mode draws a selection box instead of panning */
+.react-flow[data-interaction-mode="select"] .react-flow__pane,
+.react-flow[data-interaction-mode="select"] .react-flow__pane:active {
+  cursor: default !important;
+}
+
 /* React Flow node and edge cursor */
 .react-flow__node {
   cursor: pointer !important;
