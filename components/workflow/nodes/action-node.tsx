@@ -124,13 +124,13 @@ const getProviderLogo = (actionType: string) => {
   // Check for system actions first (non-plugin)
   switch (actionType) {
     case "HTTP Request":
-      return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
+      return <Zap className="size-5 text-amber-300" strokeWidth={1.5} />;
     case "Database Query":
-      return <Database className="size-12 text-blue-300" strokeWidth={1.5} />;
+      return <Database className="size-5 text-blue-300" strokeWidth={1.5} />;
     case "Execute Code":
-      return <Code className="size-12 text-green-300" strokeWidth={1.5} />;
+      return <Code className="size-5 text-green-300" strokeWidth={1.5} />;
     case "Condition":
-      return <GitBranch className="size-12 text-pink-300" strokeWidth={1.5} />;
+      return <GitBranch className="size-5 text-pink-300" strokeWidth={1.5} />;
     default:
       // Not a system action, continue to check plugin registry
       break;
@@ -142,12 +142,12 @@ const getProviderLogo = (actionType: string) => {
     const plugin = getIntegration(action.integration);
     if (plugin?.icon) {
       const PluginIcon = plugin.icon;
-      return <PluginIcon className="size-12" />;
+      return <PluginIcon className="size-5" />;
     }
   }
 
   // Fallback for unknown actions
-  return <Zap className="size-12 text-amber-300" strokeWidth={1.5} />;
+  return <Zap className="size-5 text-amber-300" strokeWidth={1.5} />;
 };
 
 // Status badge component
@@ -199,7 +199,7 @@ function GeneratedImageThumbnail({ base64 }: { base64: string }) {
   return (
     <>
       <button
-        className="relative size-12 cursor-zoom-in overflow-hidden rounded-lg transition-transform hover:scale-105"
+        className="relative size-10 cursor-zoom-in overflow-hidden rounded-lg transition-transform hover:scale-105"
         onClick={(e) => {
           e.stopPropagation();
           setDialogOpen(true);
@@ -269,7 +269,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
     return (
       <Node
         className={cn(
-          "flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
+          "relative flex h-auto w-auto min-w-[200px] flex-col transition-all duration-150 ease-out",
           selected && "border-primary",
           isDisabled && "opacity-50"
         )}
@@ -282,13 +282,15 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
             <EyeOff className="size-3.5 text-white" />
           </div>
         )}
-        <div className="flex flex-col items-center justify-center gap-3 p-6">
-          <Zap className="size-12 text-muted-foreground" strokeWidth={1.5} />
-          <div className="flex flex-col items-center gap-1 text-center">
-            <NodeTitle className="text-base">
+        <div className="flex flex-row items-center gap-2.5 p-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Zap className="size-5 text-muted-foreground" strokeWidth={1.5} />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <NodeTitle className="font-semibold text-sm leading-tight">
               {data.label || "Action"}
             </NodeTitle>
-            <NodeDescription className="text-xs">
+            <NodeDescription className="text-xs leading-tight">
               Select an action
             </NodeDescription>
           </div>
@@ -339,7 +341,7 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
   return (
     <Node
       className={cn(
-        "relative flex h-48 w-48 flex-col items-center justify-center shadow-none transition-all duration-150 ease-out",
+        "relative flex h-auto w-auto min-w-[200px] flex-col transition-all duration-150 ease-out",
         selected && "border-primary",
         isDisabled && "opacity-50"
       )}
@@ -364,18 +366,22 @@ export const ActionNode = memo(({ data, selected, id }: ActionNodeProps) => {
       {/* Status indicator badge in top right */}
       <StatusBadge status={status} />
 
-      <div className="flex flex-col items-center justify-center gap-3 p-6">
+      <div className="flex flex-row items-center gap-2.5 p-3">
         {hasGeneratedImage ? (
           <GeneratedImageThumbnail
             base64={(nodeLog.output as { base64: string }).base64}
           />
         ) : (
-          getProviderLogo(actionType)
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+            {getProviderLogo(actionType)}
+          </div>
         )}
-        <div className="flex flex-col items-center gap-1 text-center">
-          <NodeTitle className="text-base">{displayTitle}</NodeTitle>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <NodeTitle className="font-semibold text-sm leading-tight">
+            {displayTitle}
+          </NodeTitle>
           {displayDescription && (
-            <NodeDescription className="text-xs">
+            <NodeDescription className="text-xs leading-tight">
               {displayDescription}
             </NodeDescription>
           )}
