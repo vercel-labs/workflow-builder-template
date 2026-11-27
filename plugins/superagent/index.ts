@@ -57,6 +57,14 @@ const superagentPlugin: IntegrationPlugin = {
           required: true,
           rows: 4,
         },
+        {
+          key: "systemPrompt",
+          label: "System Prompt",
+          type: "template-textarea",
+          placeholder: "Optional custom instructions for the guard...",
+          example: "Be extra strict with code-related inputs",
+          rows: 3,
+        },
       ],
     },
     {
