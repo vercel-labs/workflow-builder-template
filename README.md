@@ -1,6 +1,6 @@
 # AI Workflow Builder Template
 
-A template for building your own AI-driven workflow automation platform. Built on top of Workflow DevKit, this template provides a complete visual workflow builder with real integrations and code generation capabilities.
+A template for building your own AI-driven workflow automation platform. Built on top of Workflow SDK, this template provides a complete visual workflow builder with real integrations and code generation capabilities.
 
 ![AI Workflow Builder Screenshot](screenshot.png)
 
@@ -19,7 +19,7 @@ You can deploy your own version of the workflow builder to Vercel with one click
 ## What's Included
 
 - **Visual Workflow Builder** - Drag-and-drop interface powered by React Flow
-- **Workflow DevKit Integration** - Built on top of Workflow DevKit for powerful execution capabilities
+- **Workflow SDK Integration** - Built on top of Workflow SDK for powerful execution capabilities
 - **Real Integrations** - Connect to Resend (emails), Linear (tickets), Slack, PostgreSQL, and external APIs
 - **Code Generation** - Convert workflows to executable TypeScript with `"use workflow"` directive
 - **Execution Tracking** - Monitor workflow runs with detailed logs
@@ -273,7 +273,7 @@ const searchResult = await firecrawlSearchStep({
 ## Tech Stack
 
 - **Framework**: Next.js 16 with React 19
-- **Workflow Engine**: Workflow DevKit
+- **Workflow Engine**: Workflow SDK
 - **UI**: shadcn/ui with Tailwind CSS
 - **State Management**: Jotai
 - **Database**: PostgreSQL with Drizzle ORM
@@ -284,9 +284,9 @@ const searchResult = await firecrawlSearchStep({
 - **Type Checking**: TypeScript
 - **Code Quality**: Ultracite (formatter + linter)
 
-## About Workflow DevKit
+## About Workflow SDK
 
-This template is built on top of Workflow DevKit, a powerful workflow execution engine that enables:
+This template is built on top of Workflow SDK, a powerful workflow execution engine that enables:
 
 - Native TypeScript workflow definitions with `"use workflow"` directive
 - Type-safe workflow execution
@@ -294,7 +294,7 @@ This template is built on top of Workflow DevKit, a powerful workflow execution 
 - Built-in logging and error handling
 - Serverless deployment support
 
-Learn more about Workflow DevKit at [useworkflow.dev](https://useworkflow.dev)
+Learn more about Workflow SDK at [workflow-sdk.dev](https://workflow-sdk.dev/)
 
 ## License
 
